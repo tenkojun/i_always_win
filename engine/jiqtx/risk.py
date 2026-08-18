@@ -169,14 +169,32 @@ class StressScenario:
 
 def stress_test(delta_panel: pd.DataFrame, spec_shocks: Dict[str, float],
                 limit: float = 0.35,
-                extra_scenarios: Optional[Dict[str, Dict[str, float]]] = None
+                extra_scenarios: Optional[Dict[str, Dict[str, float]]] = None,
+                partial_betas: Optional[Dict[str, float]] = None
                 ) -> Tuple[pd.DataFrame, Dict[str, float]]:
     """
     자산군 고유 리스크팩터 충격으로 스트레스를 구성한다.
     주식 베타 곱셈 방식이 아니다.
 
-    delta_panel : factors.factor_delta_panel 출력
-    반환        : (시나리오 표, 요약)
+    단일 팩터 vs 복합 시나리오 — 베타를 다르게 써야 한다
+    ------------------------------------------------------
+    델타 패널의 베타는 **단변량**이다. 즉 "HY OAS 가 벌어질 때 이 종목이
+    평균적으로 얼마나 빠지는가" 인데, 여기에는 그때 같이 빠지는 주식시장
+    효과가 이미 들어 있다.
+
+    · 단일 팩터 시나리오("HY 만 +300bp") → 단변량이 맞다.
+      그 충격에 딸려 오는 동반 움직임까지 포함하는 게 총효과다.
+    · 복합 시나리오("주식 −20% AND VIX +20 AND HY +300bp")
+      → 단변량을 그냥 더하면 **같은 시장 충격을 3~4번 센다.**
+      실제로 애플이 시장 −20% 에 −63.7% 빠지는(실효 베타 3배) 값이
+      나왔고, 그 결과 모든 종목이 SIZE_ZERO 거부권에 걸렸다.
+      복합 시나리오에는 "다른 팩터를 고정했을 때의 순효과",
+      즉 다변량 회귀의 **부분 베타**를 써야 한다.
+
+    delta_panel   : factors.factor_delta_panel 출력 (단변량)
+    partial_betas : factor_model.coefs (다변량 부분 베타). 없으면 단변량으로
+                    떨어지되 그 사실을 요약에 남긴다.
+    반환          : (시나리오 표, 요약)
     """
     if delta_panel is None or len(delta_panel) == 0:
         return pd.DataFrame(), {"worst_pnl": np.nan, "within_limit": False,
@@ -186,7 +204,11 @@ def stress_test(delta_panel: pd.DataFrame, spec_shocks: Dict[str, float],
     beta_dn = dict(zip(delta_panel["factor"], delta_panel["downside_beta"]))
     beta_st = dict(zip(delta_panel["factor"], delta_panel["beta_static"]))
 
+    pb = {k: float(v) for k, v in (partial_betas or {}).items()
+          if v is not None and np.isfinite(v)}
+
     def _b(f, downside=False):
+        """단변량 베타 — 단일 팩터 시나리오용 (총효과)."""
         if downside:
             v = beta_dn.get(f)
             if v is not None and np.isfinite(v):
@@ -196,6 +218,27 @@ def stress_test(delta_panel: pd.DataFrame, spec_shocks: Dict[str, float],
             return v
         v = beta_st.get(f)
         return v if v is not None and np.isfinite(v) else 0.0
+
+    def _bp(f, downside=False):
+        """
+        부분 베타 — 복합 시나리오용 (다른 팩터 고정 시 순효과).
+
+        다변량 회귀에 없는 팩터는 단변량으로 떨어진다. 하방 부분베타는
+        따로 추정하지 않으므로, 같은 팩터의 (단변량 하방 ÷ 단변량) 비율을
+        부분 베타에 곱해 비대칭만 옮겨 온다. 비율이 이상하면 쓰지 않는다.
+        """
+        base = pb.get(f)
+        if base is None:
+            return _b(f, downside)
+        if not downside:
+            return base
+        u, d = beta_now.get(f), beta_dn.get(f)
+        if (u is not None and d is not None and np.isfinite(u)
+                and np.isfinite(d) and abs(u) > 1e-9):
+            ratio = d / u
+            if 0.2 <= ratio <= 5.0:          # 터무니없는 증폭은 무시
+                return base * ratio
+        return base
 
     scenarios: Dict[str, Dict[str, float]] = {"자산군 표준 충격": dict(spec_shocks)}
     # 단일팩터 시나리오
@@ -217,11 +260,16 @@ def stress_test(delta_panel: pd.DataFrame, spec_shocks: Dict[str, float],
     for name, sh in scenarios.items():
         if not sh:
             continue
-        p_static = float(sum(_b(f) * v for f, v in sh.items()))
-        p_down = float(sum(_b(f, True) * v for f, v in sh.items()))
+        # 팩터가 하나면 총효과(단변량), 여럿이면 순효과(부분 베타).
+        joint = len(sh) > 1
+        bfun = _bp if joint else _b
+        p_static = float(sum(bfun(f) * v for f, v in sh.items()))
+        p_down = float(sum(bfun(f, True) * v for f, v in sh.items()))
         p_cons = min(p_static, p_down)            # 보수적 채택
         rows.append({"scenario": name,
                      "shocks": "; ".join(f"{k}{v:+g}" for k, v in sh.items()),
+                     "beta_basis": "부분(다변량)" if (joint and pb)
+                                   else "단변량",
                      "pnl_static": p_static, "pnl_downside": p_down,
                      "pnl_conservative": p_cons,
                      "within_limit": bool(abs(p_cons) <= limit)})
@@ -232,9 +280,11 @@ def stress_test(delta_panel: pd.DataFrame, spec_shocks: Dict[str, float],
         "worst_scenario": df.iloc[0]["scenario"] if len(df) else "",
         "within_limit": bool(np.isfinite(worst) and abs(worst) <= limit),
         "limit": limit,
+        "beta_basis": "부분(다변량)" if pb else "단변량(부분베타 없음)",
         "note": ("스트레스 손익은 선형 델타 근사이며 역사적 재현값도 손실 상한도 "
                  "아니다. 비선형 반응(유동성 확보 매도 후 안전자산 반등 등)은 "
-                 "포함되지 않는다."),
+                 "포함되지 않는다. 복합 시나리오는 부분(다변량) 베타로 계산한다 — "
+                 "단변량 베타를 더하면 같은 시장 충격을 여러 번 세게 된다."),
     }
     return df, summary
 

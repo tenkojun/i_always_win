@@ -265,8 +265,11 @@ def analyze(ticker: str, df: Optional[pd.DataFrame] = None,
     # --- 8. 리스크
     v = rsk.var_es(r, vp.garch.z, vp.garch.sigma[-1], alpha=0.05)
     ddp = rsk.drawdown_profile(close)
+    # 복합 시나리오는 부분(다변량) 베타로 계산해야 한다 — 단변량을 더하면
+    # 같은 시장 충격을 여러 번 세서 손실이 크게 부풀려진다.
     st_tbl, st_sum = rsk.stress_test(dp, spec.stress,
-                                     limit=GATES.stress_loss_limit)
+                                     limit=GATES.stress_loss_limit,
+                                     partial_betas=getattr(fm, "coefs", None))
     log(f"리스크 → VaR95 {v.var_fhs_evt:.2%}(채택 {v.preferred}) · "
         f"MDD {ddp.max_drawdown:.1%} · 스트레스 최악 "
         f"{st_sum.get('worst_pnl', float('nan')):.1%}")

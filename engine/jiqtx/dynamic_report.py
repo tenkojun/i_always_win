@@ -1352,12 +1352,20 @@ def r_risk(a) -> str:
     out.append(note("원본 리포트는 '주식베타 0.20 × 지수충격'으로 스트레스를 "
                     "만들었습니다. 금에 주식 베타를 곱하는 것은 의미가 없습니다."))
     if len(a.stress_table):
-        out.append(df_table(a.stress_table,
-                            ["scenario", "shocks", "pnl_static", "pnl_downside",
-                             "pnl_conservative"],
+        _cols = ["scenario", "shocks", "beta_basis", "pnl_static",
+                 "pnl_downside", "pnl_conservative"]
+        _cols = [c for c in _cols if c in a.stress_table.columns]
+        out.append(df_table(a.stress_table, _cols,
                             {"scenario": "시나리오", "shocks": "충격",
+                             "beta_basis": "베타 기준",
                              "pnl_static": "정적β", "pnl_downside": "하방β",
                              "pnl_conservative": "보수적 채택"}, nd=4))
+        out.append(note(
+            "복합 시나리오는 <b>부분(다변량) 베타</b>로 계산합니다. "
+            "델타 패널의 단변량 베타에는 그 충격에 딸려 오는 시장 움직임이 "
+            "이미 포함돼 있어서, 여러 팩터를 동시에 때리는 시나리오에서 "
+            "그대로 더하면 같은 충격을 여러 번 세게 됩니다. "
+            "단일 팩터 시나리오는 총효과가 맞으므로 단변량을 그대로 씁니다."))
     out.append(f'<div class="hi">최악: '
                f'{E(a.stress_summary.get("worst_scenario","—"))} → '
                f'<b>{_f(a.stress_summary.get("worst_pnl"))}</b> '
