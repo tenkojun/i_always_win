@@ -50,3 +50,6 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# 작업용 임시 스크립트 (_ 로 시작)
+_*.py
