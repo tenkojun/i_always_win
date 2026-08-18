@@ -463,6 +463,10 @@
     letter-spacing:3px;font-weight:700;text-shadow:var(--glow)}
   .set-side .brand .sub{font-family:var(--mono);font-size:10px;
     color:var(--txt-mute);letter-spacing:1px;margin-top:2px}
+  /* 카테고리 9개를 평평하게 늘어놓으니 찾기 어려웠다. 성격별로 묶는다. */
+  .set-group{font-family:var(--mono);font-size:9.5px;letter-spacing:2px;
+    color:var(--txt-mute);padding:14px 18px 5px;user-select:none}
+  .set-group:first-of-type{padding-top:4px}
   .set-cat{display:flex;align-items:center;gap:10px;padding:10px 18px;
     cursor:pointer;color:var(--txt-dim);font-size:13px;
     border-left:2px solid transparent;transition:all .15s;user-select:none}
@@ -877,27 +881,25 @@
     line-height:1.7;font-style:italic}
   .wel-quote-author{font-family:var(--mono);font-size:11px;color:var(--amber);
     margin-top:10px;letter-spacing:1.5px}
-  .wel-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;
-    width:100%;max-width:820px}
-  .wel-card{background:var(--panel);border:1px solid var(--cyan-dim);
-    padding:30px 18px 26px;cursor:pointer;text-align:center;
-    color:var(--txt);transition:all .18s;font-family:var(--kr)}
-  .wel-card:hover{background:var(--panel2);border-color:var(--cyan);
-    transform:translateY(-3px);
-    box-shadow:0 8px 24px rgba(61,240,255,.15)}
-  .wel-card:active{transform:translateY(0)}
-  .wel-card-icon{font-size:38px;margin-bottom:14px;color:var(--cyan);
-    line-height:1;font-family:var(--mono)}
-  .wel-card-title{font-family:var(--mono);font-size:13px;font-weight:700;
-    letter-spacing:2.5px;color:var(--cyan);margin-bottom:8px}
-  .wel-card-desc{font-family:var(--kr);font-size:11.5px;color:var(--txt-dim);
-    line-height:1.5}
+  /* 바로가기 한 줄 — 큰 카드 대신 눌러서 바로 가는 버튼들 */
+  .wel-links{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;
+    width:100%;max-width:760px}
+  .wel-link{background:var(--panel);border:1px solid var(--line);
+    color:var(--txt-dim);cursor:pointer;transition:all .15s;
+    font-family:var(--kr);font-size:12.5px;padding:10px 16px;
+    display:flex;align-items:center;gap:7px;border-radius:3px}
+  .wel-link .ico{font-family:var(--mono);font-size:14px;color:var(--cyan-dim);
+    line-height:1}
+  .wel-link:hover{background:var(--panel2);border-color:var(--cyan);
+    color:var(--txt)}
+  .wel-link:hover .ico{color:var(--cyan)}
+  .wel-link:active{transform:translateY(1px)}
   .wel-skip{background:transparent;border:0;color:var(--txt-mute);
     cursor:pointer;font-family:var(--mono);font-size:11px;
     letter-spacing:2px;padding:10px 20px;transition:color .15s}
   .wel-skip:hover{color:var(--cyan)}
   @media(max-width:640px){
-    .wel-cards{grid-template-columns:1fr;max-width:340px}
+    .wel-links{max-width:340px}
     .wel-inner{gap:28px}
   }
 
@@ -1666,30 +1668,37 @@
           <div class="ti">SETTINGS</div>
           <div class="sub">I ALWAYS WIN 설정</div>
         </div>
+        <div class="set-group">내 계정</div>
         <div class="set-cat on" data-cat="account" onclick="switchSetCat('account')">
           <span class="ico">◐</span><span class="lab">계정</span>
         </div>
-        <div class="set-cat" data-cat="api" onclick="switchSetCat('api')">
-          <span class="ico">⚿</span><span class="lab">API 키</span>
+        <div class="set-cat" data-cat="centralauth" onclick="switchSetCat('centralauth')">
+          <span class="ico">⚿</span><span class="lab">중앙 인증</span>
         </div>
-        <div class="set-cat" data-cat="llm" onclick="switchSetCat('llm')">
-          <span class="ico">◈</span><span class="lab">로컬 LLM</span>
+
+        <div class="set-group">화면</div>
+        <div class="set-cat" data-cat="appearance" onclick="switchSetCat('appearance')">
+          <span class="ico">◑</span><span class="lab">테마·이펙트</span>
         </div>
         <div class="set-cat" data-cat="widgets" onclick="switchSetCat('widgets')">
           <span class="ico">▦</span><span class="lab">위젯 배치</span>
         </div>
-        <div class="set-cat" data-cat="appearance" onclick="switchSetCat('appearance')">
-          <span class="ico">◑</span><span class="lab">외관·사운드</span>
+
+        <div class="set-group">연결</div>
+        <div class="set-cat" data-cat="api" onclick="switchSetCat('api')">
+          <span class="ico">🔑</span><span class="lab">API 키</span>
         </div>
         <div class="set-cat" data-cat="cloud" onclick="switchSetCat('cloud')">
           <span class="ico">☁</span><span class="lab">외부 접근</span>
         </div>
         <div class="set-cat" data-cat="kis" onclick="switchSetCat('kis')">
-          <span class="ico">🏛</span><span class="lab">KIS 한국투자증권</span>
+          <span class="ico">🏛</span><span class="lab">한국투자증권</span>
         </div>
-        <div class="set-cat" data-cat="centralauth" onclick="switchSetCat('centralauth')">
-          <span class="ico">⚿</span><span class="lab">중앙 인증</span>
+        <div class="set-cat" data-cat="llm" onclick="switchSetCat('llm')">
+          <span class="ico">◈</span><span class="lab">로컬 LLM</span>
         </div>
+
+        <div class="set-group">기타</div>
         <div class="set-cat" data-cat="info" onclick="switchSetCat('info')">
           <span class="ico">ⓘ</span><span class="lab">정보</span>
         </div>
@@ -2574,26 +2583,22 @@
         <!-- ANALYSIS -->
         <div class="widget" id="w-analysis" data-wid="analysis">
           <div class="arun">
-            <button onclick="runAnalyze()" id="runbtn">현재 종목 분석</button>
+            <button onclick="runPrecision()" id="precbtn">◈ 현재 종목 분석</button>
             <button class="ghost" onclick="runPortfolioAnalyze()"
               style="background:rgba(255,180,76,.1);
               border-color:var(--amber);color:var(--amber)"
               title="보유 종목 전체 포괄 분석">◆ 포트폴리오</button>
-            <button class="ghost" onclick="runPrecision()" id="precbtn"
-              style="background:rgba(61,240,255,.1);
-              border-color:var(--cyan);color:var(--cyan)"
-              title="게이트·전문가 패널·결정론적 판정까지 도는 정밀 분석 (1~3분)"
-              >◈ 정밀</button>
-            <button class="ghost" onclick="runAnalyze('DEMO')">데모</button>
           </div>
           <div class="body" id="abody">
             <div class="hint">상단에서 종목을 조회한 뒤<br>
-            <b style="color:var(--amber)">[현재 종목 분석 실행]</b> 을 누르세요.<br><br>
-            단/중/장 시그널 · 기관 스코어카드 ·<br>
-            모듈별 한글 분석 글이 표시됩니다.<br><br>
-            <b style="color:var(--cyan)">[◈ 정밀]</b> 은 유동성·변동성·레짐·팩터·<br>
-            ML 게이트 · 전문가 패널 심의까지 돌린 뒤<br>
-            자기완결 HTML 보고서를 만듭니다 (1~3분).<br>
+            <b style="color:var(--cyan)">[◈ 현재 종목 분석]</b> 을 누르세요.<br><br>
+            데이터 무결성 → 자산군 분류 → 유동성 →<br>
+            변동성·레짐 → 팩터 → ML 게이트 →<br>
+            시뮬레이션 → 리스크 → 전문가 패널 심의<br>
+            순으로 돌고, 자기완결 HTML 보고서를 만듭니다.<br><br>
+            게이트를 통과하지 못한 모듈은 점수가 깎이는 대신<br>
+            <b style="color:var(--amber)">무효(abstain)</b> 로 표시됩니다.<br>
+            1~3분 걸립니다.<br>
             <span style="color:var(--txt-mute);font-size:11px">
             (ML·몬테카를로 포함 — 30초~2분 소요)</span></div>
           </div>
@@ -2786,17 +2791,19 @@
       <div class="wel-quote-text" id="wel-quote-text">…</div>
       <div class="wel-quote-author" id="wel-quote-author">—</div>
     </div>
-    <div class="wel-cards">
-      <button class="wel-card" onclick="_welAction('chart')">
-        <div class="wel-card-icon">▤</div>
-        <div class="wel-card-title">SUPERCHART</div>
-        <div class="wel-card-desc">슈퍼차트 · 지표<br>실시간 시세</div>
-      </button>
-      <button class="wel-card" onclick="_welAction('news')">
-        <div class="wel-card-icon">☷</div>
-        <div class="wel-card-title">NEWS</div>
-        <div class="wel-card-desc">속보 + 5개국 피드<br>거시 캘린더</div>
-      </button>
+    <div class="wel-links">
+      <button class="wel-link" onclick="_welAction('chart')">
+        <span class="ico">▤</span><span>차트</span></button>
+      <button class="wel-link" onclick="_welAction('analysis')">
+        <span class="ico">◈</span><span>정밀 분석</span></button>
+      <button class="wel-link" onclick="_welAction('news')">
+        <span class="ico">☷</span><span>뉴스</span></button>
+      <button class="wel-link" onclick="_welAction('history')">
+        <span class="ico">📜</span><span>분석 이력</span></button>
+      <button class="wel-link" onclick="_welAction('cloud')">
+        <span class="ico">☁</span><span>외부 접근</span></button>
+      <button class="wel-link" onclick="_welAction('settings')">
+        <span class="ico">⚙</span><span>설정</span></button>
     </div>
     <button class="wel-skip" onclick="_closeWelcome()">SKIP  ▸  ENTER TERMINAL</button>
   </div>
@@ -3874,22 +3881,6 @@ $('#ranges').addEventListener('click',e=>{
   if(e.target.dataset.r)applyRange(e.target.dataset.r);
 });
 
-/* ---------- analyze ---------- */
-async function runAnalyze(force){
-  const tk=force||CUR.ticker;
-  $('#runbtn').disabled=true;
-  $('#abody').innerHTML=`<div class="hint"><span class="spin"></span>
-    ${tk} 분석 중… 단/중/장 + 기관급(몬테카를로·팩터·스트레스)<br>
-    <span style="color:var(--txt-mute);font-size:11px">
-    최초 실행은 1~2분 걸릴 수 있습니다</span></div>`;
-  try{
-    const j=await(await fetch('/api/analyze',{method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ticker:tk})})).json();
-    poll(j.job_id);
-  }catch(e){fail(e);}
-}
-
 /* ── 정밀 분석 (jiqtx) ────────────────────────────────────────
    게이트 실패를 감점이 아니라 '모듈 무효화'로 처리하는 파이프라인.
    무거워서 백그라운드로 돌리고 2초 간격으로 상태를 폴링한다. */
@@ -3954,35 +3945,125 @@ function _pollPrecision(jobId){
 }
 
 function _renderPrecision(r){
-  const v=r.verdict||{};
-  const act=(v.action||'').toUpperCase();
-  const col=act.includes('BUY')?'var(--up)':
-            act.includes('SELL')?'var(--down)':'var(--amber)';
+  // 엔진(agents.adjudicate)이 실제로 내는 등급들
+  const GRADE_COL={BUY:'var(--up)', ACCUMULATE:'var(--up)',
+    HOLD:'var(--amber)', REDUCE:'var(--down)', AVOID:'var(--down)',
+    NO_TRADE:'var(--txt-mute)', ABSTAIN:'var(--txt-mute)'};
+  const GRADE_KO={BUY:'매수', ACCUMULATE:'분할매수', HOLD:'보유',
+    REDUCE:'축소', AVOID:'회피', NO_TRADE:'진입 안 함',
+    ABSTAIN:'판단보류'};
+  const CONF_KO={HIGH:'높음', MEDIUM:'보통', LOW:'낮음', NONE:'없음'};
+
+  const g=(r.grade||'ABSTAIN').toUpperCase();
+  const col=GRADE_COL[g]||'var(--amber)';
+  const pct=v=>v==null?'—':(v*100).toFixed(1)+'%';
+  const esc=_histEsc;
+
+  // 지표 한 줄
+  const row=(lab,val,extra)=>`
+    <div style="display:flex;justify-content:space-between;gap:10px;
+      padding:5px 0;border-bottom:1px dashed var(--line);font-size:11.5px">
+      <span style="color:var(--txt-mute)">${lab}</span>
+      <span style="font-family:var(--mono);color:var(--txt)">${val}${
+        extra?`<span style="color:var(--txt-mute);font-size:10px"> ${extra}</span>`:''}</span>
+    </div>`;
+
+  const ci=(r.direction_ci||[]).filter(x=>x!=null);
+  const ciTxt=ci.length===2?`[${pct(ci[0])} ~ ${pct(ci[1])}]`:'';
+
+  // 무효화된 모듈 — 이 엔진의 핵심 개념이라 눈에 띄게 둔다
+  const dis=(r.disabled_modules||[]);
+  const vet=(r.vetoes||[]);
+
   $('#abody').innerHTML=`
     <div style="padding:14px">
-      <div style="font-family:var(--mono);font-size:10.5px;
-        color:var(--cyan-dim);letter-spacing:1.5px;margin-bottom:10px">
-        PRECISION · ${_histEsc(r.ticker)} · ${r.elapsed}초
+      <div style="display:flex;justify-content:space-between;
+        align-items:baseline;margin-bottom:10px">
+        <span style="font-family:var(--mono);font-size:10.5px;
+          color:var(--cyan-dim);letter-spacing:1.5px">PRECISION · ${esc(r.ticker)}</span>
+        <span style="font-family:var(--mono);font-size:10px;
+          color:var(--txt-mute)">${r.elapsed}초 · ${esc(r.asof||'')}</span>
       </div>
-      ${act?`<div style="font-family:var(--mono);font-size:20px;
-        font-weight:800;color:${col};letter-spacing:2px;margin-bottom:6px">
-        ${_histEsc(act)}</div>`:''}
-      ${v.conviction!=null?`<div style="font-size:11px;color:var(--txt-mute);
-        font-family:var(--mono);margin-bottom:10px">확신도
-        <b style="color:var(--cyan)">${_histEsc(String(v.conviction))}</b></div>`:''}
-      ${v.headline?`<div style="font-size:12px;color:var(--txt-dim);
-        line-height:1.7;margin-bottom:14px">${_histEsc(v.headline)}</div>`:''}
-      <a href="${_histEsc(r.report_url)}" target="_blank" rel="noopener"
+
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+        margin-bottom:4px">
+        <span style="font-family:var(--mono);font-size:24px;font-weight:800;
+          color:${col};letter-spacing:2px;line-height:1">${esc(g)}</span>
+        <span style="font-size:13px;color:${col}">${GRADE_KO[g]||''}</span>
+        <span style="font-size:11px;color:var(--txt-mute);font-family:var(--mono)">
+          신뢰도 ${CONF_KO[r.model_confidence]||r.model_confidence||'—'}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--txt-dim);margin-bottom:12px;
+        font-family:var(--mono)">
+        상승확률 <b style="color:var(--cyan)">${pct(r.direction_prob)}</b>
+        <span style="color:var(--txt-mute)">${ciTxt}</span>
+        · 배분 <b style="color:var(--cyan)">${pct(r.risk_budget_weight)}</b>
+      </div>
+
+      ${vet.length?`<div style="background:rgba(255,90,82,.07);
+        border:1px solid var(--up);padding:8px 10px;border-radius:2px;
+        font-size:11px;line-height:1.6;margin-bottom:10px">
+        <b style="color:var(--up)">거부권 발동</b> — ${vet.map(esc).join(' · ')}
+        ${dis.length?`<br><span style="color:var(--txt-mute)">무효 모듈: ${
+          dis.map(esc).join(', ')}</span>`:''}
+        </div>`:''}
+
+      <div style="margin-bottom:12px">
+        ${row('자산군', esc(r.asset_class||'—'),
+              r.class_confidence!=null?`(${(r.class_confidence*100).toFixed(0)}%)`:'')}
+        ${row('레짐', esc(r.regime_label||'—'))}
+        ${row('변동성(연)', pct(r.vol_ann))}
+        ${row('ML 판정', esc(r.ml_verdict||'—'),
+              r.ml_oos!=null?`OOS ${pct(r.ml_oos)}`:'')}
+        ${row('VaR 95%', pct(r.var95), esc(r.var_method||''))}
+        ${row('최대낙폭', pct(r.mdd))}
+        ${row('CAGR / 샤프',
+              `${pct(r.cagr)} / ${r.sharpe!=null?r.sharpe.toFixed(2):'—'}`)}
+        ${row('권장 사이즈', pct(r.size_pct), esc(r.size_binding||''))}
+        ${row('거래 가능', r.tradable?'예':'아니오',
+              r.spread_bps!=null?`스프레드 ${r.spread_bps.toFixed(1)}bp`:'')}
+      </div>
+
+      ${(r.ml_reasons||[]).length?`<details style="margin-bottom:10px">
+        <summary style="cursor:pointer;font-size:11px;color:var(--cyan-dim);
+          font-family:var(--mono)">ML 기권 사유 ${r.ml_reasons.length}건</summary>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:11px;
+          color:var(--txt-dim);line-height:1.7">
+          ${r.ml_reasons.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      </details>`:''}
+
+      ${(r.rationale||[]).length?`<details open style="margin-bottom:12px">
+        <summary style="cursor:pointer;font-size:11px;color:var(--cyan-dim);
+          font-family:var(--mono)">판정 근거</summary>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:11.5px;
+          color:var(--txt-dim);line-height:1.7">
+          ${r.rationale.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      </details>`:''}
+
+      <a href="${esc(r.report_url)}" target="_blank" rel="noopener"
         style="display:inline-block;background:var(--cyan);color:#04222a;
         font-family:var(--mono);font-weight:700;font-size:12px;
         padding:9px 18px;text-decoration:none;letter-spacing:1.5px">
         ▸ 정밀 보고서 열기</a>
+
       <div style="font-size:10.5px;color:var(--txt-mute);margin-top:10px;
         line-height:1.6">
-        게이트를 통과하지 못한 모듈은 점수가 깎이는 대신<br>
-        보고서에서 <b>무효(abstain)</b> 로 표시됩니다.
+        게이트를 통과하지 못한 모듈은 점수가 깎이는 대신
+        <b>무효(abstain)</b> 로 처리됩니다 — 약한 신호가 아니라 신호 없음입니다.
       </div>
+
+      <div id="analyst_section"></div>
+      <div id="history_section"></div>
     </div>`;
+
+  // 애널리스트 목표주가 · 분석 이력 비동기 주입 (엔진과 무관하게 유용)
+  try{
+    loadAnalyst(r.ticker).then(html=>{
+      const el=$('#analyst_section');
+      if(el&&html)el.innerHTML=html;
+    });
+    loadAnalysisHistory(r.ticker);
+  }catch(e){}
 }
 
 async function runPortfolioAnalyze(){
@@ -3999,7 +4080,11 @@ async function runPortfolioAnalyze(){
       return;
     }
     renderPortfolioAnalyze(r);
-  }catch(e){fail(e);}
+  }catch(e){
+    $('#abody').innerHTML=`<div class="hint" style="color:var(--down)">
+      ✗ 포트폴리오 분석 실패<br>
+      <span style="font-size:11px">${_histEsc(e.message||String(e))}</span></div>`;
+  }
 }
 
 function renderPortfolioAnalyze(r){
@@ -4134,114 +4219,6 @@ function renderPortfolioAnalyze(r){
         line-height:1.6">${insights}</ul></div>`:''}
   `;
 }
-async function poll(id){
-  try{
-    const r=await(await fetch('/api/analyze/'+id)).json();
-    if(r.status==='running'){setTimeout(()=>poll(id),2500);return;}
-    if(r.status==='error'){fail(r.error);return;}
-    render(r);
-  }catch(e){fail(e);}
-}
-function fail(m){
-  $('#runbtn').disabled=false;
-  $('#abody').innerHTML=`<div class="hint">분석 실패<br>
-   <span style="color:var(--txt-mute);font-size:11px">${m||''}</span></div>`;
-}
-function render(r){
-  $('#runbtn').disabled=false;
-  const sc=r.overall_signal||'-';
-  const scCls=/(BUY|매수)/.test(sc)?'up':/(SELL|매도)/.test(sc)?'down':'';
-  let pillars='';
-  const ax=r.axes||{};
-  for(const k in ax){
-    const v=Math.max(0,Math.min(100,Number(ax[k])||0));
-    pillars+=`<div class="pill"><span class="lab">${k}</span>
-      <span class="barbox"><i style="width:${v}%"></i></span>
-      <span class="val">${v.toFixed(0)}</span></div>`;
-  }
-  let narr='';
-  const NM={montecarlo:'몬테카를로',factor_risk:'팩터 리스크',
-    stress:'스트레스 테스트',wealth:'부(富) 예측',risk_budget:'리스크 버짓',
-    tail_risk:'테일 리스크 (앙상블 MC·EVT·CSCV)',
-    trend:'추세',momentum:'모멘텀',volatility:'변동성',risk:'리스크',
-    orderflow:'오더플로우',ml:'ML 예측',regime:'국면 (Regime)',
-    overall:'종합 의견'};
-  for(const k in (r.narratives||{})){
-    narr+=`<div class="narr"><b>${NM[k]||k}</b>${r.narratives[k]}</div>`;
-  }
-  let tf='';
-  for(const k in (r.timeframes||{})){
-    const t=r.timeframes[k];
-    const c=/(BUY)/.test(t.signal)?'up':/(SELL)/.test(t.signal)?'down':'';
-    tf+=`<div class="pill"><span class="lab">${k}</span>
-      <span class="${c}" style="font-family:var(--mono);flex:1;
-      text-align:center">${t.signal||'-'}</span>
-      <span class="val">${(t.score||0).toFixed(0)}</span></div>`;
-  }
-  $('#abody').innerHTML=`
-    <div class="gradecard">
-      <div class="g">${r.grade||'?'}</div>
-      <div class="gi">
-        <div class="sig ${scCls}">${sc} · ${(r.overall_score||0).toFixed(1)}점</div>
-        <div class="vd">${r.verdict||''}</div>
-      </div>
-    </div>
-    ${r.live?'':'<div class="narr" style="border-color:var(--amber)">'+
-      '<b style="color:var(--amber)">참고</b>인터넷 미연결로 합성 데이터'+
-      ' 기반 데모 결과입니다. PC에서 인터넷 연결 시 실제 야후 데이터로 분석됩니다.</div>'}
-    <div style="font-family:var(--mono);font-size:10.5px;color:var(--cyan-dim);
-      letter-spacing:1.5px;margin:6px 0 2px">TIMEFRAME SIGNALS</div>
-    ${tf}
-    <div style="font-family:var(--mono);font-size:10.5px;color:var(--cyan-dim);
-      letter-spacing:1.5px;margin:14px 0 2px">SCORECARD PILLARS</div>
-    ${pillars}
-    ${(()=>{
-      const mv=r.meta_verdict||{};
-      if(!mv.signal)return'';
-      const mCls=/(BUY)/.test(mv.signal)?'up':/(SELL|REDUCE)/.test(mv.signal)?'down':'';
-      const dsr=mv.dsr!=null?`DSR ${(mv.dsr*100).toFixed(0)}%`:'';
-      const psr=mv.psr!=null?`PSR ${(mv.psr*100).toFixed(0)}%`:'';
-      const flags=(mv.robustness_flags||[]).map(f=>`<span style="color:var(--amber);font-size:10px">⚠ ${f}</span>`).join(' ');
-      const riskColor=mv.risk_grade==='상'?'var(--red)':mv.risk_grade==='중'?'var(--amber)':'var(--green)';
-      return `<div style="font-family:var(--mono);font-size:10.5px;color:var(--cyan-dim);
-        letter-spacing:1.5px;margin:14px 0 4px">META DECISION · v4 메타 의사결정 (XAI)</div>
-        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);
-          border-radius:6px;padding:10px 12px;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-            <span class="${mCls}" style="font-size:13px;font-weight:700">${mv.signal}</span>
-            <span style="color:var(--txt-mute);font-size:11px">${mv.grade||''}  ${mv.score!=null?mv.score.toFixed(1)+'점':''}</span>
-            <span style="margin-left:auto;color:${riskColor};font-size:10.5px">리스크 등급 ${mv.risk_grade||'-'}</span>
-          </div>
-          <div style="font-size:11px;color:var(--txt-dim);margin-bottom:5px">${mv.verdict||''}</div>
-          ${mv.trace_text?`<pre style="font-size:10px;color:var(--txt-mute);white-space:pre-wrap;
-            margin:5px 0 4px;line-height:1.5">${termWrap(_escapeHtml(mv.trace_text))}</pre>`:''}
-          <div style="font-size:10px;color:var(--txt-mute);display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">
-            ${dsr?`<span>${dsr}</span>`:''}${psr?`<span>${psr}</span>`:''}
-            ${mv.n_vetoes?`<span style="color:var(--amber)">거부권 ${mv.n_vetoes}건</span>`:''}
-            <span>증거 ${mv.n_evidence||0}개</span>
-            ${mv.conflict_ratio>0.3?`<span style="color:var(--amber)">충돌 ${(mv.conflict_ratio*100).toFixed(0)}%</span>`:''}
-          </div>
-          ${flags?`<div style="margin-top:4px">${flags}</div>`:''}
-          ${mv.risk_summary?`<div style="font-size:10px;color:var(--txt-mute);margin-top:4px">${termWrap(_escapeHtml(mv.risk_summary))}</div>`:''}
-        </div>`;
-    })()}
-    <div style="font-family:var(--mono);font-size:10.5px;color:var(--cyan-dim);
-      letter-spacing:1.5px;margin:14px 0 2px">ANALYST NOTES · 모듈별 분석</div>
-    ${narr}
-    ${r.report_url?`<a class="reportlink" href="${r.report_url}"
-      target="_blank">▸ 전체 HTML 리포트 열기 (차트 13종)</a>`:''}
-    <div id="analyst_section"></div>
-    <div id="history_section"></div>
-  `;
-  // 목표주가 비동기 주입
-  loadAnalyst(r.ticker||CUR.ticker).then(html=>{
-    const el=$('#analyst_section');
-    if(el&&html)el.innerHTML=html;
-  });
-  // C9: 분석 이력 비동기 주입
-  loadAnalysisHistory(r.ticker||CUR.ticker);
-}
-
 /* ---------- C9: 분석 이력 ---------- */
 async function loadAnalysisHistory(ticker){
   const el=$('#history_section');
@@ -4933,12 +4910,13 @@ let _curSetCat='account';
 
 const _SET_TITLES={
   account:    ['계정','ACCOUNT'],
-  api:        ['API 키','DATA SOURCES'],
-  llm:        ['로컬 LLM','LOCAL LLM'],
-  widgets:    ['위젯 배치','WIDGETS'],
-  appearance: ['외관 · 사운드','APPEARANCE'],
-  cloud:      ['외부 접근','REMOTE ACCESS'],
   centralauth:['중앙 인증','CENTRAL AUTH'],
+  appearance: ['테마 · 이펙트','APPEARANCE'],
+  widgets:    ['위젯 배치','WIDGETS'],
+  api:        ['API 키','DATA SOURCES'],
+  cloud:      ['외부 접근','REMOTE ACCESS'],
+  kis:        ['한국투자증권','KIS OPEN API'],   // 빠져 있어 헤더에 'kis' 가 그대로 노출됐다
+  llm:        ['로컬 LLM','LOCAL LLM'],
   info:       ['정보','ABOUT'],
 };
 
@@ -9030,23 +9008,26 @@ function _closeWelcome(){
   $('#welcome').classList.remove('on');
 }
 
+/* 환영 화면 바로가기 — 화면을 닫고 해당 위치로 보낸다. */
 function _welAction(action){
   _closeWelcome();
-  if(action==='chart'){
-    // 차트는 이미 보임 — 그냥 닫기
-    return;
-  }else if(action==='news'){
-    // 뉴스 위젯을 슬롯 A에 마운트
-    setTimeout(()=>{
-      try{
-        if(_WID_MAP&&_WID_MAP['news']){
-          _wlayout.A='news';
-          _saveLayout();
-          applyLayout();
-        }
-      }catch(e){}
-    },200);
-  }
+  const mount=wid=>{
+    try{
+      if(_WID_MAP&&_WID_MAP[wid]){
+        _wlayout.A=wid; _saveLayout(); applyLayout();
+      }
+    }catch(e){}
+  };
+  setTimeout(()=>{
+    try{
+      if(action==='chart')          return;   // 차트는 이미 보인다
+      if(action==='analysis')       mount('analysis');
+      else if(action==='news')      mount('news');
+      else if(action==='history')   openAnalyzeHistory();
+      else if(action==='cloud')     openSettings('cloud');
+      else if(action==='settings')  openSettings();
+    }catch(e){}
+  },180);
 }
 // ESC로 닫기
 document.addEventListener('keydown',e=>{

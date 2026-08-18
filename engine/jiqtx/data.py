@@ -100,11 +100,34 @@ def check_integrity(ticker: str, df: pd.DataFrame,
     if extreme:
         issues.append(f"|일간수익|>40% {extreme}건 — 분할/배당 조정 오류 가능")
 
-    # 기대 영업일 대비 결측
-    exp_days = len(pd.bdate_range(idx.min(), idx.max()))
-    missing = max(0.0, 1.0 - n / max(exp_days, 1))
+    # 기대 거래일 대비 결측
+    #
+    # pd.bdate_range 는 월~금을 전부 세지만 주요 거래소는 매년 9~13일 휴장한다.
+    # 8년 구간이면 영업일의 약 4% 라, 이걸 결측으로 세면 임계 2% 를 그냥 넘겨
+    # **정상적인 미국 종목이 전부 무결성 게이트에서 탈락**했다(→ A1 거부권 →
+    # 전 모듈 무효화 → 무조건 ABSTAIN). 휴장일 몫을 빼고 센다.
+    # 휴장일 수는 시장마다 다르다(미국 9~10, 한국 13~16, 일본 16~20).
+    # 종목마다 거래소를 알아내 달력을 맞추는 건 외부 의존이 필요하므로,
+    # 휴장이 가장 많은 주요 시장을 기준으로 넉넉히 잡는다. 그 대신
+    # "진짜 구멍"은 아래의 연속공백 검사가 잡는다 — 흩어진 결측은 휴장이지만
+    # 15거래일이 통째로 비는 건 휴장으로 설명되지 않는다.
+    span_years = max((idx.max() - idx.min()).days / 365.25, 0.0)
+    exp_bdays = len(pd.bdate_range(idx.min(), idx.max()))
+    holiday_allowance = int(round(16.0 * span_years))
+    exp_trading = max(1, exp_bdays - holiday_allowance)
+    missing = max(0.0, 1.0 - n / exp_trading)
     if missing > max_missing:
-        issues.append(f"영업일 대비 결측 {missing:.1%}")
+        issues.append(f"거래일 대비 결측 {missing:.1%}")
+
+    # 흩어진 결측은 휴장이지만, 길게 연속으로 비면 진짜 구멍이다.
+    # (거래정지·상장이전·수집 실패 — 휴장으로는 10거래일이 비지 않는다.)
+    try:
+        gap_days = idx.to_series().diff().dt.days
+        long_gaps = int((gap_days > 15).sum())
+    except Exception:
+        long_gaps = 0
+    if long_gaps:
+        issues.append(f"15일 이상 데이터 공백 {long_gaps}건")
 
     # Adj Close 정합성: Adj Close 수익률 ≥ Close 수익률 (배당 반영)
     adj_ok, gap = None, np.nan
@@ -123,7 +146,8 @@ def check_integrity(ticker: str, df: pd.DataFrame,
         issues.append(f"최신 데이터가 {stale}영업일 전")
 
     passed = (nonpos == 0 and viol == 0 and dups == 0
-              and missing <= max_missing and extreme <= 2)
+              and missing <= max_missing and extreme <= 2
+              and long_gaps <= 2)
     return DataIntegrity(ticker, n, str(idx.min().date()), str(idx.max().date()),
                          missing, dups, nonpos, viol, extreme, adj_ok, gap,
                          max(stale, 0), passed, issues)
@@ -142,6 +166,36 @@ def _cache_read(path: str) -> pd.DataFrame:
 
 def _cache_write(df: pd.DataFrame, path: str) -> None:
     df.to_pickle(path)
+
+
+def _repair_ohlc(df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+    """
+    고가/저가 봉투를 내부 정합성에 맞게 정규화한다.
+
+    소스(yfinance)는 통화·분할 조정 과정에서 종가가 저가보다 낮거나
+    고가보다 높은 봉을 이따금 내보낸다. 대부분은 부동소수점 잡음이지만
+    실제로 0.1%대 어긋남도 섞여 있다.
+
+    이런 봉을 그대로 두면 EDGE·Corwin-Schultz 같은 스프레드 추정기가
+    음수 분산을 만나 무너지고, 무결성 게이트는 봉 하나 때문에 분석
+    전체를 무효화한다. **종가는 건드리지 않고**(수익률의 근거다)
+    고가·저가만 O/H/L/C 의 최대·최소로 맞춘다.
+
+    반환: (정규화된 df, 손본 봉 수)
+    """
+    cols = [c for c in ("Open", "High", "Low", "Close") if c in df.columns]
+    if len(cols) < 4:
+        return df, 0
+    o, h, l, c = (df[k].astype(float) for k in ("Open", "High", "Low", "Close"))
+    hi = pd.concat([o, h, l, c], axis=1).max(axis=1)
+    lo = pd.concat([o, h, l, c], axis=1).min(axis=1)
+    bad = (hi > h + 1e-9) | (lo < l - 1e-9)
+    n_bad = int(bad.sum())
+    if n_bad:
+        df = df.copy()
+        df["High"] = hi
+        df["Low"] = lo
+    return df, n_bad
 
 
 # ---------------------------------------------------------------- 로더
@@ -179,6 +233,7 @@ def load_prices(ticker: str, years: int = 8, use_cache: bool = True,
     keep = [c for c in ["Open", "High", "Low", "Close", "Adj Close", "Volume",
                         "Dividends", "Stock Splits"] if c in df.columns]
     df = df[keep].dropna(subset=["Close"])
+    df, _ohlc_fixed = _repair_ohlc(df)
 
     meta: Dict = {}
     try:

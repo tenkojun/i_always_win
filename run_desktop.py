@@ -68,6 +68,12 @@ def _setup_logging() -> None:
     경우가 있어서, 살아 있는지 알아맞히려다 로그를 통째로 잃는다.
     콘솔이 없는 앱에서 진단 수단은 이 파일뿐이라 잃으면 안 된다.
     """
+    # 콘솔이 살아 있어도 cp949 라면 이모지 한 줄에 죽는다. 먼저 막는다.
+    try:
+        from engine.console import make_console_safe
+        make_console_safe()
+    except Exception:
+        pass
     if not getattr(sys, "frozen", False) and _console_alive():
         return
     try:

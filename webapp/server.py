@@ -48,6 +48,13 @@ _STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 _REPORTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
 os.makedirs(_REPORTS, exist_ok=True)
 
+# ── 콘솔 인코딩 안전장치 ─────────────────────────────────────────
+# 한국어 윈도우 콘솔(cp949)에 이모지를 print 하면 그 줄에서
+# UnicodeEncodeError 가 나고 작업 전체가 죽는다. 먼저 막는다.
+from engine.console import make_console_safe
+
+make_console_safe()
+
 # ── 런타임 데이터 경로 준비 ──────────────────────────────────────
 # 모든 상태(키·인증 DB·채팅·바이너리)는 앱 폴더 안 .data/ 한 곳에 모은다.
 # 예전 ~/.jiqt 에 남아 있던 내용은 첫 실행 시 한 번만 옮겨 온다.
@@ -2088,9 +2095,108 @@ def api_analyze_status(job_id):
 _JX_JOBS: Dict[str, Dict[str, Any]] = {}
 
 
+def _jx_summary(a) -> Dict[str, Any]:
+    """
+    Analysis 객체에서 화면에 쓸 값만 추린다.
+
+    필드명은 추측하지 않고 각 dataclass 정의를 확인해 맞췄다.
+    Verdict 는 grade / direction_prob / direction_ci / model_confidence /
+    risk_budget_weight / vetoes / disabled_modules / rationale 을 갖는다.
+    """
+    def g(obj, name, default=None):
+        return getattr(obj, name, default) if obj is not None else default
+
+    def num(x):
+        """numpy 스칼라·NaN 을 JSON 이 먹을 수 있게."""
+        try:
+            import math as _m
+            if x is None:
+                return None
+            f = float(x)
+            return None if _m.isnan(f) or _m.isinf(f) else f
+        except Exception:
+            return None
+
+    v    = g(a, "verdict")
+    cls  = g(a, "classification")
+    liq  = g(a, "liquidity")
+    ml   = g(a, "ml")
+    var  = g(a, "var")
+    dd   = g(a, "drawdown")
+    sz   = g(a, "sizing")
+    vp   = g(a, "vol_profile")
+    reg  = g(a, "regime")
+    perf = g(a, "perf", {}) or {}
+
+    # 레짐 이름 — labels[current_state]
+    regime_label = None
+    try:
+        labels = g(reg, "labels") or []
+        cur = g(reg, "current_state")
+        if labels and cur is not None:
+            regime_label = labels[int(cur)]
+    except Exception:
+        pass
+
+    # 변동성 — GARCH 현재 연율화, 없으면 21일 실현
+    vol_ann = num(g(g(vp, "garch"), "ann_vol_current"))         or num(g(vp, "realized_21d_ann"))
+
+    # VaR — 엔진이 채택한 방법의 값을 쓴다
+    var95 = None
+    pref = g(var, "preferred")
+    if pref:
+        var95 = num(g(var, "var_" + str(pref)))
+    if var95 is None:
+        var95 = num(g(var, "var_historical"))
+
+    ci = g(v, "direction_ci") or (None, None)
+
+    return {
+        # 판정
+        "grade": g(v, "grade"),
+        "direction_prob": num(g(v, "direction_prob")),
+        "direction_ci": [num(ci[0]), num(ci[1])],
+        "model_confidence": g(v, "model_confidence"),
+        "risk_budget_weight": num(g(v, "risk_budget_weight")),
+        "vetoes": [str(x) for x in (g(v, "vetoes", []) or [])],
+        "disabled_modules": [str(x) for x in (g(v, "disabled_modules", []) or [])],
+        "rationale": [str(x) for x in (g(v, "rationale", []) or [])][:8],
+
+        # 성격 · 거래 가능성
+        "asset_class": g(cls, "asset_class"),
+        "class_confidence": num(g(cls, "confidence")),
+        "tradable": bool(g(liq, "tradable", False)),
+        "liq_reason": g(liq, "reason", ""),
+        "spread_bps": num(g(liq, "spread_bps")),
+
+        # 시장 상태
+        "vol_ann": vol_ann,
+        "regime_label": regime_label,
+
+        # ML (기권이면 그대로 드러낸다)
+        "ml_verdict": g(ml, "verdict"),
+        "ml_oos": num(g(ml, "oos_accuracy")),
+        "ml_prob_up": num(g(ml, "prob_up_now")),
+        "ml_reasons": [str(x) for x in (g(ml, "reasons", []) or [])][:4],
+
+        # 리스크 · 사이징
+        "var95": var95,
+        "var_method": pref,
+        "mdd": num(g(dd, "max_drawdown")),
+        "size_pct": num(g(sz, "final_weight")),
+        "size_binding": g(sz, "binding_constraint"),
+
+        # 성과
+        "cagr": num(perf.get("cagr")),
+        "sharpe": num(perf.get("sharpe")),
+
+        "warnings": [str(x) for x in (g(a, "warnings", []) or [])][:6],
+    }
+
+
 def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
     """
-    jiqtx 파이프라인 1회 실행 → 자기완결 HTML 리포트 저장.
+    정밀 분석 1회 실행 → 자기완결 HTML 리포트 저장 + 이력 기록.
 
     실패해도 예외를 밖으로 내보내지 않는다. 작업 상태에 담아
     프론트가 사유를 그대로 보여 주게 한다.
@@ -2102,13 +2208,17 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
 
         cfg = jiqtx.RUN
         if fast:
-            cfg = _replace(cfg, n_sims=2000, fast=True)
+            try:
+                cfg = _replace(cfg, n_sims=2000, fast=True)
+            except TypeError:
+                cfg = _replace(cfg, n_sims=2000)
 
         a = jiqtx.analyze(ticker, cfg=cfg)
 
         base = "%s_precision.html" % ticker.replace("/", "_").replace(".", "_")
         path = os.path.join(_REPORTS, base)
         jiqtx.save_html(a, path)
+        report_url = "/report/" + base
 
         # 영구 이력용 타임스탬프 사본
         archive_url = ""
@@ -2122,19 +2232,37 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
         except Exception:
             pass
 
-        v = getattr(a, "verdict", None)
-        _JX_JOBS[job_id] = {
+        summary = _jx_summary(a)
+        result = {
             "status": "done",
             "ticker": ticker,
+            "asof": getattr(a, "asof", ""),
             "elapsed": round(time.time() - t0, 1),
-            "report_url": "/report/" + base,
+            "report_url": report_url,
             "archive_url": archive_url,
-            "verdict": {
-                "action": getattr(v, "action", None),
-                "conviction": getattr(v, "conviction", None),
-                "headline": getattr(v, "headline", None),
-            } if v is not None else {},
+            **summary,
         }
+        _JX_JOBS[job_id] = result
+
+        # 분석 이력에 남긴다 — 예전 analyze 가 하던 일을 이어받는다
+        try:
+            from engine.analyze_history import save_analysis
+            save_analysis(user_id, ticker, {
+                "overall_signal": summary.get("grade"),
+                "overall_score": (summary.get("direction_prob") or 0) * 100,
+                "grade": summary.get("grade"),
+                "verdict": summary.get("grade"),
+                "report_url": report_url,
+                "meta_verdict": {
+                    "signal": summary.get("grade"),
+                    "headline": "; ".join(summary.get("rationale", [])[:2]),
+                    "risk_grade": summary.get("model_confidence"),
+                },
+                "precision": summary,
+            })
+        except Exception as e:
+            print("[jiqtx] 이력 저장 실패:", e)
+
     except Exception as e:
         import traceback
         _JX_JOBS[job_id] = {

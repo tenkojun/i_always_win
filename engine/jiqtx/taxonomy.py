@@ -198,9 +198,13 @@ def classify(ticker: str, df: pd.DataFrame, meta: Dict,
                            dividend_yield=float(meta.get("dividendYield") or 0.0))
     qt = str(meta.get("quoteType", "") or "").upper()
     sector = str(meta.get("sector", "") or "")
+    # 키워드는 **상품 이름·카테고리**에만 건다.
+    # 예전에는 longBusinessSummary(회사 사업 설명 문단)까지 넣었는데,
+    # 애플의 사업 설명에 Apple Card 때문에 'credit' 이 들어 있어 AAPL 이
+    # '투자등급 크레딧' 채권으로 분류됐다. 금광회사엔 'gold', 정유사엔
+    # 'oil' 이 당연히 들어간다 — 산문에 키워드를 거는 건 과녁이 틀렸다.
     text = " ".join(str(meta.get(k, "") or "") for k in
-                    ("longName", "shortName", "category", "industry",
-                     "longBusinessSummary"))
+                    ("longName", "shortName", "category", "industry"))
 
     ev: List[str] = []
     warn: List[str] = []
@@ -222,7 +226,16 @@ def classify(ticker: str, df: pd.DataFrame, meta: Dict,
         warn.append("경로의존 자산. 시뮬레이션은 기초자산에서 생성 후 "
                     "일간 리밸런싱을 재구성해야 함 (변동성 드래그).")
 
-    # --- 키워드
+    # --- 실제 사업회사면 키워드를 건너뛴다
+    # 거래소가 EQUITY 라고 알려 주는 건 산문 속 단어 하나보다 강한 증거다.
+    # (금광회사 이름엔 'gold', 은행 이름엔 'credit' 이 들어간다.)
+    if cls is None and qt == "EQUITY":
+        cls = "EQUITY_LARGE"
+        conf = 0.85
+        ev.append("거래소 quoteType=EQUITY → 개별주. "
+                  "명칭 키워드보다 우선한다.")
+
+    # --- 키워드 (주로 ETF·ETN 상품명/카테고리)
     if cls is None:
         kw = _keyword_class(text) or _keyword_class(ticker)
         if kw:
