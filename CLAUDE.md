@@ -3,7 +3,7 @@
 ## 프로젝트
 - 목표: BlackRock Aladdin 동급+ 퀀트 분석 플랫폼
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
-- EXE: `pyinstaller app.spec --noconfirm` → dist\QuantTerminal\
+- EXE: `pyinstaller app.spec --noconfirm` → dist\IAlwaysWin\
 
 ## 기술 스택
 - **Backend**: Python 3.13, Flask (port 8765)

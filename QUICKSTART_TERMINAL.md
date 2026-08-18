@@ -12,10 +12,13 @@ pip install -r requirements.txt
 python run_desktop.py
 ```
 
-- 자동으로 브라우저(또는 앱 창)가 열립니다.
+- `pywebview` 가 깔려 있으면 브라우저가 아니라 **독립 앱 창**으로 뜹니다
+  (requirements.txt 에 포함).
 - 콘솔에 표시되는 `폰 : http://<IP>:8765` 주소를 휴대폰 브라우저에
   입력하면 **같은 와이파이에서 폰으로도** 사용 가능합니다.
-- `pip install pywebview` 를 추가하면 브라우저가 아닌 **독립 앱 창**으로 뜹니다.
+- 집 밖에서 쓰려면 **설정 → 외부 접근**을 켜세요.
+- 8765 포트가 이미 쓰이면 자동으로 다음 빈 포트를 찾습니다.
+  앱이 이미 떠 있으면 서버를 새로 띄우지 않고 창만 엽니다.
 
 서버만 따로 띄우려면:
 
@@ -36,13 +39,17 @@ build_windows_exe.bat   ← 더블클릭
 또는 수동으로:
 
 ```bash
-pip install -r requirements.txt pyinstaller pywebview
+pip install -r requirements.txt pyinstaller pillow
+python tools/make_version_info.py
 pyinstaller app.spec --noconfirm
 ```
 
-결과물: `dist/QuantTerminal/QuantTerminal.exe`
-이 폴더를 통째로 복사해 배포하면 됩니다. exe 더블클릭 →
-대시보드가 열리고, 같은 와이파이의 폰에서도 접속 가능합니다.
+결과물: `dist/IAlwaysWin/IAlwaysWin.exe`
+이 폴더를 통째로 복사해 배포합니다. exe 더블클릭 →
+**콘솔 창 없이 앱 창만** 열립니다.
+
+문제가 생기면 화면이 아니라 `.data/logs/app.log` 를 보세요.
+콘솔이 없으므로 모든 진단 출력이 그 파일로 갑니다.
 
 > 맥은 같은 명령으로 `.app`, 리눅스는 실행 파일이 생성됩니다.
 

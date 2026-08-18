@@ -24,6 +24,8 @@ pc_id
 # ─── 빌드 산출물 ──────────────────────────────────────────
 build/
 dist/
+# version.py 에서 생성되는 윈도우 버전 리소스
+version_info.txt
 *.spec.bak
 __pycache__/
 *.py[cod]

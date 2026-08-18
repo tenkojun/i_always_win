@@ -9,17 +9,24 @@ python run_desktop.py
 
 ## EXE 빌드
 ```bat
-pip install pyinstaller pywebview
+pip install pyinstaller pillow
+python tools\make_version_info.py
 pyinstaller app.spec --noconfirm
 ```
-- 결과: `dist\QuantTerminal\QuantTerminal.exe`
-- 배포: `dist\QuantTerminal\` 폴더 통째로 복사 (EXE 단독 불가)
-- 소요: 5~15분 (scikit-learn 등 번들)
+- 결과: `dist\IAlwaysWin\IAlwaysWin.exe`
+- 배포: `dist\IAlwaysWin\` 폴더 통째로 복사 (EXE 단독 불가)
+- 소요: 5~15분
 
 ## app.spec 설정
-- torch / tensorflow 제외 (기본 분석은 rf 모델 사용)
+- `console=False` — 콘솔 창 없음. 진단 로그는 `.data\logspp.log`
+- `icon=assets/app.ico`, `version=version_info.txt`
+  (`tools/make_version_info.py` 가 `version.py` 에서 자동 생성)
+- excludes: tensorflow, vectorbt, numba, llvmlite, shap,
+  transformers, tkinter, PyQt/PySide, jupyter
+- hiddenimports 에 `engine.jiqtx.*` 25개 모듈 전부 명시
+  (동적 임포트가 많아 PyInstaller 가 놓친다)
 - NotoSansKR-Engine.ttf 번들 포함
-- 앱 이름: QuantTerminal
+- 앱 이름: IAlwaysWin
 
 ## 폰 접속
 1. `python run_desktop.py` 실행

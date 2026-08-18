@@ -129,6 +129,21 @@ def check_integrity(ticker: str, df: pd.DataFrame,
                          max(stale, 0), passed, issues)
 
 
+# ---------------------------------------------------------------- 캐시 IO
+# 로컬 재사용 캐시일 뿐이라 컬럼형 포맷(parquet)의 이점이 없다.
+# parquet 을 쓰면 pyarrow 가 딸려 오는데, 배포본에 81MB 를 더한다.
+# pandas 내장 pickle 로 충분하다.
+_CACHE_EXT = ".pkl"
+
+
+def _cache_read(path: str) -> pd.DataFrame:
+    return pd.read_pickle(path)
+
+
+def _cache_write(df: pd.DataFrame, path: str) -> None:
+    df.to_pickle(path)
+
+
 # ---------------------------------------------------------------- 로더
 
 def load_prices(ticker: str, years: int = 8, use_cache: bool = True,
@@ -139,11 +154,11 @@ def load_prices(ticker: str, years: int = 8, use_cache: bool = True,
     가격 수준이 필요한 계산(스프레드 bp 등)에는 조정 전 종가도 함께 보관.
     """
     _ensure_cache()
-    cache = os.path.join(_CACHE_DIR, f"{ticker.replace('/','_')}_{years}y.parquet")
-    meta_cache = cache.replace(".parquet", "_meta.json")
+    cache = os.path.join(_CACHE_DIR, f"{ticker.replace('/','_')}_{years}y" + _CACHE_EXT)
+    meta_cache = cache.replace(_CACHE_EXT, "_meta.json")
     if use_cache and os.path.exists(cache) and \
             time.time() - os.path.getmtime(cache) < 6 * 3600:
-        df = pd.read_parquet(cache)
+        df = _cache_read(cache)
         meta = {}
         if os.path.exists(meta_cache):
             import json
@@ -179,7 +194,7 @@ def load_prices(ticker: str, years: int = 8, use_cache: bool = True,
 
     if use_cache:
         try:
-            df.to_parquet(cache)
+            _cache_write(df, cache)
             import json
             json.dump({k: (v if isinstance(v, (int, float, str, bool, type(None)))
                            else str(v)) for k, v in meta.items()},
@@ -194,10 +209,10 @@ def load_fred(series: Optional[List[str]] = None, years: int = 10,
     """FRED CSV 직접 수집 (API 키 불필요)."""
     _ensure_cache()
     series = series or list(FRED_SERIES.keys())
-    cache = os.path.join(_CACHE_DIR, f"fred_{years}y.parquet")
+    cache = os.path.join(_CACHE_DIR, f"fred_{years}y" + _CACHE_EXT)
     if use_cache and os.path.exists(cache) and \
             time.time() - os.path.getmtime(cache) < 12 * 3600:
-        return pd.read_parquet(cache)
+        return _cache_read(cache)
 
     import urllib.request
     frames = []
@@ -226,7 +241,7 @@ def load_fred(series: Optional[List[str]] = None, years: int = 10,
         out["curve_2s10s"] = out["nominal_10y"] - out["nominal_2y"]
     if use_cache:
         try:
-            out.to_parquet(cache)
+            _cache_write(out, cache)
         except Exception:
             pass
     return out
@@ -251,10 +266,10 @@ def load_proxies(years: int = 8, tickers: Optional[Dict[str, str]] = None,
 def load_gpr(use_cache: bool = True) -> Optional[pd.Series]:
     """Caldara-Iacoviello 지정학 리스크 지수 (일별)."""
     _ensure_cache()
-    cache = os.path.join(_CACHE_DIR, "gpr_daily.parquet")
+    cache = os.path.join(_CACHE_DIR, "gpr_daily" + _CACHE_EXT)
     if use_cache and os.path.exists(cache) and \
             time.time() - os.path.getmtime(cache) < 7 * 86400:
-        return pd.read_parquet(cache).iloc[:, 0]
+        return _cache_read(cache).iloc[:, 0]
     import urllib.request
     for url in ("https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls",
                 "https://www.matteoiacoviello.com/gpr_files/gpr_daily_recent.xls"):
@@ -267,7 +282,7 @@ def load_gpr(use_cache: bool = True) -> Optional[pd.Series]:
             s = pd.Series(pd.to_numeric(df[gcol], errors="coerce").values,
                           index=pd.to_datetime(df[dcol]), name="gpr").dropna()
             if use_cache:
-                s.to_frame().to_parquet(cache)
+                _cache_write(s.to_frame(), cache)
             return s
         except Exception:
             continue

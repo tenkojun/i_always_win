@@ -23,7 +23,7 @@ README.md
 cd C:\Users\jun\Desktop\e
 pip install pyinstaller pywebview
 pyinstaller app.spec --noconfirm
-:: 결과: dist\QuantTerminal\QuantTerminal.exe
+:: 결과: dist\IAlwaysWin\IAlwaysWin.exe
 ```
 
 ## requirements.txt 관리 원칙
@@ -35,7 +35,7 @@ pyinstaller app.spec --noconfirm
 ## app.spec 주의사항
 - `excludes`: torch, tensorflow (EXE 용량 절감)
 - `datas`: NotoSansKR-Engine.ttf 반드시 포함
-- `name`: QuantTerminal (폴더명 유지)
+- `name`: IAlwaysWin (폴더명 유지) · `console=False`
 
 ## 패키지 생성 (ZIP)
 ```python

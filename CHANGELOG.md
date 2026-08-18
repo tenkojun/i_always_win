@@ -5,6 +5,54 @@
 
 ---
 
+## [2.8.0] — 2026-08-18
+
+`.exe` 가 개발 중인 프로그램처럼 보이던 것을 정리했다.
+
+### 변경
+- **콘솔 창 제거** — `console=False`. cmd 창이 덕지덕지 뜨지 않고
+  앱 창 하나만 열린다.
+  - 콘솔이 없으면 `print` 한 줄에 앱이 죽을 수 있다(윈도우 빌드에서
+    `sys.stdout` 이 사라진다). 그래서 **얼린 앱은 조건 없이** 표준 출력을
+    `.data/logs/app.log` 로 돌린다. 창 없는 빌드에서도
+    `sys.stdout.fileno()` 가 그럴듯한 값을 돌려주는 경우가 있어,
+    살아 있는지 알아맞히려다 로그를 통째로 잃는다 — 실제로 그랬다.
+    콘솔이 없는 앱에서 진단 수단은 이 파일뿐이다.
+  - 외부 프로세스(cloudflared, taskkill)는 이미 `CREATE_NO_WINDOW` 로
+    띄우고 있어 검은 창이 번쩍이지 않는다.
+- **실행 파일 이름** `QuantTerminal.exe` → `IAlwaysWin.exe`
+- **아이콘** — 앱의 여우 마크를 다크 원형 + 시안 링에 얹어
+  `assets/app.ico` (16~256px 7종). 브라우저 탭 파비콘도 같이 생성.
+- **파일 속성** — 오른쪽 클릭 → 속성에 제품명 `I ALWAYS WIN`,
+  버전, 개발자 `Tenko jun - 정준화` 가 뜬다.
+  `tools/make_version_info.py` 가 `version.py` 에서 생성하며,
+  파일이 없으면 `app.spec` 이 빌드 중에 알아서 만든다.
+- **배포 크기 305MB → 224MB.** 가격 캐시를 parquet → pickle 로 바꿔
+  `pyarrow`(81MB) 의존을 끊었다. 로컬 재사용 캐시일 뿐이라
+  컬럼형 포맷의 이점이 없다.
+- excludes 정리: tensorflow · vectorbt · numba · llvmlite · shap ·
+  transformers · tkinter · PyQt/PySide · jupyter
+
+### 추가
+- 런처가 **포트 충돌을 스스로 처리**한다. 8765 가 막혀 있으면 다음 빈
+  포트를 찾고, 앱이 **이미 떠 있으면 서버를 새로 띄우지 않고 창만** 연다
+  (중복 실행 방지).
+- 창을 닫으면 터널까지 정리한다.
+- `hiddenimports` 에 `engine.jiqtx.*` 25개 모듈 명시 —
+  동적 임포트가 많아 PyInstaller 가 놓친다.
+
+### 수정
+- `.gitignore` 의 줄 끝 주석. gitignore 는 인라인 주석을 지원하지 않아
+  패턴에 주석이 그대로 붙어 무효가 되고 있었다.
+
+### 주의
+- 빌드 후 EXE 를 한 번이라도 실행하면 `dist/IAlwaysWin/.data/` 가 생기고
+  거기에 **API 키와 계정 DB** 가 들어간다. 남에게 폴더를 전달하기 전에
+  반드시 지울 것. `build_windows_exe.bat` 이 빌드 끝에 자동으로 지우고
+  경고도 출력한다.
+
+---
+
 ## [2.7.0] — 2026-08-18
 
 ### 진단
