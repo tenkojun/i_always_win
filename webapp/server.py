@@ -2016,6 +2016,96 @@ def api_analyze_status(job_id):
     return jsonify(job)
 
 
+# ══════════════════════════════════════════════════════════════
+#  정밀 분석 (jiqtx) — 게이트·패널·판정까지 도는 무거운 파이프라인
+# ══════════════════════════════════════════════════════════════
+_JX_JOBS: Dict[str, Dict[str, Any]] = {}
+
+
+def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
+    """
+    jiqtx 파이프라인 1회 실행 → 자기완결 HTML 리포트 저장.
+
+    실패해도 예외를 밖으로 내보내지 않는다. 작업 상태에 담아
+    프론트가 사유를 그대로 보여 주게 한다.
+    """
+    t0 = time.time()
+    try:
+        from engine import jiqtx
+        from dataclasses import replace as _replace
+
+        cfg = jiqtx.RUN
+        if fast:
+            cfg = _replace(cfg, n_sims=2000, fast=True)
+
+        a = jiqtx.analyze(ticker, cfg=cfg)
+
+        base = "%s_precision.html" % ticker.replace("/", "_").replace(".", "_")
+        path = os.path.join(_REPORTS, base)
+        jiqtx.save_html(a, path)
+
+        # 영구 이력용 타임스탬프 사본
+        archive_url = ""
+        try:
+            import shutil
+            root, ext = os.path.splitext(base)
+            arch = "%s_%s%s" % (root,
+                                dt.datetime.now().strftime("%Y%m%d_%H%M%S"), ext)
+            shutil.copy2(path, os.path.join(_REPORTS, arch))
+            archive_url = "/report/" + arch
+        except Exception:
+            pass
+
+        v = getattr(a, "verdict", None)
+        _JX_JOBS[job_id] = {
+            "status": "done",
+            "ticker": ticker,
+            "elapsed": round(time.time() - t0, 1),
+            "report_url": "/report/" + base,
+            "archive_url": archive_url,
+            "verdict": {
+                "action": getattr(v, "action", None),
+                "conviction": getattr(v, "conviction", None),
+                "headline": getattr(v, "headline", None),
+            } if v is not None else {},
+        }
+    except Exception as e:
+        import traceback
+        _JX_JOBS[job_id] = {
+            "status": "error",
+            "ticker": ticker,
+            "elapsed": round(time.time() - t0, 1),
+            "error": "%s: %s" % (type(e).__name__, e),
+            "trace": traceback.format_exc()[-2000:],
+        }
+
+
+@app.route("/api/jiqtx/analyze", methods=["POST"])
+@require_auth
+def api_jiqtx_analyze():
+    d = request.get_json(force=True, silent=True) or {}
+    ticker = (d.get("ticker") or "").strip().upper()
+    if not ticker:
+        return jsonify({"ok": False, "error": "ticker 필요"}), 400
+    fast = bool(d.get("fast", True))
+    job_id = "jx_%d" % int(time.time() * 1000)
+    _JX_JOBS[job_id] = {"status": "running", "ticker": ticker}
+    threading.Thread(
+        target=_run_jiqtx_job,
+        args=(job_id, ticker, fast, (g.user or {}).get("id")),
+        daemon=True).start()
+    return jsonify({"ok": True, "job_id": job_id, "status": "running"})
+
+
+@app.route("/api/jiqtx/analyze/<job_id>")
+@require_auth
+def api_jiqtx_status(job_id):
+    job = _JX_JOBS.get(job_id)
+    if not job:
+        abort(404)
+    return jsonify(job)
+
+
 @app.route("/api/news/sentiment")
 def api_news_sentiment():
     title = (request.args.get("title") or "").strip()

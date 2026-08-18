@@ -2606,13 +2606,21 @@
               style="background:rgba(255,180,76,.1);
               border-color:var(--amber);color:var(--amber)"
               title="보유 종목 전체 포괄 분석">◆ 포트폴리오</button>
+            <button class="ghost" onclick="runPrecision()" id="precbtn"
+              style="background:rgba(61,240,255,.1);
+              border-color:var(--cyan);color:var(--cyan)"
+              title="게이트·전문가 패널·결정론적 판정까지 도는 정밀 분석 (1~3분)"
+              >◈ 정밀</button>
             <button class="ghost" onclick="runAnalyze('DEMO')">데모</button>
           </div>
           <div class="body" id="abody">
             <div class="hint">상단에서 종목을 조회한 뒤<br>
             <b style="color:var(--amber)">[현재 종목 분석 실행]</b> 을 누르세요.<br><br>
             단/중/장 시그널 · 기관 스코어카드 ·<br>
-            모듈별 한글 분석 글이 표시됩니다.<br>
+            모듈별 한글 분석 글이 표시됩니다.<br><br>
+            <b style="color:var(--cyan)">[◈ 정밀]</b> 은 유동성·변동성·레짐·팩터·<br>
+            ML 게이트 · 전문가 패널 심의까지 돌린 뒤<br>
+            자기완결 HTML 보고서를 만듭니다 (1~3분).<br>
             <span style="color:var(--txt-mute);font-size:11px">
             (ML·몬테카를로 포함 — 30초~2분 소요)</span></div>
           </div>
@@ -3907,6 +3915,101 @@ async function runAnalyze(force){
       body:JSON.stringify({ticker:tk})})).json();
     poll(j.job_id);
   }catch(e){fail(e);}
+}
+
+/* ── 정밀 분석 (jiqtx) ────────────────────────────────────────
+   게이트 실패를 감점이 아니라 '모듈 무효화'로 처리하는 파이프라인.
+   무거워서 백그라운드로 돌리고 2초 간격으로 상태를 폴링한다. */
+let _precTimer=null;
+
+async function runPrecision(){
+  const tk=CUR.ticker;
+  if(!tk){alert('먼저 종목을 조회하세요');return;}
+  const btn=$('#precbtn');
+  btn.disabled=true;
+  $('#abody').innerHTML=`<div class="hint"><span class="spin"></span>
+    ${tk} 정밀 분석 중…<br>
+    <span style="color:var(--txt-mute);font-size:11px">
+    데이터 무결성 → 자산군 분류 → 유동성 → 변동성/레짐 →<br>
+    팩터 → ML 게이트 → 시뮬레이션 → 리스크 → 패널 심의<br>
+    1~3분 걸립니다. 이 창을 닫아도 계속 진행됩니다.</span></div>`;
+  try{
+    const j=await(await fetch('/api/jiqtx/analyze',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ticker:tk, fast:true})})).json();
+    if(!j.ok){throw new Error(j.error||'시작 실패');}
+    _pollPrecision(j.job_id);
+  }catch(e){
+    btn.disabled=false;
+    $('#abody').innerHTML=`<div class="hint" style="color:var(--down)">
+      ✗ ${_histEsc(e.message)}</div>`;
+  }
+}
+
+function _pollPrecision(jobId){
+  if(_precTimer)clearInterval(_precTimer);
+  const t0=Date.now();
+  _precTimer=setInterval(async()=>{
+    try{
+      const r=await(await fetch('/api/jiqtx/analyze/'+jobId)).json();
+      if(r.status==='running'){
+        const s=Math.round((Date.now()-t0)/1000);
+        const el=$('#abody').querySelector('.hint');
+        if(el&&!el.dataset.done){
+          const sp=el.querySelector('.elapsed');
+          if(sp)sp.textContent=` (${s}초)`;
+          else el.insertAdjacentHTML('beforeend',
+            '<span class="elapsed" style="color:var(--amber)"></span>');
+        }
+        return;
+      }
+      clearInterval(_precTimer); _precTimer=null;
+      $('#precbtn').disabled=false;
+      if(r.status==='error'){
+        $('#abody').innerHTML=`<div class="hint" style="color:var(--down)">
+          ✗ 정밀 분석 실패<br>
+          <span style="font-size:11px;font-family:var(--mono)">
+          ${_histEsc(r.error||'')}</span></div>`;
+        return;
+      }
+      _renderPrecision(r);
+    }catch(e){
+      clearInterval(_precTimer); _precTimer=null;
+      $('#precbtn').disabled=false;
+    }
+  }, 2000);
+}
+
+function _renderPrecision(r){
+  const v=r.verdict||{};
+  const act=(v.action||'').toUpperCase();
+  const col=act.includes('BUY')?'var(--up)':
+            act.includes('SELL')?'var(--down)':'var(--amber)';
+  $('#abody').innerHTML=`
+    <div style="padding:14px">
+      <div style="font-family:var(--mono);font-size:10.5px;
+        color:var(--cyan-dim);letter-spacing:1.5px;margin-bottom:10px">
+        PRECISION · ${_histEsc(r.ticker)} · ${r.elapsed}초
+      </div>
+      ${act?`<div style="font-family:var(--mono);font-size:20px;
+        font-weight:800;color:${col};letter-spacing:2px;margin-bottom:6px">
+        ${_histEsc(act)}</div>`:''}
+      ${v.conviction!=null?`<div style="font-size:11px;color:var(--txt-mute);
+        font-family:var(--mono);margin-bottom:10px">확신도
+        <b style="color:var(--cyan)">${_histEsc(String(v.conviction))}</b></div>`:''}
+      ${v.headline?`<div style="font-size:12px;color:var(--txt-dim);
+        line-height:1.7;margin-bottom:14px">${_histEsc(v.headline)}</div>`:''}
+      <a href="${_histEsc(r.report_url)}" target="_blank" rel="noopener"
+        style="display:inline-block;background:var(--cyan);color:#04222a;
+        font-family:var(--mono);font-weight:700;font-size:12px;
+        padding:9px 18px;text-decoration:none;letter-spacing:1.5px">
+        ▸ 정밀 보고서 열기</a>
+      <div style="font-size:10.5px;color:var(--txt-mute);margin-top:10px;
+        line-height:1.6">
+        게이트를 통과하지 못한 모듈은 점수가 깎이는 대신<br>
+        보고서에서 <b>무효(abstain)</b> 로 표시됩니다.
+      </div>
+    </div>`;
 }
 
 async function runPortfolioAnalyze(){

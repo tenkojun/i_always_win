@@ -5,6 +5,49 @@
 
 ---
 
+## [2.4.0] — 2026-08-18
+
+**JIQT-X 정밀 분석 엔진 병합.** 13,366줄 단일 파일 배포판을
+원래 패키지 구조(`engine/jiqtx/`, 29개 모듈)로 되돌려 붙였다.
+
+### 추가
+- `engine/jiqtx/` — 범자산 정밀 분석 엔진
+  - `statcore` PSR/DSR · Purged CV · CPCV/PBO · Murphy 분해 · ACI conformal ·
+    Kupiec/Christoffersen 커버리지 · DM/SPA/Hansen MCS
+  - `micro` EDGE 스프레드 · Amihud · 제곱근 임팩트 · capacity 곡선
+  - `vol` GJR-GARCH-t MLE 직접 구현 · HAR-RV · 언스무딩
+  - `regime` Statistical Jump Model + Viterbi · 경제적 국면 명명
+  - `simulate` FHS + GPD 꼬리 + 드리프트 사후분포
+  - `taxonomy` 3단계 자산 분류 (메타데이터 + 통계 지문)
+  - `factors` 팩터 라우터 · Kalman 시변베타 · 델타 패널
+  - `equity` 9개 주식 아키타입 · 어닝/PEAD 이벤트 스터디 · 점프 · 런웨이
+  - `ml` 트리플배리어 → Purged CV → 모델 경합 → **기권(abstain) 판정**
+  - `options` IV 표면 · Breeden-Litzenberger RND · 그릭스
+  - `risk` VaR/ES · 스트레스 · **낙폭제약 켈리**
+  - `thesis`/`trade` 시나리오 · 반증조건 · 배리어확률 트레이드 · 최소분산 헤지
+  - `agents`/`panel` 하드 게이트 · 전문가 14명 · 반대신문 · **결정론적 판정 엔진**
+  - `charts` 외부 의존 없는 인라인 SVG 15종
+  - `dynamic_report` 종목 성격에 따라 구성이 바뀌는 자기완결 HTML (35섹션 레지스트리)
+  - `portfolio` 위험기여 · 팩터 넷팅 · 배분 경합(워크포워드 + Hansen MCS) · HRP
+  - `ledger` 예측 저장 → 채점 → 에이전트 가중치 환류 (SQLite)
+- `POST /api/jiqtx/analyze` · `GET /api/jiqtx/analyze/<job_id>` —
+  백그라운드 실행 + 폴링
+- 분석 위젯에 **[◈ 정밀]** 버튼 — 판정·확신도·보고서 링크 표시
+
+### 변경
+- jiqtx 의 캐시(`~/.jiqtx_cache`)와 원장(`~/.jiqtx/ledger.db`)도
+  앱 폴더 안 `.data/` 로 일원화
+- `requirements.txt` 에 `pyarrow` 추가 (가격 캐시 parquet)
+
+### 검증
+- 내장 검증 스위트 통과 — EDGE 스프레드 편향 없이 복원(5bp→5.4bp),
+  GJR-GARCH 파라미터 복원, Murphy 판별비 411배, ACI 커버리지 오차 ≤0.5%p,
+  아키타입 분류 5/5, PEAD 검출력 회수
+- 오프라인 데모로 전 파이프라인 확인 — 종목당 26개 섹션 · 210KB
+  **완전 자기완결 HTML**(외부 리소스 0)
+
+---
+
 ## [2.3.0] — 2026-08-18
 
 `JIQT` 표기를 코드·UI·문서·빌드 메타데이터 전반에서 걷어냈다.
