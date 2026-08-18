@@ -3,7 +3,7 @@ Claude 채팅 영구 저장
 ======================
 대화는 PC에만 저장 (클라우드 동기화 안 함 — 사용자 결정).
 
-파일: ~/.jiqt/chats/<user_id>/<chat_id>.json
+파일: .data/chats/<user_id>/<chat_id>.json
 각 파일:
 {
   "id": "8자 hex",

@@ -3,7 +3,7 @@
 ================================
 Quick Tunnel(임의 URL)과 달리 사용자 도메인 + 영구 URL 제공.
 
-저장 위치 (~/.jiqt/):
+저장 위치 (.data/):
   - cloud_named.json       : 설정 (token / account_id / tunnel_id / hostname)
   - cf_tunnel_<id>.json    : cloudflared 자격증명 (절대 노출 금지)
   - cf_tunnel_<id>.yml     : cloudflared config (ingress 규칙)
@@ -24,9 +24,9 @@ from . import cf_api
 from . import tunnel as _quick_tunnel  # find_cloudflared, _bin_local 등 재사용
 
 
-from engine.paths import DATA_DIR as _JIQT_HOME, ensure_dirs as _ensure_dirs
+from engine.paths import DATA_DIR as _DATA_HOME, ensure_dirs as _ensure_dirs
 _ensure_dirs()
-_CONF_FILE = _JIQT_HOME / "cloud_named.json"
+_CONF_FILE = _DATA_HOME / "cloud_named.json"
 
 _LOCK = threading.RLock()
 _PROC: Optional[subprocess.Popen] = None
@@ -58,11 +58,11 @@ def save_config(d: Dict[str, Any]) -> None:
 
 
 def _creds_path(tunnel_id: str) -> Path:
-    return _JIQT_HOME / f"cf_tunnel_{tunnel_id}.json"
+    return _DATA_HOME / f"cf_tunnel_{tunnel_id}.json"
 
 
 def _cfg_path(tunnel_id: str) -> Path:
-    return _JIQT_HOME / f"cf_tunnel_{tunnel_id}.yml"
+    return _DATA_HOME / f"cf_tunnel_{tunnel_id}.yml"
 
 
 # ── 전체 셋업 (토큰 → tunnel → DNS → 로컬 파일 저장) ──────────

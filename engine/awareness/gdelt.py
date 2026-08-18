@@ -24,7 +24,7 @@ import requests
 
 _API = "https://api.gdeltproject.org/api/v2/doc/doc"
 
-# JIQT 관심사 폭넓게 — 매크로 + 빅테크 + 한국 + 지정학
+# I ALWAYS WIN 관심사 폭넓게 — 매크로 + 빅테크 + 한국 + 지정학
 _DEFAULT_QUERY = (
     '(Fed OR FOMC OR "rate hike" OR "rate cut" OR CPI OR inflation '
     'OR GDP OR Nvidia OR TSMC OR Samsung OR KOSPI OR OPEC '
@@ -53,7 +53,7 @@ def fetch_recent(query: str = _DEFAULT_QUERY,
             "maxrecords": min(250, max(10, maxrecords)),
             "sort": "DateDesc",
         }, timeout=timeout,
-            headers={"User-Agent": "JIQT/1.0 (research)"})
+            headers={"User-Agent": "IAlwaysWin/2.0 (research)"})
         if r.status_code != 200:
             return []
         j = r.json() or {}

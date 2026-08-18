@@ -11,10 +11,10 @@ from typing import Any, Dict, Optional
 import requests
 
 
-from engine.paths import DATA_DIR as _JIQT_HOME, ensure_dirs as _ensure_dirs
+from engine.paths import DATA_DIR as _DATA_HOME, ensure_dirs as _ensure_dirs
 _ensure_dirs()
-_CFG_FILE = _JIQT_HOME / "auth_remote.json"
-_SESSION_FILE = _JIQT_HOME / "session.json"
+_CFG_FILE = _DATA_HOME / "auth_remote.json"
+_SESSION_FILE = _DATA_HOME / "session.json"
 
 
 class RemoteAuthError(Exception):
@@ -32,7 +32,7 @@ def get_config() -> Dict[str, Any]:
 
 
 def configure(server_url: str) -> Dict[str, Any]:
-    """중앙 서버 URL 저장 (예: https://jiqt-auth.xxx.workers.dev)."""
+    """중앙 서버 URL 저장 (예: https://iaw-auth.xxx.workers.dev)."""
     url = (server_url or "").rstrip("/")
     if not url.startswith("http"):
         return {"ok": False, "error": "http(s):// 로 시작해야 함"}

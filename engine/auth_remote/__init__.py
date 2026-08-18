@@ -2,7 +2,7 @@
 원격 인증 클라이언트 — 중앙 Worker (Cloudflare D1) 호출
 =====================================================
 배포 시 모든 사용자가 같은 중앙 서버에 인증.
-세션 토큰은 ~/.jiqt/session.json에 캐시.
+세션 토큰은 .data/session.json에 캐시.
 """
 from .client import (
     configure, get_config, is_configured,

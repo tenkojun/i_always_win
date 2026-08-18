@@ -1,4 +1,4 @@
-# JIQT — 정준화 기관급 퀀트 터미널
+# I ALWAYS WIN — 기관급 퀀트 분석 터미널
 
 ## 프로젝트
 - 목표: BlackRock Aladdin 동급+ 퀀트 분석 플랫폼

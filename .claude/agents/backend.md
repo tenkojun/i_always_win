@@ -1,4 +1,4 @@
-# 백엔드 터미널 — JIQT Backend Agent
+# 백엔드 터미널 — I ALWAYS WIN Backend Agent
 
 ## 역할
 engine/ + webapp/server.py + main.py 전담

@@ -5,6 +5,28 @@
 
 ---
 
+## [2.3.0] — 2026-08-18
+
+`JIQT` 표기를 코드·UI·문서·빌드 메타데이터 전반에서 걷어냈다.
+
+### 변경
+- 브랜드 → **I ALWAYS WIN**, 개발자 표기 → **Tenko jun - 정준화**
+- 창 제목·페이지 타이틀·콘솔 배너·PyInstaller 스펙 모두 `version.py` 참조
+- 식별자 정리: `jiqt.*` → `iaw.*` (localStorage),
+  `text/jiqt-*` → `text/iaw-*` (드래그앤드롭),
+  `jiqt_session` → `iaw_session` (쿠키),
+  `jiqt-auth` → `iaw-auth` (D1), `jiqt-tunnel` → `iaw-tunnel`
+- User-Agent `JIQT/1.0` → `IAlwaysWin/2.0`
+- README 전면 재작성 (설치·키·`.data/`·구조·한계)
+
+### 추가
+- `GET /api/app/info` — 앱 이름·버전·개발자·저장소·파이썬 버전
+- 설정 → 정보 패널이 하드코딩(`engine_kr v2.5`) 대신 실제 값을 표시
+- 리브랜딩으로 로컬 설정이 날아가지 않도록 `jiqt.*` → `iaw.*`
+  localStorage 키 1회 자동 이전 (레이아웃·관심종목·테마·드로잉)
+
+---
+
 ## [2.2.0] — 2026-08-18
 
 전략 백테스트 계열 기능 제거 — 이 앱은 **종목 정밀 분석**에 집중한다.

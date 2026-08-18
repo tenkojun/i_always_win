@@ -1,7 +1,7 @@
 """
 Awareness 알림 히스토리 영구 저장
 ====================================
-~/.jiqt/auth.db 의 alert_history 테이블에 high-impact 알림을 영구 보관.
+.data/auth.db 의 alert_history 테이블에 high-impact 알림을 영구 보관.
 일반 알림은 12h TTL 메모리만 사용 (alert_engine 그대로).
 
 저장 시점: alert_engine._ingest_articles 에서 high_impact만 추가 호출.

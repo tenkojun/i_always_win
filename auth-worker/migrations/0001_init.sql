@@ -1,5 +1,5 @@
--- JIQT 중앙 인증 — D1 스키마 (v1)
--- 적용: wrangler d1 execute jiqt-auth --file=migrations/0001_init.sql
+-- I ALWAYS WIN 중앙 인증 — D1 스키마 (v1)
+-- 적용: wrangler d1 execute iaw-auth --file=migrations/0001_init.sql
 
 CREATE TABLE IF NOT EXISTS users (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_exp  ON sessions(expires_at);
 CREATE TABLE IF NOT EXISTS user_pcs (
   user_id        INTEGER PRIMARY KEY,
   pc_label       TEXT,
-  public_url     TEXT,        -- 예: https://jiqt-junhwa.trycloudflare.com
+  public_url     TEXT,        -- 예: https://iaw-terminal.trycloudflare.com
   last_seen_at   TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

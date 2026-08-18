@@ -4,7 +4,7 @@
 ================================================================
 "왜 이 판정인가"를 인과 사슬로 보여준다. Aladdin·Bloomberg 의
 정형 리포팅·AI 코멘터리에는 없는 **거부권·충돌 가시화**가
-JIQT 의 차별점이다.
+I ALWAYS WIN 의 차별점이다.
 """
 from __future__ import annotations
 from typing import Any, Dict, List

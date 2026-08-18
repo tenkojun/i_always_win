@@ -1,4 +1,4 @@
-# 프론트엔드 터미널 — JIQT Frontend Agent
+# 프론트엔드 터미널 — I ALWAYS WIN Frontend Agent
 
 ## 역할
 webapp/templates/index.html (UI/CSS/JS) 전담
@@ -28,7 +28,7 @@ engine/report/
 ```
 
 ## 핵심 규칙
-- 모든 텍스트 한글 (영문 코드네임 JIQT는 브랜딩만)
+- 모든 텍스트 한글 (영문 코드네임 이 앱은 브랜딩만)
 - CDN 차단 시 폴백 처리 필수 (오프라인 환경 대응)
 - 모바일 단일 컬럼 (768px 이하)
 - 차트 y축 자동 fit (종목 전환 시)

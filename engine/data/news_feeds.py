@@ -74,7 +74,7 @@ def _fetch_rss_one(feed: Dict[str, str], limit: int = 8,
     items: List[Dict[str, str]] = []
     try:
         r = requests.get(feed["url"],
-                         headers={"User-Agent": "Mozilla/5.0 JIQT/1.0"},
+                         headers={"User-Agent": "Mozilla/5.0 IAlwaysWin/2.0"},
                          timeout=timeout)
         if r.status_code != 200:
             return items

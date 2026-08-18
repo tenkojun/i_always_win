@@ -1,5 +1,5 @@
 """
-QUANT TERMINAL ― 데스크톱 런처
+I ALWAYS WIN ― 데스크톱 런처
 ================================
 이 파일을 실행하면 (또는 .exe 로 빌드하면):
   1) 내부에 분석 웹서버를 띄우고
@@ -16,6 +16,8 @@ import socket
 import urllib.request
 import urllib.error
 import webbrowser
+
+from version import APP_NAME, __version__
 
 PORT = 8765
 
@@ -53,7 +55,7 @@ def _wait_for_server(url: str, timeout: float = 25.0) -> bool:
 def main():
     ip = _lan_ip()
     print("=" * 56)
-    print("  QUANT TERMINAL")
+    print("  %s  v%s" % (APP_NAME, __version__))
     print("  PC  :  http://127.0.0.1:%d" % PORT)
     print("  폰  :  http://%s:%d   (같은 와이파이)" % (ip, PORT))
     print("=" * 56)
@@ -71,7 +73,7 @@ def main():
     try:
         import webview  # type: ignore
         # maximized=True → 창은 유지하되 최대화 (최소화/복원/닫기 버튼 사용 가능)
-        webview.create_window("QUANT TERMINAL", url,
+        webview.create_window(APP_NAME, url,
                               width=1480, height=900,
                               min_size=(960, 600),
                               maximized=True)

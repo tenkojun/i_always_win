@@ -1,8 +1,8 @@
-# JIQT 중앙 인증 서버 — Cloudflare Worker 설정
+# I ALWAYS WIN 중앙 인증 서버 — Cloudflare Worker 설정
 # 배포: wrangler deploy
 # D1 생성 후 출력된 database_id를 아래 d1_databases.database_id에 붙여넣기
 
-name = "jiqt-auth"
+name = "iaw-auth"
 main = "src/index.js"
 compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
@@ -10,8 +10,8 @@ compatibility_flags = ["nodejs_compat"]
 # D1 (계정 DB) 바인딩
 [[d1_databases]]
 binding = "DB"               # env.DB로 접근
-database_name = "jiqt-auth"
-database_id = "REPLACE_AFTER_CREATE"  # `wrangler d1 create jiqt-auth` 출력값
+database_name = "iaw-auth"
+database_id = "REPLACE_AFTER_CREATE"  # `wrangler d1 create iaw-auth` 출력값
 
 # 변수
 [vars]
@@ -21,8 +21,8 @@ ADMIN_USERNAME = "JUNHWA"
 # wrangler secret put SESSION_SECRET   (HMAC 토큰 서명용 32+ 바이트)
 
 # CORS 허용 origin (앱 측 호출용; 와일드카드 또는 구체)
-# 배포 후 노출 URL을 추가 (예: https://jiqt.mydomain.com)
+# 배포 후 노출 URL을 추가 (예: https://terminal.mydomain.com)
 [[routes]]
 # 옵션 — 커스텀 도메인 매핑 시 추가
-# pattern = "auth.jiqt.io/*"
-# zone_name = "jiqt.io"
+# pattern = "auth.example.com/*"
+# zone_name = "iaw.io"

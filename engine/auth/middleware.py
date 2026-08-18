@@ -1,7 +1,7 @@
 """
 Flask 인증 미들웨어
 ====================
-세션 쿠키(jiqt_session) → users 행을 g.user에 attach.
+세션 쿠키(iaw_session) → users 행을 g.user에 attach.
 보호된 엔드포인트는 @require_auth / @require_admin 데코레이터.
 
 쿠키 속성: HttpOnly, SameSite=Lax, Path=/
@@ -16,7 +16,7 @@ from flask import g, jsonify, request
 
 from .store import get_session, get_user_by_id
 
-COOKIE_NAME = "jiqt_session"
+COOKIE_NAME = "iaw_session"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 30   # 30일
 
 

@@ -1,4 +1,4 @@
-# 배포 터미널 — JIQT Deploy Agent
+# 배포 터미널 — I ALWAYS WIN Deploy Agent
 
 ## 역할
 빌드 / 패키징 / 문서화 / 환경 관리 전담

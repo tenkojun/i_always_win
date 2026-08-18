@@ -6,7 +6,7 @@ FMP → Alpha Vantage → Finnhub → Yahoo → Stooq
 ```
 
 ## 키 관리
-- 파일: `~/.jiqt/keys.json` (chmod 0600)
+- 파일: `.data/keys.json` (chmod 0600)
 - 모듈: `engine/data/keyconfig.py`
 - 환경변수 우선: FINNHUB_KEY / ALPHAVANTAGE_KEY / FMP_KEY
 - **키를 코드/로그/채팅에 절대 기록 금지**

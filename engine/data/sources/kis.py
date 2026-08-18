@@ -11,7 +11,7 @@ API 포털: https://apiportal.koreainvestment.com/
 - 종목 검색
 - 잔고/계좌 조회 (P4 페이퍼/실거래용)
 
-키 저장: ~/.jiqt/kis_keys.json
+키 저장: .data/kis_keys.json
 """
 from __future__ import annotations
 

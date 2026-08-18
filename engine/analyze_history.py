@@ -2,7 +2,7 @@
 종목 분석 이력 (C9) — max 이력 영구 저장
 ========================================
 모든 analyze 결과를 SQLite에 누적 저장. 시간순/티커별 조회 지원.
-DB는 auth.db 공유 (~/.jiqt/auth.db).
+DB는 auth.db 공유 (.data/auth.db).
 """
 from __future__ import annotations
 

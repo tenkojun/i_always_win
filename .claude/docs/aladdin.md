@@ -1,20 +1,20 @@
 # BlackRock Aladdin 벤치마크 & 기관 방법론
 
-## Aladdin 9솔루션 → JIQT 대응
+## Aladdin 9솔루션 → 대응 모듈
 
-| Aladdin | JIQT 모듈 | 상태 |
+| Aladdin | 모듈 | 상태 |
 |---------|-----------|------|
 | Accounting | backtest/ P&L | ✅ |
-| Aladdin Studio | JIQT_BLUEPRINT_v4.md | ✅ |
+| Aladdin Studio | BLUEPRINT_v4.md | ✅ |
 | Aladdin Data Cloud | engine/data/sources/ | ✅ |
 | Whole Portfolio | portfolio/ + C4 백로그 | 부분 |
 | Risk | institutional/ (PSR/DSR/CDaR) | ✅ |
 | Sustainability | ESG 스코어링 | ❌ 미구현 |
 | Climate | 기후 시나리오 | ❌ 미구현 |
-| Aladdin Copilot | explain/ (XAI) | ✅ JIQT 차별점 |
+| Aladdin Copilot | explain/ (XAI) | ✅ 이 앱의 차별점 |
 | Private Markets | FMP 확장 가능 | 부분 |
 
-## JIQT 차별점 (Aladdin에 없는 것)
+## 이 앱의 차별점 (Aladdin에 없는 것)
 1. **명시적 거부권(veto)**: RSI극단/DSR낮음/시나리오취약 시 BUY 자동 차단
 2. **verdict_trace 인과 사슬**: 모든 판정에 "왜?" 추적 필수
 3. **PSR/DSR/CSCV 통합**: 과적합 확률 구조적 격리
@@ -48,4 +48,4 @@ Evidence 등록 (evidence_registry.py)
 
 ## 정직한 한계
 - Aladdin 본질 우위: 수십 년치 독점 데이터 (채권/사모/펀더멘털)
-- JIQT: 방법론·구조·투명성 동급, 데이터 깊이는 무료 소스 한계 표기
+- 이 앱: 방법론·구조·투명성 동급, 데이터 깊이는 무료 소스 한계 표기

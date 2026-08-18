@@ -1,5 +1,5 @@
 /**
- * JIQT 중앙 인증 Worker
+ * I ALWAYS WIN 중앙 인증 Worker
  * =====================
  * - 가입/로그인/세션/어드민 승인
  * - A6 redirect: username → 본인 메인 PC 외부 URL
@@ -306,7 +306,7 @@ export default {
       ctx.waitUntil(ensureAdmin(env));
 
       if (p === '/' || p === '/health')
-        return json({ ok: true, service: 'jiqt-auth', time: nowIso() });
+        return json({ ok: true, service: 'iaw-auth', time: nowIso() });
       if (p === '/auth/register' && req.method === 'POST')
         return await handleRegister(req, env);
       if (p === '/auth/login' && req.method === 'POST')

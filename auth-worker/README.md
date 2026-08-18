@@ -1,4 +1,4 @@
-# JIQT 중앙 인증 Worker
+# I ALWAYS WIN 중앙 인증 Worker
 
 Cloudflare Workers + D1 기반 중앙 인증 서버.
 
@@ -16,15 +16,15 @@ wrangler login
 
 ```sh
 cd auth-worker
-wrangler d1 create jiqt-auth
+wrangler d1 create iaw-auth
 ```
 
 출력 예:
 ```
-✅ Successfully created DB 'jiqt-auth'
+✅ Successfully created DB 'iaw-auth'
 [[d1_databases]]
 binding = "DB"
-database_name = "jiqt-auth"
+database_name = "iaw-auth"
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
@@ -57,7 +57,7 @@ npm run deploy
 출력 예:
 ```
 ✨ Deployment complete!
-   https://jiqt-auth.<your-account>.workers.dev
+   https://iaw-auth.<your-account>.workers.dev
 ```
 
 → 이 URL을 EXE 설정창의 "중앙 인증 서버 URL"에 입력.
@@ -66,10 +66,10 @@ npm run deploy
 
 ```sh
 # 헬스체크
-curl https://jiqt-auth.<your-account>.workers.dev/health
+curl https://iaw-auth.<your-account>.workers.dev/health
 
 # 어드민 로그인 테스트
-curl -X POST https://jiqt-auth.<your-account>.workers.dev/auth/login \
+curl -X POST https://iaw-auth.<your-account>.workers.dev/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"JUNHWA","password":"<your-admin-password>"}'
 ```
@@ -97,5 +97,5 @@ curl -X POST https://jiqt-auth.<your-account>.workers.dev/auth/login \
 
 ```sh
 # D1 export (수동 백업)
-wrangler d1 export jiqt-auth --output=backup-$(date +%F).sql
+wrangler d1 export iaw-auth --output=backup-$(date +%F).sql
 ```

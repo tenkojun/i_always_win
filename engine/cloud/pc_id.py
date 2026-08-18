@@ -1,7 +1,7 @@
 """
 이 PC의 고유 식별자
 ====================
-첫 실행 시 random uuid 생성 → ~/.jiqt/pc_id 에 영구 보관.
+첫 실행 시 random uuid 생성 → .data/pc_id 에 영구 보관.
 다음부터는 동일 ID 재사용. 사용자 계정의 main_pc_id와 매칭됨.
 
 PC 라벨(사람이 읽는)도 같이 생성: "Ryzen-5-PC", "Mac-Studio" 등.

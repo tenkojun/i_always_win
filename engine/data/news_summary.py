@@ -365,7 +365,7 @@ def _translate_deepl(text: str, target_lang: str = "KO") -> Optional[str]:
             headers={
                 "Authorization": f"DeepL-Auth-Key {key}",
                 "Content-Type": "application/json",
-                "User-Agent": "JIQT/1.0",
+                "User-Agent": "IAlwaysWin/2.0",
             },
             json={"text": [text[:4800]], "target_lang": target_lang},
             timeout=15,

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#05070a">
-<title>JIQT · JUNHWA INSTITUTIONAL QUANT TERMINAL</title>
+<title>I ALWAYS WIN · 기관급 퀀트 분석 터미널</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -1456,7 +1456,7 @@
   z-index:10000;display:flex;align-items:center;justify-content:center;
   color:var(--cyan);font-family:var(--mono);font-size:11px;
   letter-spacing:3px;
-  transition:opacity .3s ease;opacity:1">JIQT · 인증 확인 중…</div>
+  transition:opacity .3s ease;opacity:1">I ALWAYS WIN · 인증 확인 중…</div>
 
 <!-- 뉴스 분석 팝업 모달 -->
 <div id="newsmodal" onclick="if(event.target===this)closeNewsModal()">
@@ -1590,7 +1590,7 @@
       <span class="bn">I ALWAYS WIN</span>
       <span class="bsep">|</span>
       <span class="bsub">
-        <span>JIQT</span>
+        <span>I ALWAYS WIN</span>
         <span>퀀트 분석 · 전략 · 백테스트</span>
       </span>
     </div>
@@ -1627,7 +1627,7 @@
   <!-- 로그인/가입 모달 -->
   <div class="login-mask" id="login-mask">
     <div class="login-box">
-      <h2>JIQT</h2>
+      <h2>I ALWAYS WIN</h2>
       <div class="sub" id="login-sub">로그인이 필요합니다</div>
       <div class="row">
         <label>USERNAME</label>
@@ -1725,7 +1725,7 @@
       <div class="set-side">
         <div class="brand">
           <div class="ti">SETTINGS</div>
-          <div class="sub">JIQT 설정</div>
+          <div class="sub">I ALWAYS WIN 설정</div>
         </div>
         <div class="set-cat on" data-cat="account" onclick="switchSetCat('account')">
           <span class="ico">◐</span><span class="lab">계정</span>
@@ -1810,7 +1810,7 @@
                 실시간 시세·펀더멘털·재무제표·SEC공시·뉴스 번역까지 가능.<br>
                 <span style="color:var(--txt-mute);font-size:11px">
                 키는 이 PC에만 저장 — 코드·로그에 기록되지 않습니다
-                (~/.jiqt/keys.json, 권한 0600)</span>
+                (.data/keys.json, 권한 0600)</span>
               </div>
               <div id="src-status" style="font-family:var(--mono);font-size:11px;
                 color:var(--txt-dim);margin-bottom:14px;
@@ -2041,10 +2041,10 @@
               <div style="font-size:12px;color:var(--txt-dim);line-height:1.6;
                 margin-bottom:10px">
                 Worker 배포 후 발급된 URL을 입력 (예:
-                <code style="color:var(--cyan)">https://jiqt-auth.&lt;계정&gt;.workers.dev</code>)
+                <code style="color:var(--cyan)">https://iaw-auth.&lt;계정&gt;.workers.dev</code>)
               </div>
               <div style="display:flex;gap:6px;margin-bottom:10px">
-                <input id="ca-url" placeholder="https://jiqt-auth.xxx.workers.dev"
+                <input id="ca-url" placeholder="https://iaw-auth.xxx.workers.dev"
                   style="flex:1;background:#070b10;border:1px solid var(--line);
                   color:var(--txt);font-family:var(--mono);font-size:12px;
                   padding:9px 12px;outline:none;border-radius:2px">
@@ -2062,7 +2062,7 @@
                 Worker 코드는 <code style="color:var(--cyan)">auth-worker/</code>에 준비됨.<br>
                 1. <code>npm install -g wrangler</code><br>
                 2. <code>cd auth-worker && wrangler login</code><br>
-                3. <code>wrangler d1 create jiqt-auth</code> →
+                3. <code>wrangler d1 create iaw-auth</code> →
                    출력 <code>database_id</code>를 <code>wrangler.toml</code>에 붙여넣기<br>
                 4. <code>npm run db:init</code> (스키마 적용)<br>
                 5. <code>wrangler secret put ADMIN_PASSWORD</code> (어드민 비번)<br>
@@ -2117,7 +2117,7 @@
               <div style="font-size:12px;color:var(--txt-dim);
                 line-height:1.6;margin-bottom:10px">
                 Cloudflare 공식 GitHub 릴리즈에서 자동 다운로드합니다 (~30MB).
-                다운로드 위치: <code style="color:var(--cyan)">~/.jiqt/bin/</code>
+                다운로드 위치: <code style="color:var(--cyan)">.data/bin/</code>
               </div>
               <div style="display:flex;gap:8px;margin-bottom:8px">
                 <button id="cloud-install-btn" onclick="cloudInstall()"
@@ -2385,10 +2385,10 @@
           <!-- 카테고리: 정보 -->
           <div class="set-pane" id="set-pane-info" style="display:none">
             <div class="set-section">
-              <div class="hd">JIQT 시스템</div>
+              <div class="hd">I ALWAYS WIN 시스템</div>
               <div class="info-grid">
                 <div class="row"><div class="lab">버전</div>
-                  <div class="val">engine_kr v2.5</div></div>
+                  <div class="val" id="info-version">—</div></div>
                 <div class="row"><div class="lab">서버</div>
                   <div class="val" id="info-server">자체 PC (로컬)</div></div>
                 <div class="row"><div class="lab">Yahoo</div>
@@ -2402,10 +2402,14 @@
               <div style="font-size:12px;color:var(--txt-dim);line-height:1.8;
                 padding:10px 14px;background:rgba(255,255,255,.025);
                 border-radius:3px">
-                <b style="color:var(--cyan)">JUNHWA INSTITUTIONAL QUANT TERMINAL</b><br>
-                정준화 · Python 3.13 / Flask / lightweight-charts<br>
-                <span style="color:var(--txt-mute);font-size:11px">
-                기관급 퀀트 분석 데스크톱 터미널</span>
+                <b style="color:var(--cyan)" id="info-appname">I ALWAYS WIN</b><br>
+                <span id="info-developer">Tenko jun - 정준화</span><br>
+                <span style="color:var(--txt-mute);font-size:11px"
+                  id="info-stack">Python / Flask / lightweight-charts</span><br>
+                <a id="info-repo" href="https://github.com/tenkojun/i_always_win"
+                  target="_blank" rel="noopener"
+                  style="color:var(--cyan-dim);font-size:11px;
+                  text-decoration:none;font-family:var(--mono)">▸ github.com/tenkojun/i_always_win</a>
               </div>
             </div>
           </div>
@@ -2940,6 +2944,24 @@
 
 <script>
 const $=s=>document.querySelector(s);
+
+/* 예전 브랜드(jiqt.*)로 저장된 로컬 설정을 새 키(iaw.*)로 한 번만 옮긴다.
+   레이아웃·관심종목·테마·드로잉이 리브랜딩 때문에 날아가지 않도록. */
+(function _migrateLocalKeys(){
+  try{
+    if(localStorage.getItem('iaw.migrated'))return;
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(!k||k.indexOf('jiqt.')!==0)continue;
+      const nk='iaw.'+k.slice(5);
+      if(localStorage.getItem(nk)===null){
+        localStorage.setItem(nk, localStorage.getItem(k));
+      }
+      localStorage.removeItem(k);
+    }
+    localStorage.setItem('iaw.migrated','1');
+  }catch(e){}
+})();
 let CUR={ticker:'AAPL',range:'6mo'};
 let chart,series;
 let allCandles=[];   // 전체 일봉 캐시 (ticker 변경 시만 재로드)
@@ -3109,7 +3131,7 @@ function invalidateThemeCache(){
 
 /* ---------- B3: 차트 줄긋기 도구 (추세선/수평선/피보나치) ---------- */
 const _drawState={tool:null, pending:[], list:[]};
-function _drawKey(tk){return `jiqt.draw.${tk}`;}
+function _drawKey(tk){return `iaw.draw.${tk}`;}
 function _loadDrawings(tk){
   try{return JSON.parse(localStorage.getItem(_drawKey(tk))||'[]');}
   catch(e){return [];}
@@ -3409,7 +3431,7 @@ function fmt(n,d=2){return Number(n).toLocaleString('ko-KR',
 
 /* ---------- chart helpers + indicators ---------- */
 // 차트 인디케이터 (SMA/EMA/Bollinger). localStorage로 토글 상태 저장.
-const _IND_KEY='jiqt.indicators.v1';
+const _IND_KEY='iaw.indicators.v1';
 let _indState={sma20:false, sma50:false, sma200:false,
                ema20:false, bb20:false};
 const _IND_COLORS={sma20:'#ffb44c', sma50:'#3df0ff',
@@ -3688,7 +3710,7 @@ let _st;
 let _symActive=-1;
 
 // 즐겨찾기 저장소
-const _FAV_KEY='jiqt.search.favorites';
+const _FAV_KEY='iaw.search.favorites';
 function _loadFavs(){
   try{const v=JSON.parse(localStorage.getItem(_FAV_KEY)||'[]');
     return Array.isArray(v)?v:[];}catch(e){return [];}
@@ -4889,7 +4911,7 @@ function switchSetCat(cat){
 }
 
 /* ---------- C1+C2+C3+C5: 외관 · 사운드 시스템 ---------- */
-const _APP_PREF_KEY='jiqt.appearance.v1';
+const _APP_PREF_KEY='iaw.appearance.v1';
 const _DEFAULT_APP_PREF={
   theme:'cyber',       // C2: cyber|dark|white|edex
   fontSize:'m',        // C1: s|m|l|xl
@@ -4918,9 +4940,9 @@ function _saveAppPref(){
 // 서버에 prefs 전체 동기화 (app pref + 위젯 layout)
 async function syncPrefsToServer(){
   try{
-    const layout = localStorage.getItem('jiqt.layout.v2');
-    const customTheme = localStorage.getItem('jiqt.theme.custom');
-    const wlKey = 'jiqt.watchlist';
+    const layout = localStorage.getItem('iaw.layout.v2');
+    const customTheme = localStorage.getItem('iaw.theme.custom');
+    const wlKey = 'iaw.watchlist';
     const wl = localStorage.getItem(wlKey);
     const payload = {
       app_pref: _appPref,
@@ -4946,13 +4968,13 @@ async function loadPrefsFromServer(){
       localStorage.setItem(_APP_PREF_KEY, JSON.stringify(_appPref));
     }
     if(p.layout){
-      localStorage.setItem('jiqt.layout.v2', JSON.stringify(p.layout));
+      localStorage.setItem('iaw.layout.v2', JSON.stringify(p.layout));
     }
     if(p.custom_theme){
-      localStorage.setItem('jiqt.theme.custom', JSON.stringify(p.custom_theme));
+      localStorage.setItem('iaw.theme.custom', JSON.stringify(p.custom_theme));
     }
     if(p.watchlist){
-      localStorage.setItem('jiqt.watchlist', JSON.stringify(p.watchlist));
+      localStorage.setItem('iaw.watchlist', JSON.stringify(p.watchlist));
     }
   }catch(e){}
 }
@@ -5097,7 +5119,7 @@ const _CUSTOM_THEME_KEYS=[
   {var:'--txt-dim', label:'텍스트 흐림', def:'#5d7480'},
   {var:'--txt-mute',label:'텍스트 약함', def:'#3a4a55'},
 ];
-const _CUSTOM_THEME_KEY='jiqt.theme.custom';
+const _CUSTOM_THEME_KEY='iaw.theme.custom';
 function _loadCustomTheme(){
   try{ return JSON.parse(localStorage.getItem(_CUSTOM_THEME_KEY)||'{}'); }
   catch(e){ return {}; }
@@ -5443,7 +5465,7 @@ async function cfVerifyToken(){
         <label style="display:block;font-family:var(--mono);font-size:10px;
           color:var(--cyan-dim);letter-spacing:1.5px;margin-bottom:4px">
           서브도메인 (전체 hostname)</label>
-        <input id="cf-host" placeholder="예: jiqt.mydomain.com"
+        <input id="cf-host" placeholder="예: terminal.mydomain.com"
           style="width:100%;background:#070b10;border:1px solid var(--line);
           color:var(--txt);font-family:var(--mono);font-size:12px;
           padding:8px 11px;outline:none;border-radius:2px;box-sizing:border-box">
@@ -5452,7 +5474,7 @@ async function cfVerifyToken(){
         <label style="display:block;font-family:var(--mono);font-size:10px;
           color:var(--cyan-dim);letter-spacing:1.5px;margin-bottom:4px">
           Tunnel 이름 (Cloudflare 대시보드에 표시)</label>
-        <input id="cf-tname" value="jiqt-tunnel"
+        <input id="cf-tname" value="iaw-tunnel"
           style="width:100%;background:#070b10;border:1px solid var(--line);
           color:var(--txt);font-family:var(--mono);font-size:11px;
           padding:8px 11px;outline:none;border-radius:2px;box-sizing:border-box">
@@ -5478,7 +5500,7 @@ function _cfZoneChange(){
   if(!sel||!host)return;
   const opt=sel.options[sel.selectedIndex];
   const zoneName=opt?opt.getAttribute('data-name')||opt.text:'';
-  if(!host.value)host.value='jiqt.'+zoneName;
+  if(!host.value)host.value='iaw.'+zoneName;
 }
 
 async function cfDoSetup(){
@@ -5486,7 +5508,7 @@ async function cfDoSetup(){
   const account_id=$('#cf-account').value;
   const zone_id=$('#cf-zone').value;
   const hostname=$('#cf-host').value.trim();
-  const tunnel_name=$('#cf-tname').value.trim()||'jiqt-tunnel';
+  const tunnel_name=$('#cf-tname').value.trim()||'iaw-tunnel';
   if(!token||!account_id||!zone_id||!hostname){
     alert('모든 필드 필요');return;}
   const btn=$('#cf-setup-btn'),out=$('#cf-setup-result');
@@ -6060,6 +6082,21 @@ function refreshWidgetLayoutDisplay(){
 
 async function refreshInfoPane(){
   try{
+    const a=await(await fetch('/api/app/info')).json();
+    $('#info-version').textContent='v'+a.version;
+    $('#info-appname').textContent=a.app;
+    $('#info-developer').textContent=a.developer;
+    $('#info-stack').textContent=
+      'Python '+(a.python||'')+' / Flask / lightweight-charts';
+    if(a.repo){
+      const r=$('#info-repo');
+      r.href=a.repo;
+      r.textContent='▸ '+a.repo.replace(/^https?:\/\//,'');
+    }
+  }catch(e){
+    const v=$('#info-version'); if(v)v.textContent='—';
+  }
+  try{
     const h=await(await fetch('/api/health')).json();
     $('#info-yf').textContent=h.yfinance?'연결됨':'오프라인';
   }catch(e){
@@ -6329,7 +6366,7 @@ const _LAYOUT_TEMPLATES={
   T4:{slots:['A','B'],     label:'2+1h',  kr:'가로 — 차트 위 / 위젯 아래',cls:'t4'},
   T5:{slots:[],            label:'CHART ONLY',kr:'차트만 (위젯 없음)',cls:'t5'},
 };
-const _LAYOUT_KEY='jiqt.layout.v2';   // v1과 분리 (다른 스키마)
+const _LAYOUT_KEY='iaw.layout.v2';   // v1과 분리 (다른 스키마)
 const _LAYOUT_DEFAULT={tpl:'T1',
   A:'news', B:'analysis', C:'watchlist', D:'macromap'};
 let _wlayout={..._LAYOUT_DEFAULT};
@@ -6466,7 +6503,7 @@ function renderDock(){
   // dock 아이콘에 dragstart 바인딩
   $('#wdock').querySelectorAll('.dock-icon').forEach(el=>{
     el.addEventListener('dragstart',(e)=>{
-      e.dataTransfer.setData('text/jiqt-widget', el.dataset.wid);
+      e.dataTransfer.setData('text/iaw-widget', el.dataset.wid);
       e.dataTransfer.effectAllowed='move';
       el.classList.add('dragging');
     });
@@ -6477,8 +6514,8 @@ function renderDock(){
 function _slotDragstart(slot, e){
   // 슬롯 헤더에서 드래그 시작 — 현재 마운트된 위젯 id를 dataTransfer로
   const wid=_wlayout[slot];
-  e.dataTransfer.setData('text/jiqt-widget', wid);
-  e.dataTransfer.setData('text/jiqt-from-slot', slot);
+  e.dataTransfer.setData('text/iaw-widget', wid);
+  e.dataTransfer.setData('text/iaw-from-slot', slot);
   e.dataTransfer.effectAllowed='move';
   $('#slot'+slot+'-header').classList.add('dragging');
 }
@@ -6487,7 +6524,7 @@ function _slotDragend(slot){
 }
 
 function _slotDragover(slot, e){
-  if(!e.dataTransfer.types.includes('text/jiqt-widget'))return;
+  if(!e.dataTransfer.types.includes('text/iaw-widget'))return;
   e.preventDefault();
   e.dataTransfer.dropEffect='move';
   $('#slot'+slot).classList.add('dropzone-active');
@@ -6503,8 +6540,8 @@ function _slotDragleave(slot, e){
 function _slotDrop(slot, e){
   e.preventDefault();
   $('#slot'+slot).classList.remove('dropzone-active');
-  const incoming=e.dataTransfer.getData('text/jiqt-widget');
-  const fromSlot=e.dataTransfer.getData('text/jiqt-from-slot');
+  const incoming=e.dataTransfer.getData('text/iaw-widget');
+  const fromSlot=e.dataTransfer.getData('text/iaw-from-slot');
   if(!incoming || !_WID_MAP[incoming])return;
   const current=_wlayout[slot];
   if(incoming===current)return;
@@ -6541,7 +6578,7 @@ function initWidgetSystem(){
 }
 
 /* ---------- 위젯: WATCHLIST 관심종목 ---------- */
-const _WL_KEY='jiqt.watchlist.v1';
+const _WL_KEY='iaw.watchlist.v1';
 const _WL_DEFAULT=[
   {sym:'^KS11', cat:'한국지수'}, {sym:'^IXIC', cat:'미국지수'},
   {sym:'AAPL', cat:'미국주식'}, {sym:'NVDA', cat:'미국주식'},
@@ -7146,7 +7183,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ---------- 위젯: BREAKING 속보 피드 (자산 무관 시간순) ---------- */
-const _NOTIFY_KEY='jiqt.notify.v1';
+const _NOTIFY_KEY='iaw.notify.v1';
 let _notifyPref={sound:true, animate:true};
 let _bkSeenHashes=new Set();   // 이미 본 알림 hash
 let _bkBeepCtx=null;            // Web Audio context
@@ -7901,7 +7938,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ---------- B8: 유튜브 24시간 라이브 위젯 ---------- */
-const _YT_KEY='jiqt.youtube.channel';
+const _YT_KEY='iaw.youtube.channel';
 function loadYoutube(){
   const sel=$('#yt-channel');
   if(!sel)return;
@@ -8001,7 +8038,7 @@ function renderMacroMap(d){
 }
 
 /* ---------- panel splitters ---------- */
-const _SPLIT_KEY='jiqt.splits.v3';
+const _SPLIT_KEY='iaw.splits.v3';
 const _SPLIT_DEFAULT={mainLeftFr:1.65,mainRightFr:1.0,slotBPx:240};
 
 function _loadSplits(){
@@ -8601,7 +8638,7 @@ function _getDailyQuote(){
 function showWelcomeScreen(username,force){
   // 1일 1회만 표시 (force=true면 무조건)
   const today=new Date().toISOString().slice(0,10);
-  const last=localStorage.getItem('jiqt.wel.lastShown')||'';
+  const last=localStorage.getItem('iaw.wel.lastShown')||'';
   if(!force && last===today)return;
   const greeting=_getGreeting();
   const quote=_getDailyQuote();
@@ -8610,7 +8647,7 @@ function showWelcomeScreen(username,force){
   $('#wel-quote-text').textContent=`"${quote.t}"`;
   $('#wel-quote-author').textContent='— '+quote.a;
   $('#welcome').classList.add('on');
-  localStorage.setItem('jiqt.wel.lastShown',today);
+  localStorage.setItem('iaw.wel.lastShown',today);
 }
 
 function _closeWelcome(){

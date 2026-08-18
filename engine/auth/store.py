@@ -3,7 +3,7 @@ SQLite 저장소 — 사용자/세션/Claude 쿼터/메인 PC
 =================================================
 모든 DB I/O는 이 모듈을 통해서만 — 다른 모듈은 ORM이나 SQL을 직접 쓰지 말 것.
 
-위치: ~/.jiqt/auth.db  (사용자 홈, chmod 0600 시도)
+위치: .data/auth.db  (사용자 홈, chmod 0600 시도)
 """
 from __future__ import annotations
 

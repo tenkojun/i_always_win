@@ -1,4 +1,4 @@
-# QUANT TERMINAL — 실행 안내
+# I ALWAYS WIN — 실행 안내
 
 eDEX-UI 풍 사이파이 터미널 + 토스 편의성을 결합한 금융 대시보드.
 기존 `engine_kr` 분석 엔진이 "종목 분석 / 포트폴리오" 두뇌로 들어가 있습니다.

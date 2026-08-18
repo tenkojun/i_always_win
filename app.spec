@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-#  QUANT TERMINAL  ―  PyInstaller 스펙
+#  I ALWAYS WIN  ―  PyInstaller 스펙
 #  ===================================
 #  윈도우에서 빌드:
 #      pip install pyinstaller

@@ -1,6 +1,6 @@
 """
 ================================================================
-  QUANT TERMINAL  ―  웹 서버 (Flask)
+  I ALWAYS WIN  ―  웹 서버 (Flask)
 ================================================================
 eDEX-UI 풍 사이파이 터미널 + 토스 편의성 대시보드의 백엔드.
 
@@ -1362,7 +1362,7 @@ def api_cloud_start_quick():
     from engine.cloud.tunnel import start_quick, status
     from engine.cloud.pc_id import get_pc_id, get_pc_label
     from engine.auth import set_main_pc
-    r = start_quick(local_port=int(os.environ.get("JIQT_PORT", "8765")))
+    r = start_quick(local_port=int(os.environ.get("I ALWAYS WIN_PORT", "8765")))
     # 사용자의 메인 PC로 등록
     try:
         set_main_pc(g.user["id"], get_pc_id(), get_pc_label())
@@ -1426,7 +1426,7 @@ def api_cf_setup():
         account_id=(data.get("account_id") or "").strip(),
         zone_id=(data.get("zone_id") or "").strip(),
         hostname=(data.get("hostname") or "").strip(),
-        tunnel_name=(data.get("tunnel_name") or "jiqt-tunnel").strip(),
+        tunnel_name=(data.get("tunnel_name") or "iaw-tunnel").strip(),
         local_port=int(data.get("local_port") or 8765),
     ))
 
@@ -2413,9 +2413,20 @@ def api_health():
                     "ts": dt.datetime.now().isoformat()})
 
 
+@app.route("/api/app/info")
+def api_app_info():
+    """앱 이름·버전·개발자 — 설정 화면 '정보' 패널이 그대로 뿌린다."""
+    import platform
+    from version import build_info
+    info = build_info()
+    info["python"] = platform.python_version()
+    return jsonify(info)
+
+
 def main(host: str = "0.0.0.0", port: int = 8765, debug: bool = False):
     print("=" * 60)
-    print("  QUANT TERMINAL  서버 시작")
+    from version import APP_NAME, __version__ as _v
+    print("  %s  v%s  서버 시작" % (APP_NAME, _v))
     print("  로컬 :  http://127.0.0.1:%d" % port)
     print("  폰   :  같은 와이파이에서 http://<이 PC의 IP>:%d" % port)
     print("  야후 :  %s" % ("연결됨" if _get_yf() else "오프라인(합성)"))

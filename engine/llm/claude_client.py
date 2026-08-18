@@ -3,7 +3,7 @@ Claude API 직접 호출 클라이언트
 ================================
 anthropic SDK 미설치 환경에서도 동작 (requests로 직접 호출).
 
-주식 전문 에이전트 페르소나 — JIQT 컨텍스트 자동 주입.
+주식 전문 에이전트 페르소나 — 앱 컨텍스트 자동 주입.
 프롬프트 캐시(`cache_control`) 활용해 시스템 프롬프트 재전송 비용 절감.
 
 기본 모델: claude-sonnet-4-5 (10회/일 한도 안에서 품질·비용 균형).
@@ -28,7 +28,7 @@ class ClaudeError(Exception):
 
 
 # ── 주식 에이전트 시스템 프롬프트 ─────────────────────────────────
-_SYSTEM_BASE = """당신은 JIQT(JUNHWA INSTITUTIONAL QUANT TERMINAL)에 \
+_SYSTEM_BASE = """당신은 I ALWAYS WIN(기관급 퀀트 분석 터미널)에 \
 탑재된 시니어 주식 분석 에이전트입니다.
 
 역할:

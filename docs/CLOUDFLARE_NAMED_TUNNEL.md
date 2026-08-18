@@ -1,6 +1,6 @@
 # 정식(Named) Cloudflare Tunnel 설정 가이드
 
-JIQT의 Quick Tunnel은 임시 URL이라 매번 바뀌고 인증이 없습니다.
+이 앱의 Quick Tunnel은 임시 URL이라 매번 바뀌고 인증이 없습니다.
 정식 운영을 원한다면 **Named Tunnel**로 고정 URL + Cloudflare Access 인증을 추가하세요.
 
 소요 시간: 약 30분
@@ -30,12 +30,12 @@ JIQT의 Quick Tunnel은 임시 URL이라 매번 바뀌고 인증이 없습니다
 
 ## 2단계: cloudflared 인증
 
-JIQT는 cloudflared를 자동 다운로드합니다 (⚙ → 외부 접근 → 1단계).
+이 앱은 cloudflared를 자동 다운로드합니다 (⚙ → 외부 접근 → 1단계).
 다운로드 후 PowerShell에서:
 
 ```powershell
 # cloudflared 위치 확인
-$cf = "$env:USERPROFILE\.jiqt\bin\cloudflared.exe"
+$cf = "$env:USERPROFILE\Desktop\e\.data\bin\cloudflared.exe"
 
 # Cloudflare 계정 로그인 (브라우저 열림)
 & $cf tunnel login
@@ -49,8 +49,8 @@ $cf = "$env:USERPROFILE\.jiqt\bin\cloudflared.exe"
 ## 3단계: Named Tunnel 생성
 
 ```powershell
-# tunnel 생성 (이름은 자유, 예: jiqt-junhwa)
-& $cf tunnel create jiqt-junhwa
+# tunnel 생성 (이름은 자유, 예: iaw-terminal)
+& $cf tunnel create iaw-terminal
 
 # 생성된 tunnel UUID 확인
 & $cf tunnel list
@@ -59,7 +59,7 @@ $cf = "$env:USERPROFILE\.jiqt\bin\cloudflared.exe"
 출력 예시:
 ```
 ID                                    NAME           CREATED
-12345678-abcd-1234-efgh-567890abcdef  jiqt-junhwa    2026-05-22T01:00:00Z
+12345678-abcd-1234-efgh-567890abcdef  iaw-terminal    2026-05-22T01:00:00Z
 ```
 
 ---
@@ -70,7 +70,7 @@ ID                                    NAME           CREATED
 
 ```powershell
 # 예: terminal.example.com → 이 PC의 8765 포트
-& $cf tunnel route dns jiqt-junhwa terminal.example.com
+& $cf tunnel route dns iaw-terminal terminal.example.com
 ```
 
 Cloudflare가 자동으로 CNAME 레코드를 추가합니다.
@@ -94,17 +94,17 @@ ingress:
 - `tunnel:` — 3단계에서 받은 UUID
 - `credentials-file:` — 자동 생성된 JSON 파일 경로
 - `hostname:` — 4단계에서 설정한 도메인
-- `service:` — JIQT가 실행 중인 포트 (기본 8765)
+- `service:` — 이 앱이 실행 중인 포트 (기본 8765)
 
 ---
 
 ## 6단계: tunnel 실행
 
 ```powershell
-& $cf tunnel run jiqt-junhwa
+& $cf tunnel run iaw-terminal
 ```
 
-이제 https://terminal.example.com 으로 접속하면 자동으로 이 PC의 JIQT에 연결됩니다.
+이제 https://terminal.example.com 으로 접속하면 자동으로 이 PC의 이 앱에 연결됩니다.
 
 ### 백그라운드 서비스로 등록 (Windows)
 
@@ -124,11 +124,11 @@ Cloudflare Access(Zero Trust, 무료 50명)로 추가 인증:
 
 ### 7-1. Zero Trust 대시보드 활성화
 - https://one.dash.cloudflare.com 접속
-- 팀명 입력 (예: junhwa-jiqt) — 무료 플랜 선택
+- 팀명 입력 (예: junhwa-terminal) — 무료 플랜 선택
 
 ### 7-2. Application 생성
 - Access → Applications → Add an application → Self-hosted
-- Application name: JIQT Terminal
+- Application name: I ALWAYS WIN
 - Subdomain: terminal
 - Domain: example.com
 
@@ -140,9 +140,9 @@ Cloudflare Access(Zero Trust, 무료 50명)로 추가 인증:
 이제 https://terminal.example.com 접속 시:
 1. Cloudflare 로그인 화면 표시
 2. 본인 이메일 입력 → OTP 코드 메일 수신
-3. 인증 통과 후 JIQT 로그인 화면
+3. 인증 통과 후 I ALWAYS WIN 로그인 화면
 
-**이중 보호**: Cloudflare Access (외부 차단) + JIQT 자체 계정 시스템.
+**이중 보호**: Cloudflare Access (외부 차단) + 앱 자체 계정 시스템.
 
 ---
 
@@ -155,7 +155,7 @@ PowerShell에서 직접 출력된 URL을 복사해서 브라우저에 붙여넣�
 ```powershell
 & $cf tunnel list
 ```
-NAME 열의 `jiqt-junhwa`에 해당하는 ID 사용.
+NAME 열의 `iaw-terminal`에 해당하는 ID 사용.
 
 ### Q. CNAME 충돌
 - DNS 탭에서 기존 같은 서브도메인 레코드 삭제 후 4단계 재실행.
@@ -164,7 +164,7 @@ NAME 열의 `jiqt-junhwa`에 해당하는 ID 사용.
 - 관리자 권한 PowerShell 필수.
 - 또는 작업 스케줄러로 직접 등록.
 
-### Q. JIQT가 8765가 아닌 다른 포트면?
+### Q. 이 앱이 8765가 아닌 다른 포트면?
 - config.yml의 `service:` 줄 수정.
 
 ---
@@ -176,7 +176,7 @@ NAME 열의 `jiqt-junhwa`에 해당하는 ID 사용.
 | 설정 시간 | 5분 | 30분 |
 | URL | 매번 변경 | 고정 |
 | 도메인 | trycloudflare.com | 본인 도메인 |
-| 인증 | JIQT 로그인만 | + Cloudflare Access |
+| 인증 | I ALWAYS WIN 로그인만 | + Cloudflare Access |
 | 비용 | 0 | 0 (도메인 별도) |
 | 신뢰성 | 낮음 (URL 변경) | 높음 |
 | 운영 추천 | ✗ | ✓ |

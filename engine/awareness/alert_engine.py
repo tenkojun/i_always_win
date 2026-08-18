@@ -121,7 +121,7 @@ def refresh_once() -> Dict[str, Any]:
         except Exception:
             pass
 
-        # 2) 국가별 RSS — JIQT가 이미 가진 인프라
+        # 2) 국가별 RSS — 이 앱이 이미 가진 인프라
         try:
             from ..data.news_feeds import fetch_country_news
             for country in ["US", "KR", "JP", "CN", "EU"]:
@@ -277,7 +277,7 @@ def start_polling() -> bool:
     if _poll_thread and _poll_thread.is_alive():
         return False
     _poll_thread = threading.Thread(target=_poll_loop, daemon=True,
-                                    name="jiqt-awareness")
+                                    name="iaw-awareness")
     _poll_thread.start()
     return True
 

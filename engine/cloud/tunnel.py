@@ -82,7 +82,7 @@ def find_cloudflared() -> Optional[str]:
         shutil.which("cloudflared.exe") if _is_windows() else None)
     if p and os.path.isfile(p):
         return p
-    # 2) ~/.jiqt/bin/
+    # 2) .data/bin/
     local = _bin_local()
     if local.exists():
         return str(local)
@@ -117,7 +117,7 @@ def status() -> Dict[str, Any]:
 
 # ── 다운로드 ─────────────────────────────────────────────────────
 def install_async() -> Dict[str, Any]:
-    """cloudflared를 ~/.jiqt/bin/ 에 다운로드 (백그라운드)."""
+    """cloudflared를 .data/bin/ 에 다운로드 (백그라운드)."""
     with _LOCK:
         if _STATE["download"]["status"] == "downloading":
             return {"ok": False, "message": "이미 다운로드 진행 중"}
@@ -298,7 +298,7 @@ def health_check(local_port: int = 8765,
     try:
         r = requests.get(state["url"], timeout=timeout,
                          allow_redirects=True,
-                         headers={"User-Agent": "JIQT-HealthCheck"})
+                         headers={"User-Agent": "IAlwaysWin-HealthCheck"})
         out["response_code"] = r.status_code
         out["response_time_ms"] = round((time.time() - t0) * 1000)
         out["external_reachable"] = r.status_code in (200, 302, 401)
