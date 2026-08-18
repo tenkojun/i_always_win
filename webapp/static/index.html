@@ -2142,7 +2142,7 @@
                   style="flex:1;min-width:120px;background:var(--cyan);
                   color:#04222a;border:0;font-family:var(--mono);
                   font-weight:700;font-size:12px;padding:11px;cursor:pointer;
-                  letter-spacing:1px;display:none">Quick Tunnel 시작</button>
+                  letter-spacing:1px;display:none">외부 접근 켜기</button>
                 <button id="cloud-stop-btn" onclick="cloudStop()"
                   style="flex:1;min-width:100px;background:transparent;
                   color:var(--down);border:1px solid var(--down);
@@ -2163,6 +2163,14 @@
                   cursor:pointer;letter-spacing:1px"
                   title="Tunnel 죽었을 때">재시작</button>
               </div>
+              <div id="cloud-sup" style="display:none;margin-top:10px;
+                padding:9px 12px;font-size:11.5px;line-height:1.7;
+                border-radius:3px;border:1px solid var(--line);
+                background:var(--panel2)"></div>
+              <div id="cloud-go" style="display:none;margin-top:10px;
+                padding:10px 12px;font-size:12px;line-height:1.7;
+                border-radius:3px;border:1px solid var(--amber);
+                background:rgba(255,180,76,.05)"></div>
               <div id="cloud-hc-result" style="display:none;margin-top:8px;
                 padding:8px 12px;font-family:var(--mono);font-size:11px;
                 border-radius:3px;line-height:1.6"></div>
@@ -5974,6 +5982,69 @@ async function refreshCloudStatus(){
       $('#cloud-url-box').style.display='none';
     }
 
+    // 감시자 상태 — 죽었을 때 사용자가 뭘 기다리는지 알려 준다
+    const sup=d.supervisor||{};
+    const supEl=$('#cloud-sup');
+    if(supEl){
+      if(!sup.enabled){
+        supEl.style.display='none';
+      }else{
+        supEl.style.display='block';
+        let body='';
+        if(d.running && d.url){
+          body='<span style="color:var(--cyan)">● 감시 중</span> — '+
+               '터널이 죽으면 자동으로 되살립니다.';
+        }else if(d.running){
+          body='<span style="color:var(--amber)">◐ 주소 발급 대기</span>';
+        }else{
+          const s=sup.next_retry_in||0;
+          body='<span style="color:var(--down)">○ 끊김</span> — '+
+               (s?`${s}초 후 재시도`:'재시도 준비 중');
+        }
+        if(sup.restarts)
+          body+=`<br><span style="color:var(--txt-mute);font-size:10.5px">`+
+                `자동 복구 ${sup.restarts}회`+
+                (sup.last_error?` · 마지막 사유: ${_escapeHtml(sup.last_error)}`:'')+
+                `</span>`;
+        if(sup.publish_error)
+          body+=`<br><span style="color:var(--amber);font-size:10.5px">`+
+                `중앙 서버 주소 등록 실패: ${_escapeHtml(sup.publish_error)}</span>`;
+        supEl.innerHTML=body;
+      }
+    }
+
+    // 고정 주소 안내 — 매번 바뀌는 터널 주소 대신 이걸 북마크한다
+    const goEl=$('#cloud-go');
+    if(goEl){
+      const ca=_centralAuthState||{};
+      const cs=(ca.session||{});
+      if(d.running && ca.configured && cs.authenticated && cs.user){
+        const go=ca.server_url+'/go/'+cs.user.username;
+        goEl.style.display='block';
+        goEl.innerHTML=
+          '<b style="color:var(--amber)">📱 폰에는 이 주소를 저장하세요</b><br>'+
+          `<a href="${_escapeHtml(go)}" target="_blank" rel="noopener" `+
+          'style="color:var(--cyan);font-family:var(--mono);word-break:break-all">'+
+          `${_escapeHtml(go)}</a><br>`+
+          '<span style="color:var(--txt-mute);font-size:10.5px">'+
+          '터널 주소는 재시작할 때마다 바뀌지만, 이 주소는 그대로입니다. '+
+          '새 주소가 나오면 자동으로 여기에 연결됩니다.</span>'+
+          (sup.published_url===d.url
+            ? '<br><span style="color:var(--cyan);font-size:10.5px">✓ 현재 주소 등록됨</span>'
+            : '<br><span style="color:var(--amber);font-size:10.5px">◐ 주소 등록 대기</span>');
+      }else if(d.running && !ca.configured){
+        goEl.style.display='block';
+        goEl.innerHTML=
+          '<b style="color:var(--amber)">고정 주소를 쓰려면</b><br>'+
+          '<span style="color:var(--txt-dim);font-size:11.5px">'+
+          '설정 → 중앙 인증에 서버를 등록하면 '+
+          '<code style="color:var(--cyan)">/go/&lt;아이디&gt;</code> 고정 주소가 생깁니다. '+
+          '지금은 아래 터널 주소를 매번 새로 확인해야 합니다.</span>';
+      }else{
+        goEl.style.display='none';
+      }
+    }
+
     // stdout 로그 (디버그용)
     if(d.stdout_tail && d.stdout_tail.length){
       $('#cloud-stdout').style.display='block';
@@ -5985,7 +6056,8 @@ async function refreshCloudStatus(){
 
     // 활성 폴링 토글 (다운로드 중 or tunnel 실행 중)
     const needPoll=(dl.status==='downloading') ||
-                   (d.running && !d.url);
+                   (d.running && !d.url) ||
+                   (sup.enabled && !d.running);
     if(needPoll && !_cloudPollIv){
       _cloudPollIv=setInterval(refreshCloudStatus, 2000);
     }else if(!needPoll && _cloudPollIv){

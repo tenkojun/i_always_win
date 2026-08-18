@@ -58,6 +58,15 @@ _moved = _migrate()
 if _moved:
     print("[paths] 이전 설치본에서 이전 완료:", ", ".join(_moved))
 
+# 지난 실행이 비정상 종료했으면 cloudflared 만 살아남아 떠돈다. 먼저 정리.
+try:
+    from engine.cloud.supervisor import reap_orphan as _reap
+    _r = _reap()
+    if _r.get("reaped"):
+        print("[cloud] 남아 있던 cloudflared 정리 (pid %s)" % _r.get("pid"))
+except Exception:
+    pass
+
 app = Flask(__name__, static_folder=None)
 
 # ── 인증 시스템 초기화 (어드민 seed 포함) ────────────────────────
@@ -201,8 +210,8 @@ import atexit as _atexit
 @_atexit.register
 def _cleanup_tunnel():
     try:
-        from engine.cloud.tunnel import stop_quick
-        stop_quick()
+        from engine.cloud.supervisor import stop as _sup_stop
+        _sup_stop()
     except Exception:
         pass
 
@@ -1371,14 +1380,22 @@ def api_stream_test():
 
 
 # ── API: 외부 접근 (Cloudflare Tunnel) ────────────────────────────
+def _app_port() -> int:
+    try:
+        return int(os.environ.get("IAW_PORT", "8765"))
+    except ValueError:
+        return 8765
+
+
 @app.route("/api/cloud/status")
 @require_auth
 def api_cloud_status():
-    from engine.cloud.tunnel import status
+    from engine.cloud.supervisor import status, last_known
     from engine.cloud.pc_id import get_pc_id, get_pc_label
     s = status()
     s["pc_id"] = get_pc_id()
     s["pc_label"] = get_pc_label()
+    s["last_known"] = last_known()
     return jsonify(s)
 
 
@@ -1392,12 +1409,16 @@ def api_cloud_install():
 @app.route("/api/cloud/start_quick", methods=["POST"])
 @require_auth
 def api_cloud_start_quick():
-    """Quick Tunnel 시작 + 메인 PC로 지정."""
-    from engine.cloud.tunnel import start_quick, status
+    """
+    외부 접근 켜기 — 터널을 띄우고 **감시자에 맡긴다**.
+
+    감시자가 죽은 터널을 되살리고, 주소가 바뀌면 중앙 서버에 다시
+    등록한다. 그래야 /go/<username> 이 항상 살아 있는 주소를 가리킨다.
+    """
+    from engine.cloud.supervisor import start as sup_start
     from engine.cloud.pc_id import get_pc_id, get_pc_label
     from engine.auth import set_main_pc
-    r = start_quick(local_port=int(os.environ.get("I ALWAYS WIN_PORT", "8765")))
-    # 사용자의 메인 PC로 등록
+    r = sup_start(port=_app_port())
     try:
         set_main_pc(g.user["id"], get_pc_id(), get_pc_label())
     except Exception:
@@ -1408,8 +1429,8 @@ def api_cloud_start_quick():
 @app.route("/api/cloud/stop", methods=["POST"])
 @require_auth
 def api_cloud_stop():
-    from engine.cloud.tunnel import stop_quick
-    return jsonify(stop_quick())
+    from engine.cloud.supervisor import stop as sup_stop
+    return jsonify(sup_stop())
 
 
 @app.route("/api/cloud/healthcheck")
@@ -1423,9 +1444,20 @@ def api_cloud_healthcheck():
 @app.route("/api/cloud/restart", methods=["POST"])
 @require_auth
 def api_cloud_restart():
-    """Tunnel 죽었으면 강제 재시작."""
+    """터널 강제 재시작 — 감시자가 붙어 있으면 주소 재등록까지 이어진다."""
     from engine.cloud.tunnel import restart_quick
-    return jsonify(restart_quick())
+    from engine.cloud.supervisor import publish_url, status as sup_status
+    r = restart_quick(local_port=_app_port())
+    return jsonify(r)
+
+
+@app.route("/api/cloud/publish", methods=["POST"])
+@require_auth
+def api_cloud_publish():
+    """현재 터널 주소를 중앙 서버에 수동으로 다시 등록."""
+    from engine.cloud.supervisor import publish_url
+    from engine.cloud.tunnel import status as t_status
+    return jsonify(publish_url(t_status().get("url", "")))
 
 
 # ── C11: 정식 Tunnel 자동화 (Cloudflare API) ─────────────────────
