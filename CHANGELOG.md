@@ -5,6 +5,28 @@
 
 ---
 
+## [2.8.1] — 2026-08-18
+
+### 수정
+- **배포된 Worker 에서 로그인이 500 으로 죽던 문제.**
+  `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are
+  not supported (requested 200000)` — Cloudflare Workers 의 Web Crypto 는
+  PBKDF2 반복을 **10만 회로 상한** 처리한다. 플랫폼 최대값으로 낮췄다.
+  - `wrangler dev --local` 은 이 제한을 강제하지 않는다. 로컬 검증만
+    믿고 넘어가면 배포본에서만 터진다 — 실제로 그랬다.
+    인증 관련 변경은 반드시 배포본에서 한 번 찔러 보고 끝낼 것.
+  - 저장된 해시가 없는 상태(사용자 0명)에서 고쳤으므로 재설정 불필요.
+
+### 배포
+- `iaw-auth` Worker 가동 — https://iaw-auth.tenkojun.workers.dev
+- D1 `iaw-auth` (01199aec…) 에 스키마 0001 · 0002 적용,
+  테이블 5종(`users` `sessions` `user_pcs` `login_attempts` `audit_log`)
+- 실측: `/health` 200 · 없는 계정 로그인 401 · 가입→pending 200 →
+  로그인 403 · `/admin/users` 403 · `/pc/register` 401 · `/nope` 404 ·
+  입력 검증 3종 400 · CORS 프리플라이트 204
+
+---
+
 ## [2.8.0] — 2026-08-18
 
 `.exe` 가 개발 중인 프로그램처럼 보이던 것을 정리했다.

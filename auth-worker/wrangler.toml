@@ -15,7 +15,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"                        # 코드에서 env.DB
 database_name = "iaw-auth"
-database_id = "REPLACE_AFTER_CREATE"  # `wrangler d1 create iaw-auth` 출력값
+database_id = "01199aec-18fd-4216-852b-d248cf35db34"
 
 [vars]
 ADMIN_USERNAME = "JUNHWA"

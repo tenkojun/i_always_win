@@ -65,7 +65,7 @@ function json(data, init = {}, env = {}, req = null) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  비밀번호 (PBKDF2-SHA256, 20만 회)
+//  비밀번호 (PBKDF2-SHA256)
 // ═══════════════════════════════════════════════════════════════
 function bufToHex(buf) {
   return Array.from(new Uint8Array(buf))
@@ -82,13 +82,19 @@ function randomToken(bytes = 32) {
   return bufToHex(crypto.getRandomValues(new Uint8Array(bytes)));
 }
 
+// Workers 의 Web Crypto 는 PBKDF2 반복을 10만 회로 상한 처리한다.
+// 그 이상을 넘기면 NotSupportedError 로 요청 자체가 죽는다
+// (`wrangler dev --local` 은 이 제한을 강제하지 않아 로컬에서는 통과한다).
+// 그래서 플랫폼이 허용하는 최대값을 쓴다.
+const PBKDF2_ITERATIONS = 100000;
+
 async function hashPassword(pw, saltHex) {
   if (!saltHex) saltHex = bufToHex(crypto.getRandomValues(new Uint8Array(16)));
   const key = await crypto.subtle.importKey(
     'raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: hexToBuf(saltHex), iterations: 200000,
-      hash: 'SHA-256' }, key, 256);
+    { name: 'PBKDF2', salt: hexToBuf(saltHex),
+      iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, key, 256);
   return { hash: bufToHex(bits), salt: saltHex };
 }
 
