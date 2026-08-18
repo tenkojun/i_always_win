@@ -2003,22 +2003,22 @@
           <div class="set-pane" id="set-pane-centralauth" style="display:none">
             <div class="set-section">
               <div class="hint-blk">
-                <b style="color:var(--cyan)">중앙 인증 서버</b>는 가입/로그인/
-                어드민 승인을 한 곳에서 처리합니다. 배포 시
-                <b style="color:var(--amber)">필수</b>입니다 — 그래야 다른 사용자가
-                각자 자기 PC에서 가입하고 어드민이 어디서든 승인 가능.
-                <br><br>
-                <b>설정 안 함 = 로컬 SQLite</b> (개발용, 단일 PC만 가능)<br>
-                <b>설정 함 = 중앙 Worker</b> (배포용, 모든 PC 공유)
+                <b style="color:var(--cyan)">중앙 인증 서버</b>가 가입·로그인·
+                어드민 승인을 한곳에서 처리합니다. 이 앱에는
+                <b style="color:var(--amber)">기본 서버가 내장</b>돼 있어
+                따로 설정하지 않아도 바로 로그인됩니다.<br><br>
+                내 PC 전원과 무관하게 동작하므로, 다른 사람이 언제든
+                가입 신청을 할 수 있고 어드민은 어디서든 승인할 수 있습니다.
               </div>
-              <div class="hd">서버 URL</div>
+              <div class="hd">서버</div>
+              <div id="ca-status" style="font-size:12px;padding:4px 0 10px"></div>
               <div style="font-size:12px;color:var(--txt-dim);line-height:1.6;
-                margin-bottom:10px">
-                Worker 배포 후 발급된 URL을 입력 (예:
-                <code style="color:var(--cyan)">https://iaw-auth.&lt;계정&gt;.workers.dev</code>)
+                margin-bottom:8px">
+                직접 운영하는 서버가 있으면 아래에 주소를 넣으세요.
+                비워 두고 저장하면 기본 서버로 되돌아갑니다.
               </div>
-              <div style="display:flex;gap:6px;margin-bottom:10px">
-                <input id="ca-url" placeholder="https://iaw-auth.xxx.workers.dev"
+              <div style="display:flex;gap:6px;margin-bottom:8px">
+                <input id="ca-url" placeholder="(비워 두면 기본 서버 사용)"
                   style="flex:1;background:#070b10;border:1px solid var(--line);
                   color:var(--txt);font-family:var(--mono);font-size:12px;
                   padding:9px 12px;outline:none;border-radius:2px">
@@ -2027,8 +2027,12 @@
                   font-family:var(--mono);font-weight:700;font-size:12px;
                   padding:9px 18px;cursor:pointer;letter-spacing:1px">
                   저장 + 검증</button>
+                <button onclick="caResetDefault()" id="ca-reset-btn"
+                  style="background:transparent;color:var(--txt-dim);
+                  border:1px solid var(--line);font-family:var(--mono);
+                  font-size:11px;padding:9px 12px;cursor:pointer"
+                  title="앱에 내장된 기본 서버로 되돌립니다">기본값</button>
               </div>
-              <div id="ca-status" style="font-size:12px;padding:8px 0"></div>
             </div>
             <div class="set-section">
               <div class="hd">배포 가이드</div>
@@ -5513,7 +5517,8 @@ async function refreshCentralAuth(){
     const r=await(await fetch('/api/auth/remote/status')).json();
     _centralAuthState=r;
     const urlInput=$('#ca-url');
-    if(urlInput)urlInput.value=r.server_url||'';
+    // 기본 서버를 쓰는 중이면 입력칸은 비워 둔다 — 직접 지정한 주소만 보인다
+    if(urlInput)urlInput.value=r.is_default?'':(r.server_url||'');
     _renderCaStatus();
     _renderCaPcBlock();
   }catch(e){
@@ -5525,21 +5530,47 @@ async function refreshCentralAuth(){
 function _renderCaStatus(){
   const el=$('#ca-status');
   if(!el)return;
-  if(!_centralAuthState.configured){
-    el.innerHTML='<span style="color:var(--amber)">○ 미설정 — 현재 로컬 모드</span>';
+  const st=_centralAuthState||{};
+  if(!st.configured){
+    el.innerHTML='<span style="color:var(--amber)">○ 서버 없음 — 로컬 모드</span>';
     return;
   }
-  const s=_centralAuthState.session||{};
+  const badge=st.is_default
+    ? '<span style="background:rgba(61,240,255,.12);color:var(--cyan);'+
+      'border:1px solid var(--cyan-dim);border-radius:2px;padding:2px 7px;'+
+      'font-family:var(--mono);font-size:10px;letter-spacing:1px">기본 서버</span>'
+    : '<span style="background:rgba(255,180,76,.12);color:var(--amber);'+
+      'border:1px solid var(--amber);border-radius:2px;padding:2px 7px;'+
+      'font-family:var(--mono);font-size:10px;letter-spacing:1px">직접 지정</span>';
+  const s=st.session||{};
+  const who=(s.user&&(s.user.nickname||s.user.username))||'?';
+  const role=(s.user&&s.user.role)||'user';
   const authStr=s.authenticated
-    ?`<span style="color:var(--cyan)">● 로그인됨:
-       <b>${s.user&&(s.user.nickname||s.user.username)||'?'}</b>
-       (${s.user&&s.user.role||'user'})</span>`
+    ?'<span style="color:var(--cyan)">● 로그인됨 — <b>'+_histEsc(who)+
+     '</b> ('+_histEsc(role)+')</span>'
     :'<span style="color:var(--txt-mute)">○ 미로그인</span>';
   el.innerHTML=
-    `<span style="color:var(--cyan)">✓ 설정 완료</span><br>`+
-    `<span style="font-family:var(--mono);font-size:10.5px;color:var(--txt-mute)">`+
-    `URL: ${_centralAuthState.server_url}</span><br>`+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+    badge+'<span style="font-family:var(--mono);font-size:11px;'+
+    'color:var(--txt-dim);word-break:break-all">'+
+    _histEsc(st.server_url||'')+'</span></div>'+
     authStr;
+}
+
+/* 기본 서버로 되돌리기 — 빈 값을 보내면 저장분이 지워진다 */
+async function caResetDefault(){
+  const btn=$('#ca-reset-btn');
+  btn.disabled=true;
+  try{
+    const r=await(await fetch('/api/auth/remote/configure',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({server_url:''}),
+    })).json();
+    if(!r.ok){alert('실패: '+(r.error||''));return;}
+    $('#ca-url').value='';
+    await refreshCentralAuth();
+  }catch(e){alert('네트워크 오류: '+e);}
+  finally{btn.disabled=false;}
 }
 
 async function caConfigure(){
@@ -8721,10 +8752,8 @@ async function doLogin(){
   const p=$('#login-password').value;
   const nk=($('#login-nickname')&&$('#login-nickname').value||'').trim();
   if(!u||!p){_setLoginMsg('username/password 입력');return;}
-  // 중앙 인증 모드면 /api/auth/remote/* 사용
-  const useRemote=_centralAuthState&&_centralAuthState.configured;
-  const baseEp=useRemote?'/api/auth/remote':'/api/auth';
-  const ep=baseEp+(_loginMode==='register'?'/register':'/login');
+  // 서버가 중앙 인증으로 중계하고, 성공하면 이 브라우저 쿠키를 준다
+  const ep='/api/auth'+(_loginMode==='register'?'/register':'/login');
   const body=_loginMode==='register'
     ? {username:u, password:p, nickname:nk}
     : {username:u, password:p};
@@ -8761,10 +8790,12 @@ async function doLogin(){
   }
 }
 
+/* 인증 경로는 하나다.
+   계정은 중앙 서버에 있지만, 요청 신원은 이 브라우저의 쿠키로 정해진다.
+   /api/auth/remote/status 는 이 PC 에 저장된 세션을 보므로 브라우저
+   신원 판단에 쓰면 안 된다 — 터널로 들어온 누구나 주인으로 보인다. */
 function _authEp(path){
-  // 중앙 인증 모드 → /api/auth/remote/* / 아니면 /api/auth/*
-  const useRemote=_centralAuthState&&_centralAuthState.configured;
-  return useRemote ? ('/api/auth/remote'+path) : ('/api/auth'+path);
+  return '/api/auth'+path;
 }
 
 async function logout(){
@@ -8783,22 +8814,7 @@ async function logout(){
 
 async function checkAuth(){
   try{
-    // 중앙 인증 모드면 /me는 토큰 기반 (rmt 응답 형식 약간 다름)
-    if(_centralAuthState&&_centralAuthState.configured){
-      const r=await(await fetch('/api/auth/remote/status')).json();
-      const s=r.session||{};
-      if(s.authenticated){
-        _authUser=s.user;
-        renderUserbox();
-        // 서버 prefs 동기화 (위젯 배치/테마/관심종목 복원)
-        await loadPrefsFromServer();
-        // 백그라운드 작업 폴링 시작 (완료 알림용)
-        if(typeof startGlobalJobsPolling === 'function') startGlobalJobsPolling();
-        return true;
-      }
-      return false;
-    }
-    // 로컬 모드 (기존)
+    // 이 브라우저가 로그인했는지만 본다. 계정 자체는 중앙 서버 소관.
     const r=await(await fetch('/api/auth/me')).json();
     if(r.authenticated){
       _authUser=r.user;
@@ -9204,48 +9220,7 @@ function closeAdmin(){
 
 async function refreshAdmin(){
   try{
-    // 중앙 인증 모드면 remote 사용 (통계는 단순 user list, 추가 통계 없음)
-    const useRemote=_centralAuthState&&_centralAuthState.configured;
-    if(useRemote){
-      const r=await(await fetch('/api/auth/remote/admin/users')).json();
-      const users=r.users||[];
-      $('#admin-body').innerHTML=
-        '<div style="padding:10px 16px;font-family:var(--mono);font-size:10.5px;'+
-        'color:var(--cyan-dim);background:#070b10;border-bottom:1px solid var(--cyan-dim);'+
-        'letter-spacing:1.5px">REMOTE · 중앙 인증 서버 (Workers + D1)</div>'+
-        users.map(u=>{
-          const created=u.created_at?
-            new Date(u.created_at).toLocaleDateString('ko-KR'):'';
-          const lastLogin=u.last_login_at?
-            new Date(u.last_login_at).toLocaleString('ko-KR',
-              {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
-            :'미로그인';
-          const isMe=_authUser && u.id===_authUser.id;
-          const actions=[];
-          if(u.status==='pending'){
-            actions.push(`<button class="approve" onclick="adminApprove(${u.id})">승인</button>`);
-            actions.push(`<button class="reject" onclick="adminReject(${u.id})">거부</button>`);
-          }else if(u.status==='active' && !isMe){
-            actions.push(`<button class="reject" onclick="adminReject(${u.id})">정지</button>`);
-          }
-          const nickStr=(u.nickname && u.nickname!==u.username)
-            ?`<span style="color:var(--amber);font-size:11px;margin-left:5px">"${u.nickname}"</span>`:'';
-          return `<div class="admin-row">
-            <div>
-              <span class="un">${u.username}</span>${nickStr}
-              ${u.role==='admin'?'<span class="badge admin">ADMIN</span>':''}
-              <div class="when">
-                가입 ${created} · 로그인 ${u.login_count||0}회
-                (마지막: ${lastLogin})
-              </div>
-            </div>
-            <span class="badge ${u.status}">${u.status}</span>
-            ${actions.join('')}
-          </div>`;
-        }).join('') || '<div class="hint" style="padding:30px;text-align:center">사용자 없음</div>';
-      return;
-    }
-    // 로컬 모드 — 기존 통계 API (C6)
+    // 서버가 브라우저 쿠키로 신원을 확인한 뒤 중앙 서버에 물어본다
     const r=await(await fetch('/api/admin/stats')).json();
     const users=r.users||[];
     const sm=r.summary||{};
@@ -9345,8 +9320,7 @@ async function refreshAdmin(){
 }
 
 async function adminApprove(uid){
-  const useRemote=_centralAuthState&&_centralAuthState.configured;
-  const ep=useRemote?'/api/auth/remote/admin/approve':'/api/admin/approve';
+  const ep='/api/admin/approve';
   await fetch(ep,{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({user_id:uid}),
@@ -9355,8 +9329,7 @@ async function adminApprove(uid){
 }
 async function adminReject(uid){
   if(!confirm('정말 거부/정지하시겠어요?'))return;
-  const useRemote=_centralAuthState&&_centralAuthState.configured;
-  const ep=useRemote?'/api/auth/remote/admin/reject':'/api/admin/reject';
+  const ep='/api/admin/reject';
   await fetch(ep,{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({user_id:uid}),

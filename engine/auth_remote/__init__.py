@@ -5,8 +5,10 @@
 세션 토큰은 .data/session.json에 캐시.
 """
 from .client import (
-    configure, get_config, is_configured,
-    register, login, logout, logout_all, me,
+    configure, get_config, is_configured, using_default,
+    register, login, login_raw, logout, logout_all, logout_token,
+    me, me_with_token,
+    load_session, clear_session,
     change_password, sessions,
     admin_users, admin_approve, admin_reject,
     register_pc, pc_status, pc_unregister,
@@ -14,8 +16,10 @@ from .client import (
 )
 
 __all__ = [
-    "configure", "get_config", "is_configured",
-    "register", "login", "logout", "logout_all", "me",
+    "configure", "get_config", "is_configured", "using_default",
+    "register", "login", "login_raw", "logout", "logout_all",
+    "logout_token", "me", "me_with_token",
+    "load_session", "clear_session",
     "change_password", "sessions",
     "admin_users", "admin_approve", "admin_reject",
     "register_pc", "pc_status", "pc_unregister",

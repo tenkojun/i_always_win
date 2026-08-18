@@ -22,7 +22,19 @@ class RemoteAuthError(Exception):
 
 
 # ── 설정 ──────────────────────────────────────────────────────
-def get_config() -> Dict[str, Any]:
+# 저장된 설정이 없으면 앱에 내장된 기본 서버를 쓴다.
+# 배포본을 받은 사람이 주소를 몰라도 바로 로그인할 수 있어야 하고,
+# 자기 서버를 쓰고 싶으면 설정에서 덮어쓰면 된다.
+def _default_server() -> str:
+    try:
+        from version import DEFAULT_AUTH_SERVER
+        return (DEFAULT_AUTH_SERVER or "").rstrip("/")
+    except Exception:
+        return ""
+
+
+def _saved_config() -> Dict[str, Any]:
+    """파일에 실제로 저장된 값만. 기본값은 섞지 않는다."""
     if not _CFG_FILE.exists():
         return {}
     try:
@@ -31,12 +43,42 @@ def get_config() -> Dict[str, Any]:
         return {}
 
 
+def get_config() -> Dict[str, Any]:
+    """
+    실제로 쓰이는 설정. 저장된 값이 없으면 기본 서버로 채운다.
+    ``is_default`` 로 어느 쪽인지 구분할 수 있다.
+    """
+    saved = _saved_config()
+    url = (saved.get("server_url") or "").rstrip("/")
+    d = _default_server()
+    if url:
+        # 저장값이 기본값과 같으면 굳이 '커스텀'이라 부르지 않는다
+        return {"server_url": url, "is_default": (url == d)}
+    return {"server_url": d, "is_default": True} if d else {}
+
+
+def using_default() -> bool:
+    return bool(get_config().get("is_default"))
+
+
 def configure(server_url: str) -> Dict[str, Any]:
-    """중앙 서버 URL 저장 (예: https://iaw-auth.xxx.workers.dev)."""
-    url = (server_url or "").rstrip("/")
+    """
+    중앙 서버 URL 저장. 빈 값을 주면 저장분을 지우고 기본 서버로 되돌린다.
+    """
+    url = (server_url or "").strip().rstrip("/")
+
+    if not url:
+        try:
+            _CFG_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+        cfg = get_config()
+        return {"ok": True, "server_url": cfg.get("server_url", ""),
+                "is_default": True, "message": "기본 서버로 되돌렸습니다"}
+
     if not url.startswith("http"):
         return {"ok": False, "error": "http(s):// 로 시작해야 함"}
-    # 헬스체크
+    # 헬스체크 — 살아 있는 서버만 저장한다
     try:
         r = requests.get(url + "/health", timeout=8)
         d = r.json()
@@ -44,15 +86,27 @@ def configure(server_url: str) -> Dict[str, Any]:
             return {"ok": False, "error": "헬스체크 실패"}
     except Exception as e:
         return {"ok": False, "error": f"연결 실패: {e}"}
+
+    if url == _default_server():
+        # 기본값과 같으면 굳이 파일로 고정하지 않는다
+        try:
+            _CFG_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return {"ok": True, "server_url": url, "is_default": True,
+                "service": d.get("service")}
+
     _CFG_FILE.write_text(
         json.dumps({"server_url": url}, indent=2),
         encoding="utf-8")
     try: os.chmod(_CFG_FILE, 0o600)
     except Exception: pass
-    return {"ok": True, "server_url": url, "service": d.get("service")}
+    return {"ok": True, "server_url": url, "is_default": False,
+            "service": d.get("service")}
 
 
 def is_configured() -> bool:
+    """기본 서버가 내장돼 있으므로 보통 항상 True."""
     return bool(get_config().get("server_url"))
 
 
@@ -224,6 +278,53 @@ def pc_unregister() -> Dict[str, Any]:
     try:
         r = requests.post(_url("/pc/unregister"),
                           headers=_headers(), timeout=10)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}
+
+
+# ── 임의 토큰으로 확인 (브라우저별 세션 검증용) ──────────────
+def me_with_token(token: str) -> Dict[str, Any]:
+    """
+    특정 세션 토큰의 주인을 중앙 서버에 묻는다.
+
+    이 PC 에 저장된 세션이 아니라 **브라우저마다 다른 토큰**을 검증해야
+    하므로 별도 함수가 필요하다. 네트워크 실패는 ``error`` 로 구분해서
+    돌려준다 — '거부'와 '닿지 않음'은 다르게 취급해야 한다.
+    """
+    if not token:
+        return {"authenticated": False}
+    try:
+        r = requests.get(_url("/auth/me"), timeout=8,
+                         headers={"Content-Type": "application/json",
+                                  "Authorization": f"Bearer {token}"})
+        return r.json()
+    except Exception as e:
+        return {"authenticated": False, "error": f"네트워크: {e}"}
+
+
+def login_raw(username: str, password: str) -> Dict[str, Any]:
+    """
+    로그인하되 이 PC 의 세션 파일을 건드리지 않는다.
+    브라우저별 세션을 만들 때 쓴다(토큰은 호출자가 보관).
+    """
+    try:
+        r = requests.post(_url("/auth/login"),
+                          json={"username": username, "password": password},
+                          headers=_headers(with_auth=False), timeout=15)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}
+
+
+def logout_token(token: str) -> Dict[str, Any]:
+    """특정 토큰만 중앙 서버에서 폐기."""
+    if not token:
+        return {"ok": True}
+    try:
+        r = requests.post(_url("/auth/logout"), timeout=8,
+                          headers={"Content-Type": "application/json",
+                                   "Authorization": f"Bearer {token}"})
         return r.json()
     except Exception as e:
         return {"ok": False, "error": f"네트워크: {e}"}

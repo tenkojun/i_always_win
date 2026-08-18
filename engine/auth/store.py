@@ -1,5 +1,5 @@
 """
-SQLite 저장소 — 사용자/세션/Claude 쿼터/메인 PC
+SQLite 저장소 — 이 PC 의 데이터 (쿼터·보유종목·환경설정)
 =================================================
 모든 DB I/O는 이 모듈을 통해서만 — 다른 모듈은 ORM이나 SQL을 직접 쓰지 말 것.
 
@@ -16,11 +16,8 @@ from typing import Any, Dict, List, Optional
 
 from .security import hash_password, gen_token
 
-# ── 초기 어드민 시드 (첫 실행 시 자동 생성) ────────────────────
-# 비밀번호를 코드에 박아 두면 저장소를 읽은 사람이 그대로 들어온다.
-# 첫 실행 때 무작위로 만들어 .data/ADMIN_PASSWORD.txt 에 1회 기록하고,
-# 콘솔에도 한 번 찍는다. 사용자가 확인 후 그 파일을 지우면 된다.
-# 환경변수 IAW_ADMIN_PASSWORD 가 있으면 그 값을 쓴다.
+# 어드민 아이디 — 중앙 서버의 ADMIN_USERNAME 과 맞춰 두면 편하다.
+# (계정 생성은 중앙 서버가 한다. 여기서는 만들지 않는다.)
 ADMIN_USERNAME = os.environ.get("IAW_ADMIN_USERNAME", "JUNHWA")
 
 # ── DB 파일 경로 ─────────────────────────────────────────────────
@@ -172,78 +169,20 @@ def _migrate_v2(c: sqlite3.Connection) -> None:
 
 
 def init_db() -> Dict[str, Any]:
-    """스키마 생성 + 초기 어드민 seed. 반복 호출 안전."""
+    """
+    스키마 생성. 반복 호출 안전.
+
+    계정은 더 이상 여기서 만들지 않는다 — 신원은 중앙 서버가 정한다.
+    이 DB 에는 커뮤니티·분석 이력·보유 종목처럼 **이 PC 의 데이터**만
+    남는다. 예전에 로컬 계정을 쓰던 흔적(users/sessions)이 있어도
+    건드리지 않고 그대로 둔다(참조 무결성 때문에 지우지 않는다).
+    """
     with _LOCK:
         c = _conn()
         c.executescript(_SCHEMA)
         c.commit()
         _migrate_v2(c)
-        # 어드민 seed
-        cur = c.execute("SELECT id, status FROM users WHERE username=?",
-                        (ADMIN_USERNAME,))
-        row = cur.fetchone()
-        if row is None:
-            pw = _initial_admin_password()
-            h, s = hash_password(pw)
-            c.execute(
-                "INSERT INTO users (username, password_hash, salt, "
-                "status, role, created_at, approved_at) "
-                "VALUES (?, ?, ?, 'active', 'admin', ?, ?)",
-                (ADMIN_USERNAME, h, s, _now(), _now()))
-            c.commit()
-            _announce_admin_password(pw)
-            return {"admin_seeded": True}
-        elif row["status"] != "active":
-            # 어드민이 어쩌다 비활성화돼있으면 강제 활성화
-            c.execute("UPDATE users SET status='active', role='admin' "
-                      "WHERE id=?", (row["id"],))
-            c.commit()
-            return {"admin_reactivated": True}
-        return {"admin_seeded": False}
-
-
-# ── 초기 어드민 비밀번호 ──────────────────────────────────────────
-def _initial_admin_password() -> str:
-    """환경변수가 있으면 그 값, 없으면 무작위 16자."""
-    env = os.environ.get("IAW_ADMIN_PASSWORD", "").strip()
-    if env:
-        return env
-    import secrets
-    import string
-    alphabet = string.ascii_letters + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(16))
-
-
-def _announce_admin_password(pw: str) -> None:
-    """
-    딱 한 번, 사람이 읽을 수 있게 남긴다.
-    환경변수로 직접 지정한 경우에는 굳이 파일로 흘리지 않는다.
-    """
-    if os.environ.get("IAW_ADMIN_PASSWORD", "").strip():
-        return
-    from engine.paths import DATA_DIR
-    path = DATA_DIR / "ADMIN_PASSWORD.txt"
-    try:
-        path.write_text(
-            "I ALWAYS WIN — 초기 어드민 계정\n"
-            "================================\n"
-            f"아이디   : {ADMIN_USERNAME}\n"
-            f"비밀번호 : {pw}\n\n"
-            "첫 로그인 후 설정에서 비밀번호를 바꾸고 이 파일을 지우세요.\n",
-            encoding="utf-8")
-        try:
-            os.chmod(path, 0o600)
-        except Exception:
-            pass
-    except Exception:
-        pass
-    print("=" * 60)
-    print("  초기 어드민 계정이 생성되었습니다")
-    print(f"    아이디   : {ADMIN_USERNAME}")
-    print(f"    비밀번호 : {pw}")
-    print(f"    (사본: {path})")
-    print("  첫 로그인 후 반드시 변경하세요.")
-    print("=" * 60)
+        return {"ok": True}
 
 
 # ── 사용자 CRUD ───────────────────────────────────────────────────

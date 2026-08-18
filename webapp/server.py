@@ -83,6 +83,8 @@ from engine.auth.middleware import (
     set_session_cookie, clear_session_cookie, COOKIE_NAME,
 )
 
+# 계정 테이블은 더 이상 쓰지 않지만, 같은 DB 에 커뮤니티·분석 이력이
+# 들어 있어 스키마 초기화는 계속 필요하다.
 _auth_init()
 # C4: 커뮤니티 테이블 초기화
 try:
@@ -109,9 +111,14 @@ except Exception as _e:
 def api_auth_remote_status():
     from engine.auth_remote import get_config, is_configured, me
     cfg = get_config()
+    from version import DEFAULT_AUTH_SERVER
     return jsonify({
         "configured": is_configured(),
         "server_url": cfg.get("server_url", ""),
+        # 앱에 내장된 기본 서버를 쓰는 중인지. 사용자가 주소를 몰라도
+        # 바로 로그인되도록 기본값이 들어 있다.
+        "is_default": bool(cfg.get("is_default")),
+        "default_server": DEFAULT_AUTH_SERVER,
         "session": me() if is_configured() else {"authenticated": False},
     })
 
@@ -753,67 +760,152 @@ def _fetch_rss(url: str, limit: int = 12) -> List[Dict[str, str]]:
 
 
 # ── API: 인증 (회원가입/로그인/로그아웃/내정보) ─────────────────
+# ══════════════════════════════════════════════════════════════
+#  인증 — 신원은 전부 중앙 서버(Cloudflare Workers + D1)가 정한다
+#
+#  예전에는 이 PC 의 SQLite 에 계정을 두고 쿠키로 로그인했다. 그러면
+#  PC 마다 계정이 따로 놀고, 내 PC 가 꺼져 있으면 아무도 가입·로그인을
+#  할 수 없다. 로컬 계정 시스템은 제거했고, 아래 경로들은 모두 중앙
+#  서버를 호출하는 얇은 껍데기다. (프론트가 쓰던 경로는 그대로 둔다.)
+# ══════════════════════════════════════════════════════════════
+def _auth_invalidate(central_token=None):
+    """로그인/로그아웃 직후 캐시된 신원을 버린다."""
+    try:
+        from engine.auth.middleware import invalidate
+        invalidate(central_token)
+    except Exception:
+        pass
+
+
 @app.route("/api/auth/register", methods=["POST"])
 def api_auth_register():
-    """신규 가입 — status=pending. 어드민 승인 후 로그인 가능."""
-    from engine.auth import create_user
-    data = request.get_json(force=True, silent=True) or {}
-    username = (data.get("username") or "").strip()
-    password = (data.get("password") or "")
-    nickname = (data.get("nickname") or "").strip()
-    r = create_user(username, password, nickname=nickname)
-    if not r.get("ok"):
-        return jsonify({"ok": False, "error": r.get("error")}), 400
-    return jsonify({"ok": True,
-                    "message": "가입 신청 완료 — 어드민 승인 대기 중입니다.",
-                    "user": r["user"]})
+    """가입 신청 — 중앙 서버에서 status=pending 으로 생성된다."""
+    from engine.auth_remote import register
+    d = request.get_json(force=True, silent=True) or {}
+    r = register(username=(d.get("username") or "").strip(),
+                 password=d.get("password") or "",
+                 nickname=(d.get("nickname") or "").strip())
+    return jsonify(r), (200 if r.get("ok") else 400)
 
 
 @app.route("/api/auth/login", methods=["POST"])
 def api_auth_login():
-    from engine.auth import (get_user_by_name, create_session,
-                              verify_password)
-    from engine.auth.store import _conn
-    data = request.get_json(force=True, silent=True) or {}
-    username = (data.get("username") or "").strip()
-    password = (data.get("password") or "")
+    """
+    중앙 서버로 자격을 확인하고, **이 브라우저 전용** 세션 쿠키를 발급한다.
+
+    중앙 토큰 자체는 브라우저로 내려보내지 않는다 — 서버가 보관하고
+    쿠키는 그것을 가리키기만 한다.
+    """
+    from engine.auth_remote import login_raw
+    from engine.auth import session_store
+    d = request.get_json(force=True, silent=True) or {}
+    username = (d.get("username") or "").strip()
+    password = d.get("password") or ""
     if not username or not password:
-        return jsonify({"ok": False,
-                        "error": "username/password 필요"}), 400
-    u = get_user_by_name(username)
-    if not u:
-        return jsonify({"ok": False,
-                        "error": "사용자/패스워드 불일치"}), 401
-    # 패스워드 검증 (raw row 필요)
-    row = _conn().execute(
-        "SELECT password_hash, salt FROM users WHERE id=?",
-        (u["id"],)).fetchone()
-    if not verify_password(password, row["password_hash"], row["salt"]):
-        return jsonify({"ok": False,
-                        "error": "사용자/패스워드 불일치"}), 401
-    if u.get("status") == "pending":
-        return jsonify({"ok": False,
-                        "error": "어드민 승인 대기 중입니다.",
-                        "code": "PENDING"}), 403
-    if u.get("status") != "active":
-        return jsonify({"ok": False,
-                        "error": "비활성 계정입니다.",
-                        "code": "DISABLED"}), 403
+        return jsonify({"ok": False, "error": "username/password 필요"}), 400
+
+    r = login_raw(username, password)
+    if not r.get("ok"):
+        # 중앙 서버가 준 사유(승인 대기·잠금 등)를 그대로 전달한다
+        code = 429 if r.get("locked_minutes") else 401
+        if "대기" in str(r.get("error", "")):
+            code = 403
+        return jsonify(r), code
+
+    central = r.get("token") or ""
+    user = r.get("user", {}) or {}
     device = (request.headers.get("User-Agent") or "")[:80]
-    token = create_session(u["id"], device_label=device)
-    resp = make_response(jsonify({"ok": True, "user": u}))
-    set_session_cookie(resp, token)
+    browser_token = session_store.create(central, user, device=device)
+    _auth_invalidate()
+
+    # 이 PC 가 중앙 서버에 자기 주소를 등록할 때 쓰는 세션도 갱신해 둔다
+    # (외부 접근 감시자가 /pc/register 를 호출한다).
+    try:
+        from engine.auth_remote.client import _save_session
+        _save_session(central, user)
+    except Exception:
+        pass
+
+    # 예전 로컬 계정 시절의 글·이력이 새 중앙 id 를 가리키도록 1회 이전.
+    # 어드민 토큰이 있어야 사용자 목록을 받을 수 있어 로그인 직후에 시도한다.
+    try:
+        from engine.auth.migrate_ids import migrate_if_possible
+        _m = migrate_if_possible()
+        if _m.get("remapped"):
+            print("[auth] 사용자 id 이전:", _m)
+    except Exception:
+        pass
+
+    resp = make_response(jsonify({"ok": True, "user": user}))
+    set_session_cookie(resp, browser_token)
     return resp
 
 
 @app.route("/api/auth/logout", methods=["POST"])
 def api_auth_logout():
-    from engine.auth import delete_session
-    token = request.cookies.get(COOKIE_NAME)
-    if token:
-        delete_session(token)
+    """이 브라우저만 로그아웃. 다른 기기 세션은 건드리지 않는다."""
+    from engine.auth import session_store
+    from engine.auth_remote import logout_token
+    browser_token = request.cookies.get(COOKIE_NAME) or ""
+    central = session_store.central_token(browser_token)
+    session_store.drop(browser_token)
+    if central:
+        try:
+            logout_token(central)
+        except Exception:
+            pass
+    _auth_invalidate(central)
     resp = make_response(jsonify({"ok": True}))
     clear_session_cookie(resp)
+    return resp
+
+
+# ── QR 일회용 로그인 (폰에서 스캔) ──────────────────────────────
+@app.route("/api/auth/qr_token", methods=["POST"])
+@require_auth
+def api_auth_qr_token():
+    """현재 로그인된 브라우저의 세션을 폰으로 옮기는 일회용 토큰."""
+    from engine.auth.qr_token import issue
+    return jsonify(issue(g.user["id"]))
+
+
+@app.route("/qr_login")
+def qr_login():
+    """
+    QR 자동 로그인 — 일회용 토큰을 이 기기의 세션 쿠키로 바꾼다.
+
+    QR 을 만든 브라우저의 중앙 토큰을 그대로 물려받는다. 중앙 서버에
+    다시 로그인할 필요가 없다(비밀번호를 폰에 입력하지 않아도 된다).
+    """
+    from flask import redirect
+    from engine.auth.qr_token import consume
+    from engine.auth import session_store
+
+    token = (request.args.get("token") or "").strip()
+    if not token:
+        return redirect("/?qr_error=no_token")
+    user_id = consume(token)
+    if not user_id:
+        return redirect("/?qr_error=invalid_or_expired")
+
+    # 그 사용자의 살아 있는 브라우저 세션에서 중앙 토큰을 빌려 온다
+    central = None
+    user = {}
+    try:
+        from engine.auth_remote import load_session
+        sess = load_session()
+        if sess.get("token") and (sess.get("user") or {}).get("id") == user_id:
+            central = sess["token"]
+            user = sess.get("user") or {}
+    except Exception:
+        pass
+    if not central:
+        return redirect("/?qr_error=no_central_session")
+
+    device = (request.headers.get("User-Agent") or "")[:80]
+    browser_token = session_store.create(central, user, device=device)
+    resp = make_response(redirect("/"))
+    set_session_cookie(resp, browser_token)
     return resp
 
 
@@ -821,176 +913,130 @@ def api_auth_logout():
 def api_auth_me():
     if not getattr(g, "user", None):
         return jsonify({"authenticated": False})
-    from engine.auth import check_claude_quota, get_main_pc, get_user_by_id
     u = g.user
-    quota = check_claude_quota(u["id"], limit=10)
-    main_pc = get_main_pc(u["id"])
-    # 닉네임 — DB에서 직접 fetch (session row에는 없음)
-    full = get_user_by_id(u["id"]) or {}
-    nickname = full.get("nickname") or u["username"]
+    # Claude 사용 쿼터는 이 PC 기준으로 센다(엔진이 로컬에서 돈다)
+    quota = {}
+    try:
+        from engine.auth import check_claude_quota
+        quota = check_claude_quota(u.get("id"), limit=10)
+    except Exception:
+        pass
+    main_pc = {}
+    try:
+        from engine.auth_remote import pc_status
+        st = pc_status()
+        if st.get("ok"):
+            main_pc = st.get("pc") or {}
+    except Exception:
+        pass
     return jsonify({
         "authenticated": True,
         "user": {
-            "id": u["id"], "username": u["username"],
-            "nickname": nickname,
-            "role": u["role"], "status": u["status"],
+            "id": u.get("id"),
+            "username": u.get("username"),
+            "nickname": u.get("nickname") or u.get("username"),
+            "role": u.get("role", "user"),
+            "status": u.get("status", "active"),
         },
         "claude_quota": quota,
         "main_pc": main_pc,
     })
 
 
-# ── API: QR 일회용 로그인 토큰 ──────────────────────────────────
-@app.route("/api/auth/qr_token", methods=["POST"])
-@require_auth
-def api_auth_qr_token():
-    """현재 로그인된 사용자용 일회용 QR 토큰 발급 (5분 TTL)."""
-    from engine.auth.qr_token import issue
-    r = issue(g.user["id"])
-    return jsonify(r)
-
-
-@app.route("/qr_login")
-def qr_login():
-    """QR 자동로그인 — 토큰 검증 → 세션 쿠키 → /."""
-    from engine.auth.qr_token import consume
-    from engine.auth import create_session, get_user_by_id
-    from flask import redirect
-    token = (request.args.get("token") or "").strip()
-    print(f"[QR_LOGIN] token={token[:10]}... len={len(token)}")
-    if not token:
-        return redirect("/?qr_error=no_token")
-    user_id = consume(token)
-    if not user_id:
-        print(f"[QR_LOGIN] consume failed (만료 또는 사용됨)")
-        return redirect("/?qr_error=invalid_or_expired")
-    print(f"[QR_LOGIN] user_id={user_id}")
-    u = get_user_by_id(user_id)
-    if not u or u.get("status") != "active":
-        return redirect("/?qr_error=inactive_user")
-    device = (request.headers.get("User-Agent") or "")[:80]
-    sess_token = create_session(user_id, device_label=device)
-    resp = make_response(redirect("/"))
-    set_session_cookie(resp, sess_token)
-    return resp
-
-
-# ── API: 어드민 (가입 승인/거부, 사용자 목록) ───────────────────
+# ── 어드민 — 중앙 서버의 사용자 관리 ────────────────────────────
 @app.route("/api/admin/users")
 @require_admin
 def api_admin_users():
-    from engine.auth import list_all_users
-    return jsonify({"users": list_all_users()})
+    from engine.auth_remote import admin_users
+    return jsonify(admin_users())
 
 
 @app.route("/api/admin/pending")
 @require_admin
 def api_admin_pending():
-    from engine.auth import list_pending_users
-    return jsonify({"users": list_pending_users()})
+    from engine.auth_remote import admin_users
+    r = admin_users()
+    users = [u for u in (r.get("users") or [])
+             if u.get("status") == "pending"]
+    return jsonify({"users": users})
 
 
 @app.route("/api/admin/approve", methods=["POST"])
 @require_admin
 def api_admin_approve():
-    from engine.auth import approve_user
-    data = request.get_json(force=True, silent=True) or {}
-    user_id = int(data.get("user_id") or 0)
-    if not user_id:
+    from engine.auth_remote import admin_approve
+    d = request.get_json(force=True, silent=True) or {}
+    uid = int(d.get("user_id") or 0)
+    if not uid:
         return jsonify({"ok": False, "error": "user_id 필요"}), 400
-    return jsonify(approve_user(user_id, approver_id=g.user["id"]))
+    return jsonify(admin_approve(uid))
 
 
 @app.route("/api/admin/reject", methods=["POST"])
 @require_admin
 def api_admin_reject():
-    from engine.auth import reject_user
-    data = request.get_json(force=True, silent=True) or {}
-    user_id = int(data.get("user_id") or 0)
-    if not user_id:
+    from engine.auth_remote import admin_reject
+    d = request.get_json(force=True, silent=True) or {}
+    uid = int(d.get("user_id") or 0)
+    if not uid:
         return jsonify({"ok": False, "error": "user_id 필요"}), 400
-    if user_id == g.user["id"]:
+    if uid == g.user.get("id"):
         return jsonify({"ok": False,
                         "error": "본인 계정은 거부할 수 없습니다."}), 400
-    return jsonify(reject_user(user_id))
+    return jsonify(admin_reject(uid))
 
 
 @app.route("/api/admin/reset_quota", methods=["POST"])
 @require_admin
 def api_admin_reset_quota():
+    """
+    Claude 사용 쿼터 초기화.
+
+    쿼터는 중앙 서버가 아니라 **이 PC** 가 센다(LLM 호출이 여기서 난다).
+    그래서 계정이 중앙으로 옮겨간 뒤에도 이 엔드포인트는 로컬이다.
+    """
     from engine.auth import reset_claude_quota
-    data = request.get_json(force=True, silent=True) or {}
-    user_id = int(data.get("user_id") or 0)
-    if not user_id:
+    d = request.get_json(force=True, silent=True) or {}
+    uid = int(d.get("user_id") or 0)
+    if not uid:
         return jsonify({"ok": False, "error": "user_id 필요"}), 400
-    reset_claude_quota(user_id)
+    reset_claude_quota(uid)
     return jsonify({"ok": True})
 
 
 @app.route("/api/admin/stats")
 @require_admin
 def api_admin_stats():
-    """C6: 어드민 사용자 통계 — 사용량/로그인/활동 요약."""
-    from engine.auth import list_all_users
-    from engine.auth.store import _conn
-    users = list_all_users()
-    total = len(users)
-    active = sum(1 for u in users if u.get("status") == "active")
-    pending = sum(1 for u in users if u.get("status") == "pending")
-    rejected = sum(1 for u in users if u.get("status") == "rejected")
-    # 활성 세션 (현재 로그인 중)
-    try:
-        live_sessions = _conn().execute(
-            "SELECT COUNT(DISTINCT user_id) AS n FROM sessions "
-            "WHERE datetime(expires_at) > datetime('now')").fetchone()
-        live = int(live_sessions["n"]) if live_sessions else 0
-    except Exception:
-        live = 0
-    # 최근 24시간 가입
-    try:
-        recent_signup = _conn().execute(
-            "SELECT COUNT(*) AS n FROM users "
-            "WHERE datetime(created_at) > datetime('now','-1 day')"
-        ).fetchone()
-        signup_24h = int(recent_signup["n"]) if recent_signup else 0
-    except Exception:
-        signup_24h = 0
-    # 사용자별 디테일 (Claude 사용 + 로그인)
-    detail = []
-    for u in users:
-        detail.append({
-            "id": u["id"],
-            "username": u.get("username", ""),
-            "nickname": u.get("nickname") or u.get("username", ""),
-            "role": u.get("role", "user"),
-            "status": u.get("status", ""),
-            "created_at": u.get("created_at", ""),
-            "approved_at": u.get("approved_at", ""),
-            "last_login_at": u.get("last_login_at", ""),
-            "login_count": u.get("login_count", 0) or 0,
-            "claude_used": u.get("claude_used", 0) or 0,
-            "claude_quota_date": u.get("claude_quota_date", ""),
-            "main_pc_label": u.get("main_pc_label", ""),
-            "main_pc_last_seen": u.get("main_pc_last_seen", ""),
-        })
-    # Top Claude 사용자 (오늘)
-    top_claude = sorted(detail,
-                         key=lambda x: x["claude_used"], reverse=True)[:5]
-    # Top 로그인 사용자
-    top_login = sorted(detail,
-                        key=lambda x: x["login_count"], reverse=True)[:5]
+    """중앙 서버 사용자 목록을 요약해서 돌려준다."""
+    from engine.auth_remote import admin_users
+    users = (admin_users() or {}).get("users") or []
+    def cnt(st):
+        return sum(1 for u in users if u.get("status") == st)
+    detail = [{
+        "id": u.get("id"),
+        "username": u.get("username", ""),
+        "nickname": u.get("nickname") or u.get("username", ""),
+        "role": u.get("role", "user"),
+        "status": u.get("status", ""),
+        "created_at": u.get("created_at", ""),
+        "approved_at": u.get("approved_at", ""),
+        "last_login_at": u.get("last_login_at", ""),
+        "login_count": u.get("login_count", 0) or 0,
+        "claude_used": u.get("claude_used", 0) or 0,
+        "claude_quota_date": u.get("claude_quota_date", ""),
+    } for u in users]
     return jsonify({
         "summary": {
-            "total_users": total,
-            "active_users": active,
-            "pending_users": pending,
-            "rejected_users": rejected,
-            "live_sessions": live,
-            "new_users_24h": signup_24h,
+            "total_users": len(users),
+            "active_users": cnt("active"),
+            "pending_users": cnt("pending"),
+            "rejected_users": cnt("rejected"),
         },
         "users": detail,
-        "top_claude_today": top_claude,
-        "top_login": top_login,
+        "top_login": sorted(detail, key=lambda x: x["login_count"],
+                            reverse=True)[:5],
+        "top_claude_today": sorted(detail, key=lambda x: x["claude_used"],
+                                   reverse=True)[:5],
     })
 
 

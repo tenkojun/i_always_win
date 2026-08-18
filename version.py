@@ -7,13 +7,19 @@ I ALWAYS WIN — 버전 단일 소스(single source of truth).
 """
 from __future__ import annotations
 
-__version__ = "2.9.0"
+__version__ = "2.10.0"
 
 APP_NAME = "I ALWAYS WIN"
 APP_SLUG = "i_always_win"
 APP_TAGLINE = "기관급 퀀트 분석 터미널"
 DEVELOPER = "Tenko jun - 정준화"
 REPO_URL = "https://github.com/tenkojun/i_always_win"
+
+# 기본 중앙 인증 서버 (Cloudflare Workers + D1).
+# 별도 설정을 하지 않으면 앱은 이 서버로 로그인한다 — 배포본을 받은
+# 사람이 URL 을 몰라도 바로 쓸 수 있게. 자기 서버를 쓰려면
+# 설정 → 중앙 인증에서 주소를 덮어쓰면 된다.
+DEFAULT_AUTH_SERVER = "https://iaw-auth.tenkojun.workers.dev"
 
 
 def version_tuple() -> tuple[int, ...]:
@@ -30,4 +36,5 @@ def build_info() -> dict:
         "version": __version__,
         "developer": DEVELOPER,
         "repo": REPO_URL,
+        "default_auth_server": DEFAULT_AUTH_SERVER,
     }

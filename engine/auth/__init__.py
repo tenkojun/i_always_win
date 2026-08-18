@@ -12,8 +12,9 @@ users     : id, username, password_hash, salt, status, role,
             created_at, approved_at, approved_by
 sessions  : token, user_id, created_at, expires_at, device_label
 
-초기 어드민(첫 실행 시 자동 seed): JUNHWA / 무작위 16자
-(비밀번호는 .data/ADMIN_PASSWORD.txt 와 콘솔에 1회 표시)
+계정은 이 DB 에 없다 — 신원은 중앙 서버(Cloudflare Workers + D1)가
+정한다. 여기 남는 것은 커뮤니티·분석 이력·보유 종목 같은 이 PC 의
+데이터와, Claude 사용 쿼터처럼 로컬에서 세는 값뿐이다.
 """
 from .store import (
     init_db, create_user, get_user_by_name, get_user_by_id,
