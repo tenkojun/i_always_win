@@ -243,7 +243,6 @@ HEDGE_INSTRUMENTS = {
     "smb": "IWM/SPY 스프레드",
     "hml": "IWD/IWF 스프레드",
     "rmw": "QUAL",
-    "cma": "SPY",
     "umd": "MTUM",
     "real_yield_10y": "TIP / 10y TIPS 선물",
     "nominal_10y": "TLT / ZN 선물",

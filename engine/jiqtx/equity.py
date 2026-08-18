@@ -235,8 +235,16 @@ def extract_fundamentals(meta: Dict) -> Fundamentals:
     rev = _g(meta, "totalRevenue")
     ebitda = _g(meta, "ebitda")
     fcf = _g(meta, "freeCashflow")
+    # yfinance 는 dividendYield 를 **퍼센트 숫자**로 준다.
+    #   AAPL 0.35 (=0.35%) · KO 2.44 (=2.44%) · PFE 6.4 (=6.4%)
+    # 예전 버전은 분수(0.0035)로 줬다.
+    #
+    # 예전 코드는 `dy > 1.0` 일 때만 100 으로 나눴다. 그래서 1% 미만
+    # 배당주가 그대로 통과해 AAPL 0.35 → 35%, NVDA 0.44 → 44% 로 읽혔고,
+    # **애플·엔비디아가 '배당 인컴주'로 분류**됐다.
+    # 배당수익률이 25% 를 넘는 정상 종목은 없으므로 그 위는 퍼센트로 본다.
     dy = _g(meta, "dividendYield", default=0.0)
-    if np.isfinite(dy) and dy > 1.0:          # yfinance가 % 로 주는 경우
+    if np.isfinite(dy) and dy > 0.25:
         dy = dy / 100.0
     rg = _g(meta, "revenueGrowth")
     om = _g(meta, "operatingMargins")
@@ -397,7 +405,7 @@ def earnings_event_study(ticker: str, prices: pd.Series,
 def style_tilt(r_asset: np.ndarray, F: pd.DataFrame, ann: int = 252
                ) -> Optional[StyleTilt]:
     """스타일 로딩 + 고유변동성 + 잔차 모멘텀(Blitz-Huij-Martens)."""
-    cols = [c for c in ("mkt_excess", "smb", "hml", "rmw", "cma", "umd")
+    cols = [c for c in ("mkt_excess", "smb", "hml", "rmw", "umd")
             if c in F.columns]
     if len(cols) < 2:
         return None

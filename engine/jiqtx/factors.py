@@ -37,6 +37,7 @@ except Exception:                                   # pragma: no cover
     _HAS_SK = False
 
 # ── 패키지 내부 의존 ──────────────────────────────────────────
+from .config import FACTOR_LEGS
 from .statcore import newey_west_se, quantile_regression, tail_dependence
 
 
@@ -59,10 +60,34 @@ def build_factor_panel(index: pd.DatetimeIndex,
                   "hy_oas", "ig_oas", "vix", "gpr"}
     logret = {"broad_dollar", "wti", "eurusd"}
 
+    def _ret(ticker):
+        """티커 종가 → 로그수익률. 없으면 None."""
+        s = proxy_prices.get(ticker)
+        if s is None:
+            return None
+        s = s.reindex(index).ffill().astype(float)
+        return np.log(s.where(s > 0)).diff()
+
     for f in wanted:
+        # (1) 팩터명으로 시세가 바로 주어진 경우 — 합성 데이터/검증 스위트
         if f in proxy_prices and proxy_prices[f] is not None:
             s = proxy_prices[f].reindex(index).ffill().astype(float)
-            out[f] = np.log(s).diff()
+            out[f] = np.log(s.where(s > 0)).diff()
+        # (2) 롱숏 다리로 정의된 팩터 — 실제 운용 경로
+        elif f in FACTOR_LEGS:
+            long_tk, short_tk = FACTOR_LEGS[f]
+            rl = _ret(long_tk)
+            if rl is None:
+                continue
+            if short_tk is None:
+                out[f] = rl
+            else:
+                rs = _ret(short_tk)
+                # 숏 다리를 못 구하면 스프레드가 아니라 롱온리가 된다.
+                # 그건 이 팩터를 시장으로 만드는 짓이라, 차라리 빼는 게 낫다.
+                if rs is None:
+                    continue
+                out[f] = rl - rs
         elif macro is not None and f in macro.columns:
             s = macro[f].reindex(index).ffill().astype(float)
             if f in logret:

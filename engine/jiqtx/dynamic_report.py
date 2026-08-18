@@ -33,6 +33,9 @@ import pandas as pd
 
 # ── 패키지 내부 의존 ──────────────────────────────────────────
 from . import charts as ch
+from .glossary import TERMS as _TERMS
+from .glossary import build_css as _tip_css
+from .glossary import build_js as _tip_js
 
 
 
@@ -1774,6 +1777,16 @@ def build_sections(a) -> List[Section]:
     return sorted(out, key=lambda s: s.priority)
 
 
+def _tip_script() -> str:
+    """용어 사전을 JSON 으로 넣은 툴팁 스크립트."""
+    import json as _json
+    payload = _json.dumps({k: list(v) for k, v in _TERMS.items()},
+                          ensure_ascii=False)
+    # </script> 가 문자열 안에 들어가면 스크립트가 조기 종료된다
+    payload = payload.replace("</", "<\\/")
+    return _tip_js().replace("__TERMS_JSON__", payload)
+
+
 def render_html(a) -> str:
     secs = build_sections(a)
     for x in secs:
@@ -1841,7 +1854,7 @@ def render_html(a) -> str:
     skipped = [x.title for x in REGISTRY if x not in secs]
     return f"""<!DOCTYPE html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{E(a.ticker)} — I ALWAYS WIN</title><style>{CSS}</style></head><body>
+<title>{E(a.ticker)} — I ALWAYS WIN</title><style>{CSS}{_tip_css()}</style></head><body>
 <div class="topbar"><span class="tb-t">{E(a.ticker)}</span>
 <span class="tb-g">{E(v.grade)}</span>
 <span class="tb-s">{E(cls.spec.label_ko)}</span>
@@ -1857,7 +1870,8 @@ def render_html(a) -> str:
 <p>활성 섹션 {len(secs)} / 전체 {len(REGISTRY)}.
 이 자산에 해당하지 않아 생략: {E(', '.join(skipped)) or '없음'}</p>
 <p>{E(a.verdict.disclaimer)}</p>
-</footer></div><script>{JS}</script></body></html>"""
+</footer></div><script>{JS}
+{_tip_script()}</script></body></html>"""
 
 
 def save_html(a, path: str) -> str:

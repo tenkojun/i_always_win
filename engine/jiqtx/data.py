@@ -238,10 +238,34 @@ def load_prices(ticker: str, years: int = 8, use_cache: bool = True,
     meta: Dict = {}
     try:
         info = t.get_info()
-        for k in ("quoteType", "sector", "industry", "category", "longName",
-                  "shortName", "longBusinessSummary", "dividendYield",
-                  "marketCap", "currency", "exchange", "fundFamily",
-                  "beta", "trailingPE", "totalAssets"):
+        # 이 목록이 좁으면 주식 아키타입 판정기가 굶는다.
+        # 예전에는 14개만 통과시켜 펀더멘털이 25개 중 6개만 채워졌고,
+        # 그 결과 **모든 주식이 항상 '미분류'** 로 떨어졌다(점수가 임계
+        # 미달). 9종 아키타입이 준비돼 있어도 한 번도 쓰이지 못했다.
+        # extract_fundamentals() 가 읽는 키를 전부 통과시킨다.
+        for k in (
+            # 식별 · 분류
+            "quoteType", "sector", "industry", "category", "longName",
+            "shortName", "longBusinessSummary", "currency", "exchange",
+            "fundFamily", "totalAssets",
+            # 규모 · 밸류에이션
+            "marketCap", "enterpriseValue", "trailingPE", "forwardPE",
+            "priceToBook", "enterpriseToEbitda", "enterpriseToRevenue",
+            "priceToSalesTrailing12Months",
+            # 수익성 · 효율
+            "profitMargins", "operatingMargins", "grossMargins",
+            "returnOnEquity", "returnOnAssets", "ebitda", "totalRevenue",
+            # 성장
+            "revenueGrowth", "earningsGrowth", "earningsQuarterlyGrowth",
+            # 재무구조 · 현금
+            "debtToEquity", "currentRatio", "quickRatio",
+            "totalCash", "totalDebt", "freeCashflow", "operatingCashflow",
+            # 배당
+            "dividendYield", "payoutRatio", "fiveYearAvgDividendYield",
+            # 시장 구조
+            "beta", "shortPercentOfFloat", "heldPercentInstitutions",
+            "floatShares", "sharesOutstanding",
+        ):
             if k in info:
                 meta[k] = info[k]
     except Exception as e:

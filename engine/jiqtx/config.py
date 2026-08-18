@@ -13,7 +13,7 @@ jiqtx.config — 자산군 정의, 팩터 사전(prior), 게이트 임계치.
 3. 스트레스 시나리오는 '주식 베타 × 지수충격'이 아니라 자산군 고유 리스크팩터 충격이다.
 """
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------- 매크로 시리즈
 # FRED 시리즈 ID -> 내부 팩터명. 무료·무인증 CSV 엔드포인트로 수집 가능.
@@ -55,7 +55,8 @@ class AssetClassSpec:
     needs_roll_model: bool = False        # 선물 롤 수익 분해 필요
 
 
-_EQ_CORE = ["mkt_excess", "smb", "hml", "rmw", "cma", "umd"]
+# CMA 제외 — 쓸 만한 롱숏 프록시가 없다 (위 FACTOR_LEGS 주석 참조)
+_EQ_CORE = ["mkt_excess", "smb", "hml", "rmw", "umd"]
 
 ASSET_CLASSES: Dict[str, AssetClassSpec] = {
 
@@ -236,16 +237,35 @@ ASSET_CLASSES: Dict[str, AssetClassSpec] = {
 }
 
 # 팩터 프록시 티커 (FRED로 못 얻는 것). 사용자가 교체 가능.
-PROXY_TICKERS: Dict[str, str] = {
-    "mkt_excess": "SPY",
-    "smb":        "IWM",     # 근사: 소형/대형. 정식은 Ken French 라이브러리 권장
-    "hml":        "IWD",
-    "rmw":        "QUAL",
-    "cma":        "SPY",
-    "umd":        "MTUM",
-    "crypto_mkt": "BTC-USD",
-    "gpr":        None,      # Iacoviello GPR 지수 CSV 별도 로드
+# ---------------------------------------------------------------- 팩터 다리
+#
+# 팩터는 **롱숏 스프레드**다. 롱온리 ETF 수익률을 그대로 팩터로 쓰면
+# 전부 시장 하나가 된다. 실측하면 이렇게 나온다(8년, SPY 대비 R²):
+#     cma(SPY)  100.0%   rmw(QUAL) 96.6%   hml(IWD) 85.2%
+#     umd(MTUM)  76.8%   smb(IWM)  75.5%
+# 설계행렬이 특이행렬에 가까워져 회귀계수는 시장 베타를 임의로 쪼갠 값이
+# 되고, 그 위에 얹힌 시나리오·델타패널·스트레스·헤지비율이 전부 무의미해진다.
+# (애플의 가치(HML) 베타가 +1.0 으로 나오던 원인이 이것이다.)
+#
+# 그래서 (롱, 숏) 다리로 정의하고 수익률 차이를 팩터로 쓴다.
+# CMA(보수적 투자)는 무료로 쓸 만한 롱숏 프록시가 없어 제외한다 —
+# 없는 팩터를 SPY 로 채우느니 빼는 게 낫다.
+FACTOR_LEGS: Dict[str, Tuple[str, Optional[str]]] = {
+    "mkt_excess": ("SPY",     None),      # 시장 (초과수익 근사)
+    "smb":        ("IWM",     "SPY"),     # 소형 − 대형
+    "hml":        ("IWD",     "IWF"),     # 가치 − 성장
+    "rmw":        ("QUAL",    "SPY"),     # 퀄리티 − 시장
+    "umd":        ("MTUM",    "SPY"),     # 모멘텀 − 시장
+    "crypto_mkt": ("BTC-USD", None),
 }
+
+# 실제로 내려받아야 할 티커 목록 (중복 제거)
+PROXY_UNIVERSE: List[str] = sorted(
+    {t for legs in FACTOR_LEGS.values() for t in legs if t})
+
+# load_proxies 는 {키: 티커} 를 받아 {키: 시세} 를 준다.
+# 이제 키를 팩터명이 아니라 **티커**로 둔다(한 티커가 여러 팩터의 다리다).
+PROXY_TICKERS: Dict[str, str] = {t: t for t in PROXY_UNIVERSE}
 
 # ---------------------------------------------------------------- 하드 게이트
 
