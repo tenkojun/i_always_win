@@ -36,8 +36,7 @@ _ENV_MAP = {
     "anthropic": "ANTHROPIC_API_KEY",
 }
 
-_CONFIG_DIR = Path(os.path.expanduser("~")) / ".jiqt"
-_CONFIG_FILE = _CONFIG_DIR / "keys.json"
+from engine.paths import DATA_DIR as _CONFIG_DIR, KEYS_FILE as _CONFIG_FILE
 
 
 def _load_file_keys() -> Dict[str, str]:

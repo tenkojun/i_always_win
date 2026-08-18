@@ -11,8 +11,8 @@ from typing import Any, Dict, Optional
 import requests
 
 
-_JIQT_HOME = Path.home() / ".jiqt"
-_JIQT_HOME.mkdir(exist_ok=True)
+from engine.paths import DATA_DIR as _JIQT_HOME, ensure_dirs as _ensure_dirs
+_ensure_dirs()
 _CFG_FILE = _JIQT_HOME / "auth_remote.json"
 _SESSION_FILE = _JIQT_HOME / "session.json"
 

@@ -1,13 +1,51 @@
+# -*- coding: utf-8 -*-
 """
-종목 단/중/장 + 기관급 분석 엔진
-==================================
-주요 임포트 진입점.
-"""
-from engine.data.loader import load_ticker, synthetic_ohlcv
-from engine.analysis.timeframe import analyze_ticker, DEFAULT_TIMEFRAMES
-from engine.institutional import (
-    mc_by_timeframe, factor_risk_decomposition,
-    stress_test, wealth_projection, risk_budget, build_scorecard,
-)
+I ALWAYS WIN — 분석 엔진 패키지
+================================
+주요 진입점을 **지연 임포트**로 노출한다.
 
-__version__ = "2.0.0-kr-institutional"
+무거운 임포트를 모듈 최상단에서 하면
+``from engine.paths import DATA_DIR`` 같은 가벼운 사용조차
+scikit-learn·torch 전체를 끌고 오고, 선택적 의존성이 하나라도
+빠지면 패키지 전체가 임포트 불가가 된다.
+PEP 562 ``__getattr__`` 로 실제 접근 시점까지 미룬다.
+"""
+from __future__ import annotations
+
+import importlib
+from typing import Any
+
+try:
+    from version import __version__  # 저장소 루트의 단일 버전 소스
+except Exception:  # pragma: no cover - 얼린 환경 등
+    __version__ = "0.0.0"
+
+# 공개 이름 → (모듈 경로, 모듈 내 이름)
+_LAZY: dict[str, tuple[str, str]] = {
+    "load_ticker":               ("engine.data.loader", "load_ticker"),
+    "synthetic_ohlcv":           ("engine.data.loader", "synthetic_ohlcv"),
+    "analyze_ticker":            ("engine.analysis.timeframe", "analyze_ticker"),
+    "DEFAULT_TIMEFRAMES":        ("engine.analysis.timeframe", "DEFAULT_TIMEFRAMES"),
+    "mc_by_timeframe":           ("engine.institutional", "mc_by_timeframe"),
+    "factor_risk_decomposition": ("engine.institutional", "factor_risk_decomposition"),
+    "stress_test":               ("engine.institutional", "stress_test"),
+    "wealth_projection":         ("engine.institutional", "wealth_projection"),
+    "risk_budget":               ("engine.institutional", "risk_budget"),
+    "build_scorecard":           ("engine.institutional", "build_scorecard"),
+}
+
+__all__ = ["__version__", *_LAZY]
+
+
+def __getattr__(name: str) -> Any:
+    try:
+        mod_path, attr = _LAZY[name]
+    except KeyError:
+        raise AttributeError(f"module 'engine' has no attribute {name!r}") from None
+    value = getattr(importlib.import_module(mod_path), attr)
+    globals()[name] = value  # 두 번째부터는 캐시된 값
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)

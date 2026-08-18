@@ -14,7 +14,7 @@ import secrets
 import socket
 from pathlib import Path
 
-_ID_PATH = Path(os.path.expanduser("~")) / ".jiqt" / "pc_id"
+from engine.paths import PC_ID_FILE as _ID_PATH
 
 
 def get_pc_id() -> str:

@@ -21,8 +21,7 @@ ADMIN_USERNAME = "JUNHWA"
 ADMIN_PASSWORD = "WNSGHK"
 
 # ── DB 파일 경로 ─────────────────────────────────────────────────
-_DB_DIR = Path(os.path.expanduser("~")) / ".jiqt"
-_DB_PATH = _DB_DIR / "auth.db"
+from engine.paths import DATA_DIR as _DB_DIR, AUTH_DB as _DB_PATH
 
 # SQLite는 멀티스레드에서 단일 connection 공유 시 안전하지 않음 → Lock
 _LOCK = threading.RLock()

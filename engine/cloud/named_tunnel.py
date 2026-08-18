@@ -24,8 +24,8 @@ from . import cf_api
 from . import tunnel as _quick_tunnel  # find_cloudflared, _bin_local 등 재사용
 
 
-_JIQT_HOME = Path.home() / ".jiqt"
-_JIQT_HOME.mkdir(exist_ok=True)
+from engine.paths import DATA_DIR as _JIQT_HOME, ensure_dirs as _ensure_dirs
+_ensure_dirs()
 _CONF_FILE = _JIQT_HOME / "cloud_named.json"
 
 _LOCK = threading.RLock()

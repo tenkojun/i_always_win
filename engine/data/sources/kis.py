@@ -26,8 +26,8 @@ import requests
 
 
 # ── 키 저장 경로 ──────────────────────────────────────────────
-_HOME = Path.home() / ".jiqt"
-_HOME.mkdir(parents=True, exist_ok=True)
+from engine.paths import DATA_DIR as _HOME, ensure_dirs as _ensure_dirs
+_ensure_dirs()
 _KEY_PATH = _HOME / "kis_keys.json"
 _TOKEN_PATH = _HOME / "kis_tokens.json"
 

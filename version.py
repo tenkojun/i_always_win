@@ -7,7 +7,7 @@ I ALWAYS WIN — 버전 단일 소스(single source of truth).
 """
 from __future__ import annotations
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 APP_NAME = "I ALWAYS WIN"
 APP_SLUG = "i_always_win"

@@ -24,7 +24,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-_BASE = Path(os.path.expanduser("~")) / ".jiqt" / "chats"
+from engine.paths import CHATS_DIR as _BASE
 _LOCK = threading.Lock()
 
 

@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 # ── 경로 ─────────────────────────────────────────────────────────
-_BIN_DIR = Path(os.path.expanduser("~")) / ".jiqt" / "bin"
+from engine.paths import BIN_DIR as _BIN_DIR
 _BIN_PATH_WIN = _BIN_DIR / "cloudflared.exe"
 _BIN_PATH_NIX = _BIN_DIR / "cloudflared"
 

@@ -48,6 +48,16 @@ _STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 _REPORTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
 os.makedirs(_REPORTS, exist_ok=True)
 
+# ── 런타임 데이터 경로 준비 ──────────────────────────────────────
+# 모든 상태(키·인증 DB·채팅·바이너리)는 앱 폴더 안 .data/ 한 곳에 모은다.
+# 예전 ~/.jiqt 에 남아 있던 내용은 첫 실행 시 한 번만 옮겨 온다.
+from engine.paths import ensure_dirs as _ensure_dirs, migrate_legacy as _migrate
+
+_ensure_dirs()
+_moved = _migrate()
+if _moved:
+    print("[paths] 이전 설치본에서 이전 완료:", ", ".join(_moved))
+
 app = Flask(__name__, static_folder=None)
 
 # ── 인증 시스템 초기화 (어드민 seed 포함) ────────────────────────
