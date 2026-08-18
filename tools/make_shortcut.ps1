@@ -1,4 +1,4 @@
-# I ALWAYS WIN — 바탕화면 바로가기 생성
+﻿# I ALWAYS WIN — 바탕화면 바로가기 생성
 # =====================================
 # 사용법:  powershell -ExecutionPolicy Bypass -File tools\make_shortcut.ps1
 #
