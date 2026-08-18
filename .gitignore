@@ -1,0 +1,50 @@
+# ─── 비밀 (절대 커밋 금지) ────────────────────────────────
+keys.json
+*.key
+*.pem
+secrets.json
+.env
+.env.*
+.dev.vars
+
+# ─── 런타임 데이터 (앱이 생성) ────────────────────────────
+.data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+pc_id
+
+# ─── 대용량 외부 자산 (앱이 자동 내려받음) ────────────────
+.data/bin/
+.data/kronos/
+*.exe
+!installer/*.exe
+
+# ─── 빌드 산출물 ──────────────────────────────────────────
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ─── 생성 리포트 / 캐시 ───────────────────────────────────
+report_out/
+webapp/reports/*
+!webapp/reports/.gitkeep
+cache/
+*.parquet
+*.pkl
+
+# ─── 노드 ─────────────────────────────────────────────────
+node_modules/
+.wrangler/
+
+# ─── OS / 에디터 ──────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

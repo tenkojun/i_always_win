@@ -1,0 +1,15 @@
+{
+  "name": "jiqt-auth-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "db:init": "wrangler d1 execute jiqt-auth --file=migrations/0001_init.sql",
+    "db:init:local": "wrangler d1 execute jiqt-auth --local --file=migrations/0001_init.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}
