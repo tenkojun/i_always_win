@@ -144,78 +144,14 @@
       rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 3px);
     mix-blend-mode:multiply; opacity:.5;
   }
-  /* ── 특이 테마 배경 애니메이션 ── */
-  /* ❄ snow: 흩날리는 눈 */
-  @keyframes snowFall{
-    0%  {transform:translateY(-10vh) translateX(0)}
-    100%{transform:translateY(110vh) translateX(20px)}
-  }
-  :root[data-theme="snow"] body::after{
-    background:
-      radial-gradient(circle 2px at 10% 5%, #fff 0, transparent 100%),
-      radial-gradient(circle 2px at 30% 15%, #fff 0, transparent 100%),
-      radial-gradient(circle 1px at 50% 25%, #fff 0, transparent 100%),
-      radial-gradient(circle 2px at 70% 35%, #fff 0, transparent 100%),
-      radial-gradient(circle 1px at 90% 45%, #fff 0, transparent 100%),
-      radial-gradient(circle 2px at 15% 55%, #fff 0, transparent 100%),
-      radial-gradient(circle 1px at 35% 65%, #fff 0, transparent 100%),
-      radial-gradient(circle 2px at 55% 75%, #fff 0, transparent 100%),
-      radial-gradient(circle 1px at 75% 85%, #fff 0, transparent 100%),
-      radial-gradient(circle 2px at 95% 95%, #fff 0, transparent 100%);
-    animation:snowFall 8s linear infinite;
-    opacity:.6;
-  }
-  /* 🌸 sakura: 흩날리는 꽃잎 */
-  @keyframes sakuraFall{
-    0%  {transform:translateY(-10vh) rotate(0deg)}
-    100%{transform:translateY(110vh) rotate(360deg)}
-  }
-  :root[data-theme="sakura"] body::after{
-    background:
-      radial-gradient(circle 3px at 8% 8%, #ffb4cc 0, transparent 100%),
-      radial-gradient(circle 2px at 25% 18%, #ff9fc8 0, transparent 100%),
-      radial-gradient(circle 3px at 45% 28%, #ffd0e0 0, transparent 100%),
-      radial-gradient(circle 2px at 65% 38%, #ff8fb8 0, transparent 100%),
-      radial-gradient(circle 3px at 85% 48%, #ffb4cc 0, transparent 100%),
-      radial-gradient(circle 2px at 15% 58%, #ff9fc8 0, transparent 100%),
-      radial-gradient(circle 3px at 35% 68%, #ffd0e0 0, transparent 100%),
-      radial-gradient(circle 2px at 55% 78%, #ff8fb8 0, transparent 100%),
-      radial-gradient(circle 3px at 75% 88%, #ffb4cc 0, transparent 100%),
-      radial-gradient(circle 2px at 92% 98%, #ff9fc8 0, transparent 100%);
-    animation:sakuraFall 12s linear infinite;
-    opacity:.55;
-  }
-  /* 🍁 autumn: 떨어지는 낙엽 */
-  @keyframes leafFall{
-    0%  {transform:translateY(-10vh) rotate(0deg) translateX(0)}
-    50% {transform:translateY(55vh) rotate(180deg) translateX(30px)}
-    100%{transform:translateY(110vh) rotate(360deg) translateX(-30px)}
-  }
-  :root[data-theme="autumn"] body::after{
-    background:
-      radial-gradient(ellipse 4px 2px at 12% 10%, #ff9550 0, transparent 100%),
-      radial-gradient(ellipse 3px 2px at 32% 22%, #ffb480 0, transparent 100%),
-      radial-gradient(ellipse 4px 2px at 52% 33%, #ff7530 0, transparent 100%),
-      radial-gradient(ellipse 3px 2px at 72% 44%, #ffd060 0, transparent 100%),
-      radial-gradient(ellipse 4px 2px at 92% 55%, #ff9550 0, transparent 100%),
-      radial-gradient(ellipse 3px 2px at 18% 66%, #ffb480 0, transparent 100%),
-      radial-gradient(ellipse 4px 2px at 38% 77%, #ff7530 0, transparent 100%),
-      radial-gradient(ellipse 3px 2px at 58% 88%, #ffd060 0, transparent 100%);
-    animation:leafFall 14s ease-in-out infinite;
-    opacity:.5;
-  }
-  /* 🌊 ocean: 물결 펄스 */
-  @keyframes oceanWave{
-    0%, 100% {opacity:.25}
-    50%      {opacity:.55}
-  }
-  :root[data-theme="ocean"] body::after{
-    background:
-      radial-gradient(ellipse at 20% 80%, rgba(72,216,255,.15) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(72,216,255,.12) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 50%, rgba(72,216,255,.08) 0%, transparent 60%);
-    animation:oceanWave 5s ease-in-out infinite;
-  }
+  /* 테마 배경 이펙트 캔버스.
+     앱 콘텐츠(.app, z-index:1)는 패널 배경이 불투명해서, 이펙트를
+     그 아래(z-index:0)에 두면 아무것도 안 보인다. 그래서 콘텐츠 위,
+     모든 오버레이(1090+) 아래에 얹고 클릭은 통과시킨다. */
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:500;
+    display:none}
+  #fx.on{display:block}
+
   body::after{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
@@ -1567,6 +1503,7 @@
   </div>
 </div>
 
+<canvas id="fx" aria-hidden="true"></canvas>
 <div id="boot"><div class="blk">
   <!-- 여우 — 누끼딴 사진 파일 (webapp/static/fox.png) -->
   <img class="fox" src="/static/fox.png" alt="" draggable="false">
@@ -1947,6 +1884,32 @@
               <div id="custom-theme-picker" style="display:none;margin-top:14px;
                 padding:12px;border:1px dashed var(--cyan-dim);
                 background:var(--panel2)"></div>
+            </div>
+
+            <div class="set-section">
+              <div class="hd">배경 이펙트</div>
+              <div style="font-size:12px;color:var(--txt-dim);
+                line-height:1.7;margin-bottom:10px">
+                🌸 SAKURA · ❄ SNOW · 🍁 AUTUMN · 🌊 OCEAN 테마에서
+                배경에 파티클이 흩날립니다. 노트북 배터리가 아깝거나
+                화면이 산만하면 낮추세요.
+              </div>
+              <div id="fx-picker" style="display:grid;
+                grid-template-columns:repeat(4,1fr);gap:8px">
+                <button class="fsize-btn fx-btn" data-fx="0"
+                  onclick="setFxLevel(0)">끄기</button>
+                <button class="fsize-btn fx-btn" data-fx="1"
+                  onclick="setFxLevel(1)">약하게</button>
+                <button class="fsize-btn fx-btn on" data-fx="2"
+                  onclick="setFxLevel(2)">기본</button>
+                <button class="fsize-btn fx-btn" data-fx="3"
+                  onclick="setFxLevel(3)">강하게</button>
+              </div>
+              <div style="font-size:10.5px;color:var(--txt-mute);
+                margin-top:8px;line-height:1.6">
+                ・ 다른 탭으로 넘어가면 자동으로 멈춥니다<br>
+                ・ 시스템이 '동작 줄이기'로 설정돼 있으면 자동으로 꺼집니다
+              </div>
             </div>
 
             <div class="set-section">
@@ -5013,6 +4976,220 @@ function switchSetCat(cat){
   else if(cat==='info')refreshInfoPane();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   테마 배경 이펙트 — 캔버스 파티클 엔진
+
+   예전에는 body::after 에 radial-gradient 10개를 그려 통째로
+   translateY 하는 방식이었다. 문제가 셋이었다.
+     1) z-index:0 이라 불투명한 패널 뒤에 깔려 사실상 안 보였다
+     2) 입자 10개가 한 덩어리로 움직여 '흩날림'이 아니라 무늬가
+        미끄러지는 것처럼 보였다
+     3) 회전·흔들림·깊이감이 없었다
+   그래서 진짜 파티클로 바꾼다. 각 입자가 자기 속도·회전·흔들림·
+   깊이를 갖고, 꽃잎은 실제 꽃잎 모양으로 그린다.
+   ══════════════════════════════════════════════════════════════ */
+const _FX={
+  cv:null, ctx:null, raf:null, parts:[], kind:null,
+  w:0, h:0, dpr:1, last:0,
+};
+
+/* 이펙트 세기 — 0=끄기 1=약하게 2=기본 3=강하게 */
+const _FX_DENSITY=[0, 0.45, 1, 1.9];
+
+const _FX_SPEC={
+  sakura:{
+    kind:'petal', base:82,
+    colors:['#ffc2d8','#ff9fc8','#ffd9e6','#ff8fb8','#ffb4cc'],
+    size:[5,13], fall:[16,42], sway:[18,52], spin:[0.4,1.6], alpha:[.55,.95],
+  },
+  snow:{
+    kind:'flake', base:110,
+    colors:['#ffffff','#eaf4ff','#d6ebff'],
+    size:[1.2,4], fall:[14,44], sway:[8,26], spin:[0,0], alpha:[.5,.95],
+  },
+  autumn:{
+    kind:'leaf', base:58,
+    colors:['#ff9550','#ffb480','#ff7530','#ffd060','#e0642a'],
+    size:[6,15], fall:[20,52], sway:[26,70], spin:[0.5,2.0], alpha:[.5,.9],
+  },
+  ocean:{
+    kind:'bubble', base:64,
+    colors:['#48d8ff','#8ae8ff','#bff2ff'],
+    size:[2,9], fall:[-34,-12], sway:[10,34], spin:[0,0], alpha:[.22,.6],
+  },
+};
+
+function _fxRand(a,b){return a+Math.random()*(b-a);}
+
+function _fxMake(spec, h, seeded){
+  const s={
+    x: Math.random()*_FX.w,
+    y: seeded ? Math.random()*h : (spec.fall[0]<0 ? h+20 : -20),
+    r: _fxRand(spec.size[0], spec.size[1]),
+    vy: _fxRand(spec.fall[0], spec.fall[1]),
+    sway: _fxRand(spec.sway[0], spec.sway[1]),
+    phase: Math.random()*Math.PI*2,
+    swaySpd: _fxRand(0.35, 1.1),
+    rot: Math.random()*Math.PI*2,
+    spin: _fxRand(spec.spin[0], spec.spin[1])*(Math.random()<.5?-1:1),
+    color: spec.colors[(Math.random()*spec.colors.length)|0],
+    alpha: _fxRand(spec.alpha[0], spec.alpha[1]),
+  };
+  // 깊이감 — 작은 입자는 느리고 흐리게
+  const depth=(s.r-spec.size[0])/(spec.size[1]-spec.size[0]+1e-9);
+  s.vy   *= 0.55+0.65*depth;
+  s.alpha*= 0.55+0.55*depth;
+  return s;
+}
+
+/* 꽃잎 — 두 개의 2차 베지어로 만든 물방울형. flutter 로 가로 폭이
+   줄었다 늘었다 하면서 앞뒤로 뒤집히는 느낌을 낸다. */
+function _fxDrawPetal(ctx,p,flutter){
+  const r=p.r;
+  ctx.beginPath();
+  ctx.moveTo(0,-r);
+  ctx.quadraticCurveTo( r*0.95*flutter, -r*0.30,  0, r*0.85);
+  ctx.quadraticCurveTo(-r*0.95*flutter, -r*0.30,  0, -r);
+  ctx.closePath();
+  ctx.fill();
+  // 중심 잎맥
+  ctx.globalAlpha*=0.35;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.75); ctx.lineTo(0, r*0.6);
+  ctx.lineWidth=Math.max(.5, r*0.09);
+  ctx.strokeStyle='#ffffff';
+  ctx.stroke();
+}
+
+function _fxDrawLeaf(ctx,p,flutter){
+  const r=p.r;
+  ctx.beginPath();
+  ctx.ellipse(0,0, r*0.55*Math.abs(flutter)+0.5, r, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.globalAlpha*=0.4;
+  ctx.beginPath();
+  ctx.moveTo(0,-r); ctx.lineTo(0,r);
+  ctx.lineWidth=Math.max(.5, r*0.1);
+  ctx.strokeStyle='#5a2f10';
+  ctx.stroke();
+}
+
+function _fxResize(){
+  if(!_FX.cv)return;
+  _FX.dpr=Math.min(window.devicePixelRatio||1, 2);
+  _FX.w=window.innerWidth;
+  _FX.h=window.innerHeight;
+  _FX.cv.width =Math.floor(_FX.w*_FX.dpr);
+  _FX.cv.height=Math.floor(_FX.h*_FX.dpr);
+  _FX.cv.style.width =_FX.w+'px';
+  _FX.cv.style.height=_FX.h+'px';
+  _FX.ctx.setTransform(_FX.dpr,0,0,_FX.dpr,0,0);
+}
+
+function _fxTick(ts){
+  const spec=_FX_SPEC[_FX.kind];
+  if(!spec){_fxStop();return;}
+  const dt=Math.min(0.05, (ts-_FX.last)/1000||0.016);
+  _FX.last=ts;
+  const ctx=_FX.ctx;
+  ctx.clearRect(0,0,_FX.w,_FX.h);
+
+  for(const p of _FX.parts){
+    p.y+=p.vy*dt;
+    p.phase+=p.swaySpd*dt;
+    p.rot+=p.spin*dt;
+    const x=p.x+Math.sin(p.phase)*p.sway;
+
+    // 화면 밖으로 나가면 반대편에서 다시
+    if(p.vy>0 ? p.y>_FX.h+24 : p.y<-24){
+      p.y = p.vy>0 ? -24 : _FX.h+24;
+      p.x = Math.random()*_FX.w;
+    }
+
+    ctx.save();
+    ctx.translate(x, p.y);
+    ctx.rotate(p.rot);
+    ctx.globalAlpha=p.alpha;
+    ctx.fillStyle=p.color;
+    const flutter=Math.cos(p.phase*1.6);
+    if(spec.kind==='petal')      _fxDrawPetal(ctx,p,flutter);
+    else if(spec.kind==='leaf')  _fxDrawLeaf(ctx,p,flutter);
+    else if(spec.kind==='bubble'){
+      ctx.beginPath(); ctx.arc(0,0,p.r,0,Math.PI*2);
+      ctx.strokeStyle=p.color; ctx.lineWidth=Math.max(.7,p.r*0.18);
+      ctx.stroke();
+      ctx.globalAlpha*=0.25; ctx.fill();
+    }else{                                   // flake
+      ctx.beginPath(); ctx.arc(0,0,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  _FX.raf=requestAnimationFrame(_fxTick);
+}
+
+function _fxStop(){
+  if(_FX.raf){cancelAnimationFrame(_FX.raf); _FX.raf=null;}
+  if(_FX.ctx)_FX.ctx.clearRect(0,0,_FX.w,_FX.h);
+  if(_FX.cv)_FX.cv.classList.remove('on');
+  _FX.parts=[]; _FX.kind=null;
+}
+
+function applyThemeEffect(theme){
+  if(!_FX.cv){
+    _FX.cv=document.getElementById('fx');
+    if(!_FX.cv)return;
+    _FX.ctx=_FX.cv.getContext('2d');
+    window.addEventListener('resize', ()=>{
+      _fxResize();
+      if(_FX.kind)_fxSeed();
+    }, {passive:true});
+    // 탭이 가려지면 멈춘다 (배터리·CPU)
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden){
+        if(_FX.raf){cancelAnimationFrame(_FX.raf); _FX.raf=null;}
+      }else if(_FX.kind && !_FX.raf){
+        _FX.last=performance.now();
+        _FX.raf=requestAnimationFrame(_fxTick);
+      }
+    });
+  }
+
+  const level=_appPref.fxLevel==null?2:_appPref.fxLevel;
+  const reduce=window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if(!_FX_SPEC[theme] || level===0 || reduce){_fxStop(); return;}
+
+  _FX.kind=theme;
+  _fxResize();
+  _fxSeed();
+  _FX.cv.classList.add('on');
+  if(!_FX.raf){
+    _FX.last=performance.now();
+    _FX.raf=requestAnimationFrame(_fxTick);
+  }
+}
+
+function _fxSeed(){
+  const spec=_FX_SPEC[_FX.kind];
+  if(!spec)return;
+  const level=_appPref.fxLevel==null?2:_appPref.fxLevel;
+  // 화면이 넓을수록 더 많이 — 1920×1080 기준을 1.0 으로
+  const area=(_FX.w*_FX.h)/(1920*1080);
+  const n=Math.round(spec.base*_FX_DENSITY[level]*Math.max(.5, Math.min(2, area)));
+  _FX.parts=[];
+  for(let i=0;i<n;i++)_FX.parts.push(_fxMake(spec,_FX.h,true));
+}
+
+function setFxLevel(n){
+  _appPref.fxLevel=Math.max(0,Math.min(3,n|0));
+  _saveAppPref();
+  applyThemeEffect(_appPref.theme);
+  document.querySelectorAll('.fx-btn').forEach(b=>{
+    b.classList.toggle('on', +b.dataset.fx===_appPref.fxLevel);
+  });
+}
+
 /* ---------- C1+C2+C3+C5: 외관 · 사운드 시스템 ---------- */
 const _APP_PREF_KEY='iaw.appearance.v1';
 const _DEFAULT_APP_PREF={
@@ -5020,6 +5197,7 @@ const _DEFAULT_APP_PREF={
   fontSize:'m',        // C1: s|m|l|xl
   soundMaster:true,    // C5: 모든 사운드 on/off
   soundNews:true,      // C3: 뉴스/속보 "뿅" 효과음
+  fxLevel:2,           // 배경 이펙트 세기 0=끄기 1=약 2=기본 3=강
 };
 let _appPref={..._DEFAULT_APP_PREF};
 
@@ -5100,6 +5278,10 @@ function applyTheme(name){
   // 테마 캐시 무효화 + 차트/마커 색 즉시 갱신 (B#3)
   if(typeof invalidateThemeCache==='function'){
     invalidateThemeCache();
+  }
+  // 배경 파티클 이펙트 전환 (sakura/snow/autumn/ocean 만 해당)
+  if(typeof applyThemeEffect==='function'){
+    applyThemeEffect(name);
   }
   // picker UI 동기화 + 커스텀 picker 가시성 갱신
   document.querySelectorAll('.theme-card').forEach(c=>{
@@ -5195,13 +5377,13 @@ const _THEMES=[
   {id:'edex',  name:'eDEX',   desc:'터미널 그린',
    sw:['#000000','#020805','#00ff8c','#ffd400']},
   // 특이 테마 4종 (배경 애니메이션 포함)
-  {id:'snow',  name:'❄ SNOW',  desc:'눈 내리는 겨울 (애니메이션)',
+  {id:'snow',  name:'❄ SNOW',  desc:'눈송이가 내려앉는 겨울',
    sw:['#0a1828','#13243a','#7ec8ff','#ffcd8a']},
-  {id:'sakura',name:'🌸 SAKURA',desc:'벚꽃 봄 (꽃잎 애니메이션)',
+  {id:'sakura',name:'🌸 SAKURA',desc:'벚꽃잎이 흩날리는 봄',
    sw:['#1a0e1a','#251525','#ff9fc8','#ffb480']},
-  {id:'autumn',name:'🍁 AUTUMN',desc:'단풍 가을 (낙엽 애니메이션)',
+  {id:'autumn',name:'🍁 AUTUMN',desc:'낙엽이 구르며 떨어지는 가을',
    sw:['#1a0d05','#28150a','#ff9550','#ffd060']},
-  {id:'ocean', name:'🌊 OCEAN', desc:'심해 (물결 애니메이션)',
+  {id:'ocean', name:'🌊 OCEAN', desc:'기포가 떠오르는 심해',
    sw:['#001a2a','#002238','#48d8ff','#ffd478']},
   {id:'custom',name:'⚙ CUSTOM', desc:'사용자 정의 (아래 색상 선택)',
    sw:['#05070a','#0a0f16','#3df0ff','#ffb44c']},
@@ -5260,6 +5442,7 @@ function resetCustomTheme(){
 // 부팅 시 1회 적용 (custom 테마가 저장돼 있으면 즉시 반영)
 applyCustomThemeVars();
 function refreshAppearancePane(){
+  _fxSyncButtons();
   // 테마 picker
   const tp=$('#theme-picker');
   if(tp){
@@ -5323,6 +5506,15 @@ _loadAppPref();
     document.documentElement.setAttribute('data-theme',_appPref.theme);
   }
   document.documentElement.classList.add('fsize-'+_appPref.fontSize);
+  // 캔버스는 DOM 준비 뒤에 붙인다
+  const start=()=>{
+    if(typeof applyThemeEffect==='function')applyThemeEffect(_appPref.theme);
+  };
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', start, {once:true});
+  }else{
+    start();
+  }
 })();
 
 /* ---------- 중앙 인증 (Worker + D1) ---------- */
@@ -6181,6 +6373,13 @@ function refreshWidgetLayoutDisplay(){
        '<span style="color:var(--amber);font-size:10px;margin-left:auto">dock 대기</span>'}
     </div>`;
   }).join('');
+}
+
+function _fxSyncButtons(){
+  const lv=_appPref.fxLevel==null?2:_appPref.fxLevel;
+  document.querySelectorAll('.fx-btn').forEach(b=>{
+    b.classList.toggle('on', +b.dataset.fx===lv);
+  });
 }
 
 async function refreshInfoPane(){
