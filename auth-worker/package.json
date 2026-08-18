@@ -1,13 +1,14 @@
 {
   "name": "iaw-auth-worker",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "db:init": "wrangler d1 execute iaw-auth --file=migrations/0001_init.sql",
-    "db:init:local": "wrangler d1 execute iaw-auth --local --file=migrations/0001_init.sql"
+    "db:init": "wrangler d1 execute iaw-auth --remote --file=migrations/0001_init.sql && wrangler d1 execute iaw-auth --remote --file=migrations/0002_hardening.sql",
+    "db:init:local": "wrangler d1 execute iaw-auth --local --file=migrations/0001_init.sql && wrangler d1 execute iaw-auth --local --file=migrations/0002_hardening.sql",
+    "db:backup": "wrangler d1 export iaw-auth --output=backup.sql"
   },
   "devDependencies": {
     "wrangler": "^3.78.0"

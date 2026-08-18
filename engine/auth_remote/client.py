@@ -168,3 +168,62 @@ def register_pc(public_url: str, pc_label: str = "") -> Dict[str, Any]:
                             "pc_label": pc_label},
                       headers=_headers(), timeout=10)
     return r.json()
+
+
+# ── 세션 · 비밀번호 ──────────────────────────────────────────
+def logout_all() -> Dict[str, Any]:
+    """이 계정의 모든 기기 세션을 끊는다(현재 기기 포함)."""
+    try:
+        r = requests.post(_url("/auth/logout_all"),
+                          headers=_headers(), timeout=10)
+        d = r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}
+    clear_session()
+    return d
+
+
+def change_password(old_password: str, new_password: str) -> Dict[str, Any]:
+    """
+    비밀번호 변경. 성공하면 서버가 **다른 기기 세션을 모두 끊는다**
+    (이 기기 세션은 유지).
+    """
+    try:
+        r = requests.post(_url("/auth/change_password"),
+                          json={"old_password": old_password,
+                                "new_password": new_password},
+                          headers=_headers(), timeout=15)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}
+
+
+def sessions() -> Dict[str, Any]:
+    """내 활성 세션 목록 (기기 라벨 · 발급/만료 시각)."""
+    try:
+        r = requests.get(_url("/auth/sessions"),
+                         headers=_headers(), timeout=10)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}
+
+
+# ── 메인 PC 등록 상태 ────────────────────────────────────────
+def pc_status() -> Dict[str, Any]:
+    """내 PC 가 중앙에 등록돼 있는지 + /go/<id> 주소."""
+    try:
+        r = requests.get(_url("/pc/status"),
+                         headers=_headers(), timeout=10)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}
+
+
+def pc_unregister() -> Dict[str, Any]:
+    """등록 해제 — 외부 접근을 끌 때 함께 호출한다."""
+    try:
+        r = requests.post(_url("/pc/unregister"),
+                          headers=_headers(), timeout=10)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": f"네트워크: {e}"}

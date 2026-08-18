@@ -12,14 +12,15 @@ users     : id, username, password_hash, salt, status, role,
             created_at, approved_at, approved_by
 sessions  : token, user_id, created_at, expires_at, device_label
 
-초기 어드민(첫 실행 시 자동 seed): JUNHWA / WNSGHK
+초기 어드민(첫 실행 시 자동 seed): JUNHWA / 무작위 16자
+(비밀번호는 .data/ADMIN_PASSWORD.txt 와 콘솔에 1회 표시)
 """
 from .store import (
     init_db, create_user, get_user_by_name, get_user_by_id,
     list_pending_users, list_all_users, approve_user, reject_user,
     create_session, get_session, delete_session,
     check_claude_quota, consume_claude_quota, reset_claude_quota,
-    set_main_pc, get_main_pc, ADMIN_USERNAME, ADMIN_PASSWORD,
+    set_main_pc, get_main_pc, ADMIN_USERNAME,
 )
 from .security import hash_password, verify_password, gen_token
 
@@ -30,5 +31,5 @@ __all__ = [
     "check_claude_quota", "consume_claude_quota", "reset_claude_quota",
     "set_main_pc", "get_main_pc",
     "hash_password", "verify_password", "gen_token",
-    "ADMIN_USERNAME", "ADMIN_PASSWORD",
+    "ADMIN_USERNAME",
 ]

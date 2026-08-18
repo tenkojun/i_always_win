@@ -6,16 +6,18 @@
 """
 from .client import (
     configure, get_config, is_configured,
-    register, login, logout, me,
+    register, login, logout, logout_all, me,
+    change_password, sessions,
     admin_users, admin_approve, admin_reject,
-    register_pc,
+    register_pc, pc_status, pc_unregister,
     RemoteAuthError,
 )
 
 __all__ = [
     "configure", "get_config", "is_configured",
-    "register", "login", "logout", "me",
+    "register", "login", "logout", "logout_all", "me",
+    "change_password", "sessions",
     "admin_users", "admin_approve", "admin_reject",
-    "register_pc",
+    "register_pc", "pc_status", "pc_unregister",
     "RemoteAuthError",
 ]

@@ -1,0 +1,10 @@
+# 로컬 개발용 시크릿 — 이 파일을 .dev.vars 로 복사해서 쓴다.
+# .dev.vars 는 .gitignore 대상이라 저장소에 올라가지 않는다.
+#
+#   cp .dev.vars.example .dev.vars
+#   npx wrangler d1 execute iaw-auth --local --file=migrations/0001_init.sql
+#   npx wrangler d1 execute iaw-auth --local --file=migrations/0002_hardening.sql
+#   npx wrangler dev --local
+#
+# 운영에는 절대 쓰지 말 것. 배포는 `wrangler secret put ADMIN_PASSWORD`.
+ADMIN_PASSWORD=change-me-locally

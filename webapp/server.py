@@ -162,6 +162,40 @@ def api_auth_remote_pc_register():
         public_url=(data.get("public_url") or "").strip(),
         pc_label=(data.get("pc_label") or "").strip()))
 
+@app.route("/api/auth/remote/logout_all", methods=["POST"])
+def api_auth_remote_logout_all():
+    """모든 기기 세션 종료 — 비밀번호 유출이 의심될 때."""
+    from engine.auth_remote import logout_all
+    return jsonify(logout_all())
+
+
+@app.route("/api/auth/remote/change_password", methods=["POST"])
+def api_auth_remote_change_password():
+    from engine.auth_remote import change_password
+    data = request.get_json(force=True, silent=True) or {}
+    return jsonify(change_password(
+        old_password=data.get("old_password") or "",
+        new_password=data.get("new_password") or ""))
+
+
+@app.route("/api/auth/remote/sessions")
+def api_auth_remote_sessions():
+    from engine.auth_remote import sessions
+    return jsonify(sessions())
+
+
+@app.route("/api/auth/remote/pc/status")
+def api_auth_remote_pc_status():
+    from engine.auth_remote import pc_status
+    return jsonify(pc_status())
+
+
+@app.route("/api/auth/remote/pc/unregister", methods=["POST"])
+def api_auth_remote_pc_unregister():
+    from engine.auth_remote import pc_unregister
+    return jsonify(pc_unregister())
+
+
 # Flask 종료 시 cloudflared 프로세스도 정리
 import atexit as _atexit
 @_atexit.register

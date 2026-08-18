@@ -1,6 +1,10 @@
 # I ALWAYS WIN 중앙 인증 서버 — Cloudflare Worker 설정
-# 배포: wrangler deploy
-# D1 생성 후 출력된 database_id를 아래 d1_databases.database_id에 붙여넣기
+#
+# 배포 순서
+#   1) wrangler d1 create iaw-auth      → database_id 를 아래에 붙여넣기
+#   2) npm run db:init                  → 스키마 적용
+#   3) wrangler secret put ADMIN_PASSWORD   ← 없으면 어드민이 생기지 않는다
+#   4) npm run deploy
 
 name = "iaw-auth"
 main = "src/index.js"
@@ -9,20 +13,20 @@ compatibility_flags = ["nodejs_compat"]
 
 # D1 (계정 DB) 바인딩
 [[d1_databases]]
-binding = "DB"               # env.DB로 접근
+binding = "DB"                        # 코드에서 env.DB
 database_name = "iaw-auth"
 database_id = "REPLACE_AFTER_CREATE"  # `wrangler d1 create iaw-auth` 출력값
 
-# 변수
 [vars]
 ADMIN_USERNAME = "JUNHWA"
-# 초기 어드민 패스워드는 secret으로 (배포 후 1회):
-# wrangler secret put ADMIN_PASSWORD
-# wrangler secret put SESSION_SECRET   (HMAC 토큰 서명용 32+ 바이트)
+# CORS 허용 origin. 앱 도메인이 정해지면 구체적으로 좁힌다.
+#   ALLOWED_ORIGINS = "https://terminal.example.com,https://iaw.example.com"
+ALLOWED_ORIGINS = "*"
 
-# CORS 허용 origin (앱 측 호출용; 와일드카드 또는 구체)
-# 배포 후 노출 URL을 추가 (예: https://terminal.mydomain.com)
-[[routes]]
-# 옵션 — 커스텀 도메인 매핑 시 추가
+# 시크릿 (코드·저장소에 두지 않는다)
+#   wrangler secret put ADMIN_PASSWORD
+
+# 커스텀 도메인을 붙일 때만 주석 해제
+# [[routes]]
 # pattern = "auth.example.com/*"
-# zone_name = "iaw.io"
+# zone_name = "example.com"
