@@ -372,102 +372,13 @@ def get_result(job_id: str,
 #  핸들러 등록 — 백그라운드로 돌릴 작업 종류
 # ════════════════════════════════════════════════════════════
 def _register_handlers(mgr: JobManager):
-    """각 종류별 핸들러를 등록. payload는 dict, ctx는 JobContext."""
+    """
+    각 종류별 핸들러를 등록. payload는 dict, ctx는 JobContext.
 
-    def _h_auto_analyze(payload, ctx):
-        from engine.strategy.auto_analyze import auto_analyze
-        ctx.progress(5, "AUTO 분석 시작")
-        result = auto_analyze(**payload)
-        ctx.check_canceled()
-        ctx.progress(100, "완료")
-        return result
-
-    def _h_mega_grid(payload, ctx):
-        from engine.strategy.mega_grid import mega_grid
-        ctx.progress(5, "MEGA grid 시작")
-        result = mega_grid(**payload)
-        ctx.progress(100, "완료")
-        return result
-
-    def _h_batch_grid(payload, ctx):
-        from engine.strategy.vbt_vectorized import batch_grid
-        ctx.progress(5, "BATCH grid 시작")
-        result = batch_grid(**payload)
-        ctx.progress(100, "완료")
-        return result
-
-    def _h_multi_strategy(payload, ctx):
-        from engine.strategy.multi_strategy import combine_strategies
-        ctx.progress(5, "전략 합성 시작")
-        result = combine_strategies(**payload)
-        ctx.progress(100, "완료")
-        return result
-
-    def _h_ml_predict(payload, ctx):
-        from engine.strategy.ml_predict import train_predict_model
-        ctx.progress(5, "ML 학습 시작")
-        result = train_predict_model(**payload)
-        ctx.progress(100, "완료")
-        return result
-
-    def _h_ml_backtest(payload, ctx):
-        from engine.strategy.ml_predict import ml_signal_backtest
-        ctx.progress(5, "ML 백테스트 시작")
-        result = ml_signal_backtest(**payload)
-        ctx.progress(100, "완료")
-        return result
-
-    def _h_of_pead_optimize(payload, ctx):
-        from engine.orderflow_pead.main import build_bundle
-        from engine.orderflow_pead import (
-            OrderflowDeltaStrategy, PEADStrategy,
-            grid_search, walk_forward_optimization,
-        )
-        ticker = payload.get("ticker", "AAPL")
-        which = payload.get("which", "of")
-        period_days = int(payload.get("period_days", 730))
-        ctx.progress(10, f"{ticker} bundle 빌드")
-        bundle = build_bundle(ticker, period_days=period_days)
-        ctx.check_canceled()
-        ctx.progress(40, "grid search")
-        if which == "pead":
-            grid = {"sue_top_pct": [0.1, 0.2, 0.3],
-                    "drift_days":  [10, 20, 30, 60]}
-            gs = grid_search(PEADStrategy, grid, bundle, top_n=10)
-            ctx.progress(70, "WFA")
-            wfa = walk_forward_optimization(PEADStrategy,
-                {"sue_top_pct": [0.15, 0.25], "drift_days": [20, 40]},
-                bundle, n_folds=3)
-        else:
-            grid = {"delta_threshold":    [200, 500, 1000, 2000],
-                    "divergence_lookback":[5, 10, 20],
-                    "divergence_z":       [1.0, 1.5, 2.0],
-                    "max_hold_bars":      [10, 30, 60]}
-            gs = grid_search(OrderflowDeltaStrategy, grid, bundle, top_n=10)
-            ctx.progress(70, "WFA")
-            wfa = walk_forward_optimization(OrderflowDeltaStrategy,
-                {"delta_threshold": [300, 700, 1500], "max_hold_bars": [20, 40]},
-                bundle, n_folds=3)
-        ctx.progress(100, "완료")
-        return {
-            "ok": True, "ticker": ticker, "which": which,
-            "grid_top": gs.get("top", []),
-            "n_combos": gs.get("n_combos", 0),
-            "wfa": wfa,
-        }
-
-    def _h_portfolio_optimize(payload, ctx):
-        from engine.strategy.portfolio_optimizer import optimize_portfolio
-        ctx.progress(5, "포트폴리오 최적화")
-        result = optimize_portfolio(**payload)
-        ctx.progress(100, "완료")
-        return result
-
-    mgr.register("auto_analyze",        _h_auto_analyze)
-    mgr.register("mega_grid",           _h_mega_grid)
-    mgr.register("batch_grid",          _h_batch_grid)
-    mgr.register("multi_strategy",      _h_multi_strategy)
-    mgr.register("ml_predict",          _h_ml_predict)
-    mgr.register("ml_backtest",         _h_ml_backtest)
-    mgr.register("of_pead_optimize",    _h_of_pead_optimize)
-    mgr.register("portfolio_optimize",  _h_portfolio_optimize)
+    전략 백테스트 계열 핸들러(auto_analyze / mega_grid / batch_grid /
+    multi_strategy / ml_predict / ml_backtest / of_pead_optimize /
+    portfolio_optimize)는 해당 기능과 함께 제거되었다.
+    큐·워커·진행률·취소 인프라는 그대로 두고, 오래 걸리는 정밀 분석을
+    여기에 다시 등록해서 쓴다.
+    """
+    return
