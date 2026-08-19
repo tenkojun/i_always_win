@@ -11,7 +11,7 @@
 
 <br>
 
-![version](https://img.shields.io/badge/version-2.19.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
+![version](https://img.shields.io/badge/version-2.20.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
 ![python](https://img.shields.io/badge/python-3.12-5b8def?style=for-the-badge&labelColor=0b0d11)
 ![engine](https://img.shields.io/badge/engine-32%20modules%20·%2014.8k%20LOC-2ec27e?style=for-the-badge&labelColor=0b0d11)
 ![license](https://img.shields.io/badge/license-MIT-2ec27e?style=for-the-badge&labelColor=0b0d11)

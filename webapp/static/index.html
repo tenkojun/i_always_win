@@ -3350,22 +3350,62 @@ function _playBootSound(){
    AudioContext 는 하나만 만들어 재사용한다. 브라우저 자동재생 정책
    때문에 사용자 제스처 전에는 suspended 로 시작하므로, 소리를 낼
    때마다 resume() 을 시도한다. */
-let _AC = null;
+let _AC = null, _BUS = null, _WET = null;
+
+/* 마스터 버스 — dry + 합성 리버브.
+   오실레이터를 destination 에 바로 꽂으면 소리가 마르고 납작하다.
+   짧은 IR 을 만들어 살짝 적셔 주는 것만으로 '기계실에서 나는 소리' 가
+   된다. 이게 밋밋함의 가장 큰 원인이었다. */
 function _ac(){
-  if(_AC) { if(_AC.state==='suspended') _AC.resume().catch(()=>{}); return _AC; }
+  if(_AC){ if(_AC.state==='suspended') _AC.resume().catch(()=>{}); return _AC; }
   try{
     const C = window.AudioContext || window.webkitAudioContext;
     if(!C) return null;
     _AC = new C();
   }catch(e){ return null; }
-  return _AC;
+
+  const ctx=_AC;
+  _BUS = ctx.createGain();  _BUS.gain.value = 0.9;
+
+  // IR: 지수 감쇠 노이즈 + 초반 이른 반사 몇 개
+  const dur=1.1, n=Math.floor(ctx.sampleRate*dur);
+  const ir=ctx.createBuffer(2, n, ctx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d=ir.getChannelData(c);
+    for(let k=0;k<n;k++){
+      const decay=Math.pow(1-k/n, 3.2);
+      d[k]=(Math.random()*2-1)*decay*0.6;
+    }
+    [0.011,0.019,0.031,0.047].forEach((tm,idx)=>{   // 이른 반사
+      const pos=Math.floor(tm*ctx.sampleRate*(c?1.07:1));
+      if(pos<n) d[pos]+= (idx%2?-1:1)*0.45;
+    });
+  }
+  const conv=ctx.createConvolver(); conv.buffer=ir;
+  _WET=ctx.createGain(); _WET.gain.value=0.26;
+
+  // 고역을 살짝 깎아 디지털 쨍함을 줄인다
+  const tone=ctx.createBiquadFilter();
+  tone.type='highshelf'; tone.frequency.value=7000; tone.gain.value=-4;
+
+  _BUS.connect(tone); tone.connect(ctx.destination);
+  _BUS.connect(_WET); _WET.connect(conv); conv.connect(ctx.destination);
+  return ctx;
 }
 
-/* 짧은 노이즈 버퍼 — 치찰음·스캔·바람 소리의 재료 */
+function _out(ctx, node, pan){
+  if(pan && ctx.createStereoPanner){
+    const p=ctx.createStereoPanner(); p.pan.value=Math.max(-1,Math.min(1,pan));
+    node.connect(p); p.connect(_BUS || ctx.destination);
+  }else{
+    node.connect(_BUS || ctx.destination);
+  }
+}
+
 let _noiseBuf = null;
 function _noise(ctx, sec){
   if(_noiseBuf && _noiseBuf.duration >= sec) return _noiseBuf;
-  const n = Math.max(1, Math.floor(ctx.sampleRate * Math.max(sec, .5)));
+  const n = Math.max(1, Math.floor(ctx.sampleRate * Math.max(sec, 1.2)));
   const b = ctx.createBuffer(1, n, ctx.sampleRate);
   const d = b.getChannelData(0);
   for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
@@ -3373,98 +3413,153 @@ function _noise(ctx, sec){
   return b;
 }
 
-/* 톤 하나 — 주파수 스윕 + ADSR */
-function _tone(ctx, t0, {type='sine', f0=880, f1=null, dur=.12,
-                        gain=.2, attack=.004, filter=null, q=1}={}){
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type=type;
-  o.frequency.setValueAtTime(f0, t0);
-  if(f1 && f1!==f0) o.frequency.exponentialRampToValueAtTime(
-    Math.max(f1,1), t0+dur);
+/* FM 오퍼레이터 — 금속·벨·디지털 음색의 핵심.
+   단일 사인파는 아무리 포락선을 다듬어도 '삐' 소리에 그친다.
+   변조기를 캐리어 주파수에 꽂으면 배음이 확 생겨 소리에 살이 붙는다.
+   변조 깊이(index)를 감쇠시키면 음색이 닫히면서 자연스러워진다. */
+function _fm(ctx, t0, o){
+  o = o || {};
+  const carrier = o.carrier!=null ? o.carrier : 800;
+  const ratio   = o.ratio!=null   ? o.ratio   : 2.7;
+  const index   = o.index!=null   ? o.index   : 600;
+  const dur     = o.dur!=null     ? o.dur     : 0.12;
+  const gain    = o.gain!=null    ? o.gain    : 0.12;
+  const attack  = o.attack!=null  ? o.attack  : 0.003;
+  const type    = o.type || 'sine';
+  const pan     = o.pan || 0;
+
+  const c=ctx.createOscillator(), m=ctx.createOscillator();
+  const mg=ctx.createGain(), g=ctx.createGain();
+  c.type=type; m.type='sine';
+  c.frequency.setValueAtTime(carrier, t0);
+  m.frequency.setValueAtTime(carrier*ratio, t0);
+  mg.gain.setValueAtTime(index, t0);
+  mg.gain.exponentialRampToValueAtTime(Math.max(index*0.04, 1), t0+dur);
+  m.connect(mg); mg.connect(c.frequency);
   g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(Math.max(gain,.0002), t0+attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
-  let last=o;
-  if(filter){
-    const bp=ctx.createBiquadFilter();
-    bp.type = (typeof filter==='string') ? filter : 'bandpass';
-    bp.frequency.value = q ? f0 : f0;
-    bp.Q.value = q;
-    o.connect(bp); last=bp;
-  }
-  last.connect(g); g.connect(ctx.destination);
-  o.start(t0); o.stop(t0+dur+.02);
+  g.gain.exponentialRampToValueAtTime(Math.max(gain,0.0002), t0+attack);
+  g.gain.exponentialRampToValueAtTime(0.00005, t0+dur);
+  c.connect(g); _out(ctx, g, pan);
+  c.start(t0); c.stop(t0+dur+0.03);
+  m.start(t0); m.stop(t0+dur+0.03);
 }
 
-/* 노이즈 한 조각 — 밴드패스 스윕 */
-function _hiss(ctx, t0, {f0=2000, f1=600, dur=.3, gain=.12, q=3}={}){
-  const s=ctx.createBufferSource(); s.buffer=_noise(ctx, dur+.1);
-  const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=q;
+/* 디튠 2겹 톤 — 한 겹은 얇다. 살짝 어긋난 두 겹이 두께를 만든다. */
+function _tone(ctx, t0, o){
+  o = o || {};
+  const type=o.type||'sine';
+  const f0=o.f0!=null?o.f0:880, f1=o.f1!=null?o.f1:null;
+  const dur=o.dur!=null?o.dur:0.12, gain=o.gain!=null?o.gain:0.2;
+  const attack=o.attack!=null?o.attack:0.004;
+  const detune=o.detune!=null?o.detune:6;
+  const layers=o.layers!=null?o.layers:2;
+  const pan=o.pan||0;
+  for(let k=0;k<layers;k++){
+    const osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type;
+    osc.detune.value = (k - (layers-1)/2) * detune * 2;
+    osc.frequency.setValueAtTime(f0, t0);
+    if(f1 && f1!==f0) osc.frequency.exponentialRampToValueAtTime(
+      Math.max(f1,1), t0+dur);
+    const gv=Math.max(gain/layers, 0.0002);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gv, t0+attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    osc.connect(g); _out(ctx, g, pan + (k? 0.12 : -0.12));
+    osc.start(t0); osc.stop(t0+dur+0.02);
+  }
+}
+
+function _hiss(ctx, t0, o){
+  o = o || {};
+  const f0=o.f0!=null?o.f0:2000, f1=o.f1!=null?o.f1:600;
+  const dur=o.dur!=null?o.dur:0.3, gain=o.gain!=null?o.gain:0.12;
+  const q=o.q!=null?o.q:3, pan=o.pan||0;
+  const s=ctx.createBufferSource(); s.buffer=_noise(ctx, dur+0.2);
+  const bp=ctx.createBiquadFilter(); bp.type=o.type||'bandpass'; bp.Q.value=q;
   bp.frequency.setValueAtTime(f0, t0);
   bp.frequency.exponentialRampToValueAtTime(Math.max(f1,20), t0+dur);
   const g=ctx.createGain();
   g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(gain, t0+.01);
+  g.gain.exponentialRampToValueAtTime(Math.max(gain,0.0002), t0+0.008);
   g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
-  s.connect(bp); bp.connect(g); g.connect(ctx.destination);
-  s.start(t0); s.stop(t0+dur+.05);
+  s.connect(bp); bp.connect(g); _out(ctx, g, pan);
+  s.start(t0); s.stop(t0+dur+0.05);
 }
 
-/* 이름 → 합성 레시피.
-   원본 터미널 효과음의 성격(짧은 디지털 틱, 상승=승인, 하강=거부,
-   스윕=스캔)을 참고해 우리 파형으로 다시 만들었다. */
+/* 이름 → 합성 레시피. */
 const _SFX = {
-  // 로그 한 줄 — '티리릭'. 매우 짧은 고음 틱 + 살짝 랜덤
-  stdout(ctx,t){
-    _tone(ctx,t,{type:'square', f0:1250+Math.random()*500, f1:900,
-                 dur:.035, gain:.045, filter:'bandpass', q:2});
+  // 로그 한 줄 — '티리릭'. FM 으로 금속성을 주고 클릭을 얹는다
+  stdout: function(ctx,t){
+    const f = 900 + Math.random()*700;
+    _fm(ctx,t,{carrier:f, ratio:3.4, index:f*1.6, dur:0.045, gain:0.055,
+               attack:0.001, pan:(Math.random()-0.5)*0.5});
+    _hiss(ctx,t,{f0:5200,f1:3000,dur:0.016,gain:0.022,q:1.2});
   },
-  stdin(ctx,t){
-    _tone(ctx,t,{type:'square', f0:700, f1:1100, dur:.04, gain:.05});
+  stdin: function(ctx,t){
+    _fm(ctx,t,{carrier:620, ratio:2.1, index:900, dur:0.055, gain:0.06});
   },
-  keyboard(ctx,t){
-    _tone(ctx,t,{type:'square', f0:1800+Math.random()*400, dur:.018,
-                 gain:.035, filter:'bandpass', q:6});
-    _hiss(ctx,t,{f0:4000,f1:2000,dur:.03,gain:.03,q:2});
+  keyboard: function(ctx,t){
+    _fm(ctx,t,{carrier:1900+Math.random()*500, ratio:5.1, index:2600,
+               dur:0.022, gain:0.045, attack:0.0008});
+    _hiss(ctx,t,{f0:6000,f1:2600,dur:0.028,gain:0.026,q:1.1});
   },
-  // 부팅 테마 — 낮은 곳에서 올라오는 스웰 + 5도 화음
-  theme(ctx,t){
-    _hiss(ctx,t,{f0:200,f1:5000,dur:1.1,gain:.05,q:.7});
-    [[110,.0],[164.81,.10],[220,.20],[329.63,.34]].forEach(([f,d])=>{
-      _tone(ctx,t+d,{type:'triangle', f0:f, dur:1.5-d, gain:.10,
-                     attack:.15});
+  // 부팅 테마 — 저역 스웰 + 화음 + FM 벨. 리버브가 공간을 만든다
+  theme: function(ctx,t){
+    _hiss(ctx,t,{f0:150,f1:4200,dur:1.5,gain:0.05,q:0.6});
+    [[55,0],[82.4,0],[110,0.10],[164.8,0.22],[220,0.34]].forEach(function(p){
+      _tone(ctx,t+p[1],{type:'sawtooth', f0:p[0], dur:2.0-p[1], gain:0.075,
+                        attack:0.22, detune:9});
     });
-    _tone(ctx,t+.5,{type:'sine', f0:880, f1:1320, dur:.9, gain:.05,
-                    attack:.25});
+    _fm(ctx,t+0.55,{carrier:880, ratio:2.0, index:700, dur:1.5,
+                    gain:0.075, attack:0.30});
+    _fm(ctx,t+0.95,{carrier:1320, ratio:3.0, index:900, dur:1.2,
+                    gain:0.05, attack:0.25, pan:0.3});
   },
-  // 승인 — 두 음 상승
-  granted(ctx,t){
-    _tone(ctx,t,     {type:'sine', f0:660, dur:.10, gain:.16});
-    _tone(ctx,t+.09, {type:'sine', f0:990, dur:.22, gain:.16, attack:.01});
+  // 승인 — 상승 2음 + 벨 잔향
+  granted: function(ctx,t){
+    _fm(ctx,t,     {carrier:660, ratio:2.0, index:520, dur:0.13, gain:0.15});
+    _fm(ctx,t+0.10,{carrier:990, ratio:2.0, index:700, dur:0.50, gain:0.16,
+                    attack:0.008});
+    _tone(ctx,t+0.10,{type:'sine', f0:1980, dur:0.45, gain:0.04, attack:0.02});
   },
-  // 거부 — 두 음 하강 + 거친 배음
-  denied(ctx,t){
-    _tone(ctx,t,     {type:'sawtooth', f0:420, dur:.11, gain:.12});
-    _tone(ctx,t+.10, {type:'sawtooth', f0:240, f1:170, dur:.30, gain:.12});
+  // 거부 — 하강 + 거친 배음
+  denied: function(ctx,t){
+    _fm(ctx,t,     {carrier:420, ratio:1.41, index:900, dur:0.13, gain:0.13,
+                    type:'sawtooth'});
+    _fm(ctx,t+0.11,{carrier:240, ratio:1.41, index:1100, dur:0.42, gain:0.14,
+                    type:'sawtooth'});
+    _hiss(ctx,t+0.11,{f0:900,f1:200,dur:0.35,gain:0.04,q:2});
   },
-  panels(ctx,t){ _hiss(ctx,t,{f0:900,f1:3200,dur:.16,gain:.07,q:1.5}); },
-  expand(ctx,t){
-    _hiss(ctx,t,{f0:600,f1:4000,dur:.22,gain:.07,q:1.2});
-    _tone(ctx,t+.04,{type:'sine',f0:520,f1:1040,dur:.2,gain:.06});
+  panels: function(ctx,t){
+    _hiss(ctx,t,{f0:700,f1:3600,dur:0.19,gain:0.07,q:1.4,pan:-0.2});
+    _fm(ctx,t+0.02,{carrier:520,ratio:2.5,index:400,dur:0.16,gain:0.05});
   },
-  folder(ctx,t){ _tone(ctx,t,{type:'square',f0:900,f1:1400,dur:.05,gain:.06}); },
-  scan(ctx,t){
-    _hiss(ctx,t,{f0:400,f1:6000,dur:.75,gain:.06,q:2.5});
-    _tone(ctx,t,{type:'sine',f0:300,f1:2400,dur:.75,gain:.05,attack:.05});
+  expand: function(ctx,t){
+    _hiss(ctx,t,{f0:500,f1:4600,dur:0.26,gain:0.07,q:1.1});
+    _tone(ctx,t+0.03,{type:'triangle',f0:440,f1:1320,dur:0.24,gain:0.07});
   },
-  info(ctx,t){ _tone(ctx,t,{type:'sine',f0:880,dur:.14,gain:.12}); },
-  error(ctx,t){
-    _tone(ctx,t,     {type:'square',f0:200,dur:.16,gain:.12});
-    _tone(ctx,t+.16, {type:'square',f0:150,dur:.24,gain:.12});
+  folder: function(ctx,t){
+    _fm(ctx,t,{carrier:880,ratio:3.0,index:700,dur:0.06,gain:0.07});
   },
-  alarm(ctx,t){
+  scan: function(ctx,t){
+    _hiss(ctx,t,{f0:300,f1:7000,dur:0.85,gain:0.06,q:2.8,pan:-0.3});
+    _hiss(ctx,t+0.1,{f0:7000,f1:400,dur:0.75,gain:0.04,q:2.8,pan:0.3});
+    _fm(ctx,t,{carrier:300,ratio:1.5,index:400,dur:0.85,gain:0.05,attack:0.06});
+  },
+  info: function(ctx,t){
+    _fm(ctx,t,{carrier:880,ratio:2.0,index:600,dur:0.28,gain:0.12,attack:0.005});
+  },
+  error: function(ctx,t){
+    _fm(ctx,t,     {carrier:220,ratio:1.7,index:1200,dur:0.18,gain:0.13,
+                    type:'square'});
+    _fm(ctx,t+0.17,{carrier:155,ratio:1.7,index:1400,dur:0.34,gain:0.13,
+                    type:'square'});
+  },
+  alarm: function(ctx,t){
     for(let k=0;k<3;k++)
-      _tone(ctx,t+k*.16,{type:'square',f0:1100,f1:760,dur:.12,gain:.13});
+      _fm(ctx,t+k*0.17,{carrier:1100,ratio:2.0,index:1500,dur:0.13,gain:0.13,
+                        type:'square', pan:k%2?0.25:-0.25});
   },
 };
 
