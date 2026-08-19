@@ -1060,6 +1060,50 @@
   .pfm-empty{padding:30px 16px;color:var(--txt-mute);text-align:center;
     font-size:12px}
 
+  /* 보고서 뷰어 — 새 탭 대신 앱 안에서 크게 연다 */
+  #rep-modal{position:fixed;inset:0;background:rgba(5,7,10,.96);
+    backdrop-filter:blur(6px);z-index:9200;display:none;
+    flex-direction:column}
+  #rep-modal.on{display:flex}
+  .rep-bar{display:flex;align-items:center;gap:10px;padding:9px 16px;
+    background:var(--panel);border-bottom:1px solid var(--cyan-dim);
+    font-family:var(--mono);font-size:12px;letter-spacing:1.5px;
+    color:var(--cyan);flex-shrink:0}
+  .rep-bar .tk{font-weight:800;letter-spacing:2px}
+  .rep-bar .meta{color:var(--txt-mute);font-size:10.5px;letter-spacing:.5px}
+  .rep-bar .sp{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .rep-btn{background:transparent;color:var(--cyan-dim);
+    border:1px solid var(--line);font-family:var(--mono);font-size:11px;
+    padding:6px 11px;cursor:pointer;border-radius:2px;white-space:nowrap}
+  .rep-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  .rep-btn.pri{background:var(--cyan);color:#04222a;border-color:var(--cyan);
+    font-weight:700}
+  #rep-frame{flex:1;border:0;width:100%;background:#0b0d11;display:block}
+
+  /* 보고서 보관함 */
+  #vault-modal{position:fixed;inset:0;background:rgba(5,7,10,.9);
+    z-index:9150;display:none;padding:28px 18px;overflow:auto}
+  #vault-modal.on{display:block}
+  .vault-box{max-width:900px;margin:0 auto;background:var(--panel);
+    border:1px solid var(--cyan);border-radius:4px;
+    box-shadow:0 0 50px rgba(61,240,255,.22)}
+  .vault-row{display:grid;grid-template-columns:92px 1fr 92px 120px auto;
+    gap:10px;align-items:center;padding:9px 18px;
+    border-bottom:1px solid var(--line);font-size:12px}
+  .vault-row:hover{background:rgba(61,240,255,.04)}
+  .vault-row .tk{font-family:var(--mono);font-weight:700;color:var(--cyan)}
+  .vault-row .when{font-family:var(--mono);font-size:10.5px;
+    color:var(--txt-mute)}
+  .vault-row .sz{font-family:var(--mono);font-size:10.5px;
+    color:var(--txt-mute);text-align:right}
+  .vault-badge{font-family:var(--mono);font-size:9.5px;padding:1px 6px;
+    border-radius:8px;border:1px solid var(--cyan-dim);color:var(--cyan-dim)}
+  .vault-badge.arch{border-color:var(--txt-mute);color:var(--txt-mute)}
+  @media(max-width:720px){
+    .vault-row{grid-template-columns:1fr auto;gap:6px}
+    .vault-row .when,.vault-row .sz{grid-column:1/-1}
+  }
+
   /* B6: 위젯 전체화면 모달 */
   #widget-modal{position:fixed;inset:0;background:rgba(5,7,10,.96);
     backdrop-filter:blur(8px);z-index:8200;display:none;
@@ -1895,6 +1939,20 @@
               <div id="custom-theme-picker" style="display:none;margin-top:14px;
                 padding:12px;border:1px dashed var(--cyan-dim);
                 background:var(--panel2)"></div>
+            </div>
+
+            <div class="set-section">
+              <div class="hd">보고서 테마</div>
+              <div style="font-size:12px;color:var(--txt-dim);
+                line-height:1.7;margin-bottom:10px">
+                정밀 분석 보고서의 색상입니다. 보고서는 외부 리소스 없는
+                자기완결 HTML 이라 <b>만드는 시점에 테마가 정해집니다</b> —
+                이미 만든 보고서는 바뀌지 않고, 다시 생성해야 적용됩니다.
+              </div>
+              <div id="rtheme-picker" style="display:grid;
+                grid-template-columns:repeat(4,1fr);gap:8px"></div>
+              <div id="rtheme-msg" style="font-size:11px;color:var(--txt-mute);
+                margin-top:8px"></div>
             </div>
 
             <div class="set-section">
@@ -2923,6 +2981,42 @@
 </div>
 
 <!-- ===== 위젯 전체화면 모달 (B6: 슬롯 헤더 클릭 시 위젯 풀스크린) ===== -->
+<!-- 보고서 뷰어 (앱 내부 대형 팝업) -->
+<div id="rep-modal">
+  <div class="rep-bar">
+    <span class="tk" id="rep-tk">REPORT</span>
+    <span class="meta" id="rep-meta"></span>
+    <span class="sp">
+      <button class="rep-btn" onclick="repZoom(-1)" title="글자 작게">A−</button>
+      <button class="rep-btn" onclick="repZoom(1)" title="글자 크게">A+</button>
+      <button class="rep-btn" onclick="openVault()">보관함</button>
+      <button class="rep-btn pri" onclick="repDownload()">다운로드</button>
+      <button class="rep-btn" onclick="repOpenExternal()"
+        title="브라우저 새 창에서 열기">↗</button>
+      <button class="rep-btn" onclick="closeReport()">✕ 닫기</button>
+    </span>
+  </div>
+  <iframe id="rep-frame" src="about:blank"></iframe>
+</div>
+
+<!-- 보고서 보관함 -->
+<div id="vault-modal" onclick="if(event.target.id==='vault-modal')closeVault()">
+  <div class="vault-box">
+    <div style="display:flex;align-items:center;gap:12px;padding:13px 18px;
+      border-bottom:1px solid var(--line);font-family:var(--mono);
+      font-size:12px;letter-spacing:2px;color:var(--cyan)">
+      <span>📁 REPORTS · 보고서 보관함</span>
+      <span id="vault-count" style="color:var(--txt-mute);font-size:10.5px;
+        letter-spacing:.5px"></span>
+      <button onclick="closeVault()" style="margin-left:auto;
+        background:transparent;border:0;color:var(--cyan-dim);font-size:18px;
+        cursor:pointer;line-height:1" title="닫기 (ESC)">✕</button>
+    </div>
+    <div id="vault-body" style="max-height:70vh;overflow:auto;
+      color:var(--txt-dim)">불러오는 중…</div>
+  </div>
+</div>
+
 <div id="widget-modal">
   <div class="wm-bar">
     <div class="wm-bar-title">
@@ -4044,11 +4138,16 @@ function _renderPrecision(r){
           ${r.rationale.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
       </details>`:''}
 
-      <a href="${esc(r.report_url)}" target="_blank" rel="noopener"
-        style="display:inline-block;background:var(--cyan);color:#04222a;
+      <button onclick="openReport('${esc(r.report_url)}','${esc(r.ticker)}',
+        '${esc(r.asof||'')}')"
+        style="background:var(--cyan);color:#04222a;border:0;
         font-family:var(--mono);font-weight:700;font-size:12px;
-        padding:9px 18px;text-decoration:none;letter-spacing:1.5px">
-        ▸ 정밀 보고서 열기</a>
+        padding:9px 18px;cursor:pointer;letter-spacing:1.5px">
+        ▸ 정밀 보고서 열기</button>
+      <button onclick="openVault()"
+        style="background:transparent;color:var(--cyan-dim);
+        border:1px solid var(--line);font-family:var(--mono);font-size:11px;
+        padding:9px 14px;cursor:pointer;margin-left:6px">📁 보관함</button>
 
       <div style="font-size:10.5px;color:var(--txt-mute);margin-top:10px;
         line-height:1.6">
@@ -4244,7 +4343,8 @@ async function loadAnalysisHistory(ticker){
       const scoreStr=it.score!=null?(typeof it.score==='number'?
         it.score.toFixed(1):it.score):'—';
       const link=it.report_url?
-        `<a href="${it.report_url}" target="_blank"
+        `<a href="#" onclick="openReport('${it.report_url}','${it.ticker||''}');
+          return false;"
           style="color:var(--cyan);text-decoration:none;
           font-family:var(--mono);font-size:10px">▸ HTML</a>`:'';
       return `<div style="display:grid;
@@ -4271,6 +4371,132 @@ async function loadAnalysisHistory(ticker){
       ${rows}
     </div>`;
   }catch(e){}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   보고서 뷰어 — 새 탭이 아니라 앱 안에서 연다.
+   EXE(pywebview) 에서 target=_blank 는 시스템 브라우저를 띄워
+   앱 밖으로 튕겨 나간다. iframe 으로 감싸 앱 안에 유지한다.
+   ══════════════════════════════════════════════════════════════ */
+let _repCur = null;      // {url, file, ticker}
+let _repZoom = 100;
+
+function openReport(url, ticker, meta){
+  if(!url) return;
+  _repCur = {url: url, ticker: ticker || '',
+             file: (url.split('/').pop() || '')};
+  $('#rep-tk').textContent = (ticker || '보고서').toUpperCase();
+  $('#rep-meta').textContent = meta || '';
+  _repZoom = 100;
+  const fr = $('#rep-frame');
+  fr.src = url;
+  $('#rep-modal').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeReport(){
+  $('#rep-modal').classList.remove('on');
+  $('#rep-frame').src = 'about:blank';
+  document.body.style.overflow = '';
+  _repCur = null;
+}
+
+/* iframe 은 같은 출처라 내부 문서의 글자 크기를 조절할 수 있다 */
+function repZoom(dir){
+  _repZoom = Math.max(70, Math.min(160, _repZoom + dir * 10));
+  try{
+    const d = $('#rep-frame').contentDocument;
+    if(d && d.body) d.body.style.zoom = _repZoom + '%';
+  }catch(e){}
+}
+
+function repDownload(){
+  if(!_repCur) return;
+  // 뷰어 샌드박스에서 <a download> 가 막힐 수 있어 서버 라우트로 받는다
+  window.location.href = '/api/reports/download/' +
+    encodeURIComponent(_repCur.file);
+}
+
+function repOpenExternal(){
+  if(_repCur) window.open(_repCur.url, '_blank', 'noopener');
+}
+
+/* ── 보고서 보관함 ─────────────────────────────────────────── */
+function _repSize(n){
+  if(!n && n !== 0) return '';
+  return n > 1048576 ? (n/1048576).toFixed(1)+'MB'
+                     : Math.round(n/1024)+'KB';
+}
+
+async function openVault(){
+  $('#vault-modal').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  const body = $('#vault-body');
+  body.innerHTML = '<div style="padding:26px;text-align:center;'+
+    'color:var(--txt-mute)">불러오는 중…</div>';
+  try{
+    const r = await(await fetch('/api/reports')).json();
+    if(!r.ok) throw new Error(r.error || '조회 실패');
+    $('#vault-count').textContent = r.count + '건';
+    if(!r.items.length){
+      body.innerHTML = '<div style="padding:30px;text-align:center;'+
+        'color:var(--txt-mute)">아직 생성된 보고서가 없습니다.<br>'+
+        '분석 위젯에서 [◈ 현재 종목 분석] 을 실행하세요.</div>';
+      return;
+    }
+    body.innerHTML = r.items.map(it=>{
+      const when = new Date(it.mtime).toLocaleString('ko-KR',
+        {year:'2-digit',month:'numeric',day:'numeric',
+         hour:'2-digit',minute:'2-digit'});
+      const badge = it.archived
+        ? '<span class="vault-badge arch">보관</span>'
+        : '<span class="vault-badge">최신</span>';
+      const f = _histEsc(it.file);
+      return `<div class="vault-row">
+        <span class="tk">${_histEsc(it.ticker)}</span>
+        <span>${badge} <span style="color:var(--txt-mute);font-size:11px">
+          ${_histEsc(it.kind)}</span></span>
+        <span class="sz">${_repSize(it.size)}</span>
+        <span class="when">${when}</span>
+        <span style="display:flex;gap:5px;justify-content:flex-end">
+          <button class="rep-btn" onclick="vaultOpen('${f}','${_histEsc(it.ticker)}')">열기</button>
+          <button class="rep-btn" onclick="vaultDownload('${f}')">↓</button>
+          <button class="rep-btn" onclick="vaultDelete('${f}')"
+            title="삭제" style="color:var(--down);border-color:var(--down)">✕</button>
+        </span>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML = '<div style="padding:26px;color:var(--down)">'+
+      _histEsc(e.message)+'</div>';
+  }
+}
+
+function closeVault(){
+  $('#vault-modal').classList.remove('on');
+  if(!$('#rep-modal').classList.contains('on'))
+    document.body.style.overflow = '';
+}
+
+function vaultOpen(file, ticker){
+  closeVault();
+  openReport('/report/' + file, ticker, file);
+}
+
+function vaultDownload(file){
+  window.location.href = '/api/reports/download/' + encodeURIComponent(file);
+}
+
+async function vaultDelete(file){
+  if(!confirm(file + '\n\n이 보고서를 삭제할까요?')) return;
+  try{
+    const r = await(await fetch('/api/reports/delete',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({file: file}),
+    })).json();
+    if(!r.ok){ alert('삭제 실패: ' + (r.error||'')); return; }
+    openVault();
+  }catch(e){ alert('네트워크 오류: ' + e); }
 }
 
 /* ---------- 분석 이력 팝업 (상단 📜 칩) ---------- */
@@ -4327,7 +4553,8 @@ async function openAnalyzeHistory(){
       const score=it.score!=null?
         (typeof it.score==='number'?it.score.toFixed(1):it.score):'—';
       const link=it.report_url?
-        '<a href="'+_histEsc(it.report_url)+'" target="_blank" '+
+        '<a href="#" onclick="openReport(\''+_histEsc(it.report_url)+
+        '\',\''+_histEsc(it.ticker||'')+'\');return false;" '+
         'style="color:var(--cyan);text-decoration:none;font-family:var(--mono);'+
         'font-size:10.5px">▸ 리포트</a>':'';
       return '<div style="display:grid;'+
@@ -5435,6 +5662,7 @@ function resetCustomTheme(){
 applyCustomThemeVars();
 function refreshAppearancePane(){
   _fxSyncButtons();
+  refreshReportTheme();
   // 테마 picker
   const tp=$('#theme-picker');
   if(tp){
@@ -6456,6 +6684,46 @@ function refreshWidgetLayoutDisplay(){
        '<span style="color:var(--amber);font-size:10px;margin-left:auto">dock 대기</span>'}
     </div>`;
   }).join('');
+}
+
+/* ── 보고서 테마 ────────────────────────────────────────────
+   보고서는 자기완결 HTML 이라 생성 시점에 색이 굳는다.
+   그래서 앱 테마와 별개로 따로 고른다. */
+let _rThemes = [];
+
+async function refreshReportTheme(){
+  const box = $('#rtheme-picker');
+  if(!box) return;
+  try{
+    const r = await(await fetch('/api/reports/theme')).json();
+    if(!r.ok) throw new Error(r.error || '조회 실패');
+    _rThemes = r.themes || [];
+    box.innerHTML = _rThemes.map(t=>`
+      <button class="fsize-btn rtheme-btn ${t.id===r.theme?'on':''}"
+        data-rtheme="${t.id}" onclick="setReportTheme('${t.id}')"
+        title="${_histEsc(t.desc)}">
+        <span style="font-size:13px">${_histEsc(t.ko)}</span>
+        <span style="font-size:9.5px;color:var(--txt-mute);margin-top:4px;
+          display:block">${_histEsc(t.desc.slice(0,14))}</span>
+      </button>`).join('');
+  }catch(e){
+    box.innerHTML = '<div style="color:var(--down);font-size:11px">'+
+      _histEsc(e.message)+'</div>';
+  }
+}
+
+async function setReportTheme(id){
+  try{
+    const r = await(await fetch('/api/reports/theme',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({theme:id}),
+    })).json();
+    if(!r.ok){ alert('실패: '+(r.error||'')); return; }
+    document.querySelectorAll('.rtheme-btn').forEach(b=>
+      b.classList.toggle('on', b.dataset.rtheme===id));
+    const m = $('#rtheme-msg');
+    if(m) m.textContent = r.note || '';
+  }catch(e){ alert('네트워크 오류: '+e); }
 }
 
 function _fxSyncButtons(){

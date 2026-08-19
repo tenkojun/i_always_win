@@ -327,6 +327,121 @@ def report_files(fn):
     return send_from_directory(_REPORTS, fn)
 
 
+_REPORT_THEME_FILE = "report_theme.txt"
+
+
+def _report_theme() -> str:
+    """
+    저장된 보고서 테마. 자기완결 HTML 이라 생성 시점에 결정해야 한다.
+    (이미 만든 보고서의 테마는 바뀌지 않는다 — 다시 생성해야 한다.)
+    """
+    from engine.jiqtx.report_theme import DEFAULT_THEME, THEMES
+    from engine.paths import DATA_DIR
+    try:
+        v = (DATA_DIR / _REPORT_THEME_FILE).read_text(encoding="utf-8").strip()
+        return v if v in THEMES else DEFAULT_THEME
+    except Exception:
+        return DEFAULT_THEME
+
+
+@app.route("/api/reports/theme", methods=["GET", "POST"])
+@require_auth
+def api_report_theme():
+    from engine.jiqtx.report_theme import THEMES, theme_list
+    from engine.paths import DATA_DIR
+    if request.method == "GET":
+        return jsonify({"ok": True, "theme": _report_theme(),
+                        "themes": theme_list()})
+    d = request.get_json(force=True, silent=True) or {}
+    t = (d.get("theme") or "").strip()
+    if t not in THEMES:
+        return jsonify({"ok": False, "error": "알 수 없는 테마"}), 400
+    try:
+        (DATA_DIR / _REPORT_THEME_FILE).write_text(t, encoding="utf-8")
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "theme": t,
+                    "note": "이미 만든 보고서는 바뀌지 않습니다 — 다시 생성하세요."})
+
+
+@app.route("/api/reports")
+@require_auth
+def api_reports_list():
+    """
+    생성된 보고서 목록. 최신순.
+
+    파일명 규칙: <TICKER>_precision.html (최신) 과
+    <TICKER>_precision_<타임스탬프>.html (아카이브).
+    """
+    import re as _re
+    items = []
+    try:
+        for fn in os.listdir(_REPORTS):
+            if not fn.lower().endswith(".html"):
+                continue
+            p = os.path.join(_REPORTS, fn)
+            if not os.path.isfile(p):
+                continue
+            st = os.stat(p)
+            m = _re.match(r"^([A-Za-z0-9._-]+?)_(precision|report)"
+                          r"(?:_(\d{8}_\d{6}))?\.html$", fn)
+            ticker = (m.group(1).replace("_", ".") if m else
+                      os.path.splitext(fn)[0])
+            items.append({
+                "file": fn,
+                "ticker": ticker.upper(),
+                "kind": ("정밀" if (m and m.group(2) == "precision")
+                         else "분석"),
+                "archived": bool(m and m.group(3)),
+                "size": st.st_size,
+                "mtime": dt.datetime.fromtimestamp(st.st_mtime).isoformat(),
+                "url": "/report/" + fn,
+                "download": "/api/reports/download/" + fn,
+            })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    items.sort(key=lambda x: x["mtime"], reverse=True)
+    return jsonify({"ok": True, "items": items, "count": len(items)})
+
+
+def _safe_report_path(fn: str):
+    """
+    경로 탈출 차단. 사용자가 준 이름을 그대로 join 하면
+    ../../ 로 저장소 바깥 파일을 내려받을 수 있다.
+    """
+    name = os.path.basename(fn or "")
+    if not name.lower().endswith(".html"):
+        return None
+    p = os.path.realpath(os.path.join(_REPORTS, name))
+    if os.path.commonpath([p, os.path.realpath(_REPORTS)]) !=             os.path.realpath(_REPORTS):
+        return None
+    return p if os.path.isfile(p) else None
+
+
+@app.route("/api/reports/download/<path:fn>")
+@require_auth
+def api_reports_download(fn):
+    p = _safe_report_path(fn)
+    if not p:
+        abort(404)
+    return send_from_directory(_REPORTS, os.path.basename(p),
+                               as_attachment=True)
+
+
+@app.route("/api/reports/delete", methods=["POST"])
+@require_auth
+def api_reports_delete():
+    d = request.get_json(force=True, silent=True) or {}
+    p = _safe_report_path(d.get("file") or "")
+    if not p:
+        return jsonify({"ok": False, "error": "파일 없음"}), 404
+    try:
+        os.remove(p)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
 @app.route("/docs/<path:fn>")
 def doc_files(fn):
     """프로젝트 문서(가이드 등) 정적 서빙."""
@@ -2263,7 +2378,7 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
 
         base = "%s_precision.html" % ticker.replace("/", "_").replace(".", "_")
         path = os.path.join(_REPORTS, base)
-        jiqtx.save_html(a, path)
+        jiqtx.save_html(a, path, theme=_report_theme())
         report_url = "/report/" + base
 
         # 영구 이력용 타임스탬프 사본

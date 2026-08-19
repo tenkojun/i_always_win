@@ -36,6 +36,7 @@ from . import charts as ch
 from .glossary import TERMS as _TERMS
 from .glossary import build_css as _tip_css
 from .glossary import build_js as _tip_js
+from .report_theme import DEFAULT_THEME, themed_css
 
 
 
@@ -1648,7 +1649,7 @@ h4{font-size:14px;margin:18px 0 8px;color:#cfd4de}
 .toc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 8px}
 .toc a{font-size:12px;padding:5px 10px;border-radius:99px;background:#171a21;
  color:#b9c0cc;text-decoration:none;border:1px solid #252a34}
-.toc a:hover{background:#1e222b;color:#fff}
+.toc a:hover{background:#1e222b;color:#e6e8ec}
 details.sec{background:#12151b;border:1px solid #222732;border-radius:11px;
  margin:9px 0;overflow:hidden}
 details.sec>summary{cursor:pointer;padding:12px 15px;list-style:none;
@@ -1729,7 +1730,7 @@ footer{margin-top:30px;padding-top:16px;border-top:1px solid #252a34;
 .tb-b{margin-left:auto;background:#171a21;border:1px solid #252a34;color:#b9c0cc;
  padding:4px 10px;border-radius:7px;font-size:11.5px;cursor:pointer}
 .tb-b+.tb-b{margin-left:0}
-.tb-b:hover{background:#1e222b;color:#fff}
+.tb-b:hover{background:#1e222b;color:#e6e8ec}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
  gap:8px;margin-top:14px}
 .m{background:#12151b;border:1px solid #222732;border-radius:9px;padding:9px 11px}
@@ -1762,7 +1763,7 @@ nav.toc{margin:16px 0 6px}
 .ctl{display:flex;gap:8px;margin:10px 0}
 .ctl button{background:#171a21;border:1px solid #252a34;color:#b9c0cc;
  padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer}
-.ctl button:hover{background:#1e222b;color:#fff}
+.ctl button:hover{background:#1e222b;color:#e6e8ec}
 """
 
 JS = """
@@ -1928,7 +1929,7 @@ def _tip_script() -> str:
     return _tip_js().replace("__TERMS_JSON__", payload)
 
 
-def render_html(a) -> str:
+def render_html(a, theme: str = DEFAULT_THEME) -> str:
     secs = build_sections(a)
     for x in secs:
         x.part = SECTION_PART.get(x.sid, "IV")
@@ -1995,7 +1996,7 @@ def render_html(a) -> str:
     skipped = [x.title for x in REGISTRY if x not in secs]
     return f"""<!DOCTYPE html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{E(a.ticker)} — I ALWAYS WIN</title><style>{CSS}{_tip_css()}</style></head><body>
+<title>{E(a.ticker)} — I ALWAYS WIN</title><style>{themed_css(CSS, theme)}{_tip_css()}</style></head><body>
 <div class="topbar"><span class="tb-t">{E(a.ticker)}</span>
 <span class="tb-g">{E(v.grade)}</span>
 <span class="tb-s">{E(cls.spec.label_ko)}</span>
@@ -2015,7 +2016,7 @@ def render_html(a) -> str:
 {_tip_script()}</script></body></html>"""
 
 
-def save_html(a, path: str) -> str:
+def save_html(a, path: str, theme: str = DEFAULT_THEME) -> str:
     with open(path, "w", encoding="utf-8") as f:
-        f.write(render_html(a))
+        f.write(render_html(a, theme=theme))
     return path
