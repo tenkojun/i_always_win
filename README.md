@@ -11,7 +11,7 @@
 
 <br>
 
-![version](https://img.shields.io/badge/version-2.21.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
+![version](https://img.shields.io/badge/version-2.22.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
 ![python](https://img.shields.io/badge/python-3.12-5b8def?style=for-the-badge&labelColor=0b0d11)
 ![engine](https://img.shields.io/badge/engine-32%20modules%20·%2014.8k%20LOC-2ec27e?style=for-the-badge&labelColor=0b0d11)
 ![license](https://img.shields.io/badge/license-MIT-2ec27e?style=for-the-badge&labelColor=0b0d11)
@@ -206,7 +206,7 @@ VI   운영·한계    촉매 캘린더 · 모니터링 플랜 · 말할 수 없
 
 ### 용어 툴팁
 
-전문 용어 **44개**에 마우스를 올리면 설명이 뜬다.
+전문 용어 **66개**에 마우스를 올리면 설명이 뜬다.
 정의만 쓰지 않고 **왜 보는지**와 **어떤 값이면 문제인지**까지 적었다.
 
 > **DSR** — 디플레이티드 샤프 비율
@@ -488,7 +488,7 @@ Cloudflare Tunnel로 집 밖에서 접속한다. 감시자가 터널을 지킨�
     │   ├── thesis trade    시나리오 · 반증조건 · 배리어확률 · 최소분산 헤지
     │   ├── agents panel    하드 게이트 · 전문가 14명 · 결정론적 판정
     │   ├── charts          외부 의존 없는 인라인 SVG 21종
-    │   ├── glossary        용어 사전 44개 + 툴팁 엔진
+    │   ├── glossary        용어 사전 66개 + 툴팁 엔진
     │   ├── horizons        단/중/장 지평별 독립 계산 + 불일치 탐지
     │   ├── macro_board     거시 14변수 × 유의 베타 필터
     │   ├── report_theme    테마 4종 팔레트 주입
