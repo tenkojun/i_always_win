@@ -1,13 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-#  I ALWAYS WIN  ―  PyInstaller 스펙
+#  Plutus  ―  PyInstaller 스펙
 #  ==================================
 #  빌드:
 #      pip install pyinstaller
 #      python tools/make_version_info.py     # 버전 리소스 갱신
 #      pyinstaller app.spec --noconfirm
 #  결과:
-#      dist/IAlwaysWin/IAlwaysWin.exe
+#      dist/Plutus/Plutus.exe
 #
 #  콘솔 창을 띄우지 않는다(console=False). 그래서 진단 로그는
 #  화면이 아니라 .data/logs/app.log 로 간다 (run_desktop.py 참조).
@@ -122,7 +122,7 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz, a.scripts, [],
     exclude_binaries=True,
-    name='IAlwaysWin',
+    name='Plutus',
     console=False,                 # ← 콘솔 창 없음. 로그는 .data/logs/
     icon='assets/app.ico',
     version='version_info.txt',    # 파일 속성에 이름·버전·개발자
@@ -130,5 +130,5 @@ exe = EXE(
 coll = COLLECT(
     exe, a.binaries, a.zipfiles, a.datas,
     strip=False, upx=True,
-    name='IAlwaysWin',
+    name='Plutus',
 )

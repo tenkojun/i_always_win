@@ -1,4 +1,4 @@
-# I ALWAYS WIN — 중앙 인증 Worker
+# Plutus — 중앙 인증 Worker
 
 Cloudflare Workers + D1 기반 중앙 인증 서버.
 

@@ -35,7 +35,7 @@ def _sim_ohlc_bounce(n_days, true_spread, daily_vol, ticks=390, seed=0):
 
 def run_validation():
     print("=" * 74)
-    print("I ALWAYS WIN 추정량 검증")
+    print("Plutus 추정량 검증")
     print("=" * 74)
 
     print("\n[1] 스프레드 추정량 — 진짜 스프레드 복원 정확도")

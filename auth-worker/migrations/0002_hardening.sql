@@ -1,4 +1,4 @@
--- I ALWAYS WIN 중앙 인증 — 스키마 v2 (레이트리밋 · 기기 바인딩 · 감사)
+-- Plutus 중앙 인증 — 스키마 v2 (레이트리밋 · 기기 바인딩 · 감사)
 -- 적용: wrangler d1 execute iaw-auth --file=migrations/0002_hardening.sql
 --
 -- 0001 을 이미 적용한 DB 에도 그대로 올릴 수 있다(전부 IF NOT EXISTS).

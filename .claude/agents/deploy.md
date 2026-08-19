@@ -1,4 +1,4 @@
-# 배포 터미널 — I ALWAYS WIN Deploy Agent
+# 배포 터미널 — Plutus Deploy Agent
 
 ## 역할
 빌드 / 패키징 / 문서화 / 환경 관리 전담
@@ -23,7 +23,7 @@ README.md
 cd C:\Users\jun\Desktop\e
 pip install pyinstaller pywebview
 pyinstaller app.spec --noconfirm
-:: 결과: dist\IAlwaysWin\IAlwaysWin.exe
+:: 결과: dist\Plutus\Plutus.exe
 ```
 
 ## requirements.txt 관리 원칙
@@ -35,7 +35,7 @@ pyinstaller app.spec --noconfirm
 ## app.spec 주의사항
 - `excludes`: torch, tensorflow (EXE 용량 절감)
 - `datas`: NotoSansKR-Engine.ttf 반드시 포함
-- `name`: IAlwaysWin (폴더명 유지) · `console=False`
+- `name`: Plutus (폴더명 유지) · `console=False`
 
 ## 패키지 생성 (ZIP)
 ```python

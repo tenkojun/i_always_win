@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#05070a">
 <link rel="icon" type="image/png" href="/static/favicon.png">
 <link rel="apple-touch-icon" href="/static/favicon.png">
-<title>I ALWAYS WIN · 기관급 퀀트 분석 터미널</title>
+<title>Plutus · 기관급 퀀트 분석 터미널</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -1621,7 +1621,7 @@
   z-index:10000;display:flex;align-items:center;justify-content:center;
   color:var(--cyan);font-family:var(--mono);font-size:11px;
   letter-spacing:3px;
-  transition:opacity .3s ease;opacity:1">I ALWAYS WIN · 인증 확인 중…</div>
+  transition:opacity .3s ease;opacity:1">Plutus · 인증 확인 중…</div>
 
 <!-- 뉴스 분석 팝업 모달 -->
 <div id="newsmodal" onclick="if(event.target===this)closeNewsModal()">
@@ -1739,11 +1739,13 @@
 <div class="snapline" aria-hidden="true"></div>
 <div class="skip" onclick="_bootSkip()">SKIP ▸</div>
 <div class="blk">
-  <!-- 여우 — 누끼딴 사진 파일 (webapp/static/fox.png) -->
-  <img class="fox" src="/static/fox.png" alt="" draggable="false">
+  <!-- Plutus 로고. 파일이 없으면 기존 이미지로 폴백한다 —
+       로고 하나 때문에 부팅 화면이 깨진 채로 보이면 안 된다. -->
+  <img class="fox" src="/static/plutus.png" alt="Plutus" draggable="false"
+       onerror="this.onerror=null;this.src='/static/fox.png'">
 
-  <div class="t-name">I&nbsp;ALWAYS&nbsp;WIN</div>
-  <div class="t-sub">· JUNHWA ·</div>
+  <div class="t-name">P&nbsp;L&nbsp;U&nbsp;T&nbsp;U&nbsp;S</div>
+  <div class="t-sub">R E S E A R C H &nbsp;&amp;&nbsp; A N A L Y T I C S</div>
   <div class="t-full">INSTITUTIONAL&nbsp;&nbsp;QUANT&nbsp;&nbsp;TERMINAL</div>
   <div class="t-tag">J · I · Q · T &nbsp;─&nbsp; 기관급 퀀트 터미널</div>
   <div class="ln">> CORE ENGINE &nbsp;&nbsp;&nbsp;&nbsp;<b>INITIALIZED</b></div>
@@ -1758,7 +1760,7 @@
   <!-- 상단 상태바 -->
   <div class="frame topbar">
     <div class="brand">
-      <span class="bn">I ALWAYS WIN</span>
+      <span class="bn">Plutus</span>
       <span class="bsep">|</span>
       <!-- 브랜드명을 두 번 쓰고 있었고, '백테스트' 는 v2.2 에서 제거된
            기능이라 표기만 남아 있었다. 실제로 하는 일로 바꾼다. -->
@@ -1810,7 +1812,7 @@
   <!-- 로그인/가입 모달 -->
   <div class="login-mask" id="login-mask">
     <div class="login-box">
-      <h2>I ALWAYS WIN</h2>
+      <h2>Plutus</h2>
       <div class="sub" id="login-sub">로그인이 필요합니다</div>
       <div class="row">
         <label>USERNAME</label>
@@ -1908,7 +1910,7 @@
       <div class="set-side">
         <div class="brand">
           <div class="ti">SETTINGS</div>
-          <div class="sub">I ALWAYS WIN 설정</div>
+          <div class="sub">Plutus 설정</div>
         </div>
         <div class="set-group">내 계정</div>
         <div class="set-cat on" data-cat="account" onclick="switchSetCat('account')">
@@ -2627,7 +2629,7 @@
           <!-- 카테고리: 정보 -->
           <div class="set-pane" id="set-pane-info" style="display:none">
             <div class="set-section">
-              <div class="hd">I ALWAYS WIN 시스템</div>
+              <div class="hd">Plutus 시스템</div>
               <div class="info-grid">
                 <div class="row"><div class="lab">버전</div>
                   <div class="val" id="info-version">—</div></div>
@@ -2644,7 +2646,7 @@
               <div style="font-size:12px;color:var(--txt-dim);line-height:1.8;
                 padding:10px 14px;background:rgba(255,255,255,.025);
                 border-radius:3px">
-                <b style="color:var(--cyan)" id="info-appname">I ALWAYS WIN</b><br>
+                <b style="color:var(--cyan)" id="info-appname">Plutus</b><br>
                 <span id="info-developer">Tenko jun - 정준화</span><br>
                 <span style="color:var(--txt-mute);font-size:11px"
                   id="info-stack">Python / Flask / lightweight-charts</span><br>
@@ -3528,17 +3530,32 @@ const _SFX = {
                dur:0.022, gain:0.045, attack:0.0008});
     _hiss(ctx,t,{f0:6000,f1:2600,dur:0.028,gain:0.026,q:1.1});
   },
-  // 부팅 테마 — 저역 스웰 + 화음 + FM 벨. 리버브가 공간을 만든다
+  /* 부팅 테마 — 로고가 뜨는 순간 울린다.
+     A단조 → C장조로 열리는 진행. 저역이 먼저 깔리고 5도·옥타브가
+     차례로 쌓인 뒤 마지막에 장3도가 들어오며 밝게 풀린다. 이 '해결'이
+     없으면 아무리 두꺼워도 그냥 웅웅거림으로 들린다.
+     A1(55) → E2(82.4) → A2(110) → E3(164.8) → A3(220) → C#4(277.2) */
   theme: function(ctx,t){
-    _hiss(ctx,t,{f0:150,f1:4200,dur:1.5,gain:0.05,q:0.6});
-    [[55,0],[82.4,0],[110,0.10],[164.8,0.22],[220,0.34]].forEach(function(p){
-      _tone(ctx,t+p[1],{type:'sawtooth', f0:p[0], dur:2.0-p[1], gain:0.075,
-                        attack:0.22, detune:9});
+    _hiss(ctx,t,{f0:120,f1:5200,dur:1.9,gain:0.055,q:0.5});   // 상승 노이즈
+    // 저역 축 — 톱니 2겹 디튠으로 두께
+    [[55,0.00,2.6],[82.4,0.00,2.6],[110,0.12,2.4],
+     [164.8,0.26,2.2],[220,0.40,2.0]].forEach(function(p){
+      _tone(ctx,t+p[1],{type:'sawtooth', f0:p[0], dur:p[2], gain:0.085,
+                        attack:0.20, detune:11});
     });
-    _fm(ctx,t+0.55,{carrier:880, ratio:2.0, index:700, dur:1.5,
-                    gain:0.075, attack:0.30});
-    _fm(ctx,t+0.95,{carrier:1320, ratio:3.0, index:900, dur:1.2,
-                    gain:0.05, attack:0.25, pan:0.3});
+    // 장3도 — 마지막에 들어와 화음을 열어 준다
+    _tone(ctx,t+0.86,{type:'triangle', f0:277.2, dur:1.7, gain:0.07,
+                      attack:0.30, detune:7});
+    // FM 벨 2겹 — 금속성 광택
+    _fm(ctx,t+0.50,{carrier:880,  ratio:2.0, index:820, dur:1.8,
+                    gain:0.085, attack:0.26});
+    _fm(ctx,t+0.92,{carrier:1320, ratio:3.0, index:1000, dur:1.5,
+                    gain:0.055, attack:0.22, pan:0.35});
+    _fm(ctx,t+1.15,{carrier:1760, ratio:2.0, index:700, dur:1.2,
+                    gain:0.035, attack:0.20, pan:-0.35});
+    // 서브 임팩트 — 아래를 받쳐 준다
+    _tone(ctx,t+0.40,{type:'sine', f0:55, f1:41.2, dur:1.6, gain:0.11,
+                      attack:0.05, layers:1});
   },
   // 승인 — 상승 2음 + 벨 잔향
   granted: function(ctx,t){
@@ -3587,6 +3604,69 @@ const _SFX = {
   },
 };
 
+/* ── UI 인터랙션 사운드 ──────────────────────────────────────
+   호버·클릭마다 소리를 낸다. 두 가지를 지키지 않으면 금방 거슬린다.
+
+   1) **호버는 아주 작고 짧게.** 클릭의 1/4 음량. 마우스가 지나가기만
+      해도 울리므로 조금만 크면 소음이 된다.
+   2) **연타 억제(throttle).** 리스트 위를 빠르게 훑으면 초당 수십 번
+      호버가 발생한다. 같은 종류는 최소 간격을 두고, 직전 요소와 같으면
+      다시 울리지 않는다. */
+const _UI_SND = {hover: 0, click: 0};
+const _UI_GAP = {hover: 55, click: 25};   // ms
+let _lastHoverEl = null;
+
+function _uiSfx(kind){
+  const now = performance.now();
+  if(now - (_UI_SND[kind] || 0) < (_UI_GAP[kind] || 40)) return;
+  _UI_SND[kind] = now;
+  const ctx = _ac();
+  if(!ctx) return;
+  const t = ctx.currentTime;
+  try{
+    if(kind === 'hover'){
+      _fm(ctx, t, {carrier: 2100 + Math.random()*300, ratio: 4.2,
+                   index: 1400, dur: 0.016, gain: 0.012, attack: 0.001});
+    }else{
+      _fm(ctx, t, {carrier: 1450, ratio: 3.1, index: 1900,
+                   dur: 0.032, gain: 0.05, attack: 0.001});
+      _hiss(ctx, t, {f0: 5400, f1: 2400, dur: 0.022, gain: 0.02, q: 1.3});
+    }
+  }catch(e){}
+}
+
+/* 개별 요소마다 리스너를 달면 동적 DOM 에서 새로 그린 요소가 빠진다.
+   document 에 위임해서 한 번만 건다. */
+const _UI_HOVER_SEL =
+  'button, .tk, .wchip, .dock-icon, .mf-tab, .wl-row, .aw-item, .aw-card,' +
+  ' .wel-link, .tpl-card, .rtheme-btn, .fsize-btn, .ico, .close-x,' +
+  ' a[href], [role="button"], summary, input[type="checkbox"], .range-btn';
+
+function _initUiSounds(){
+  if(document.body.dataset.uiSnd) return;
+  document.body.dataset.uiSnd = '1';
+
+  document.addEventListener('pointerover', e=>{
+    if(typeof _isSoundEnabled === 'function' && !_isSoundEnabled('ui')) return;
+    const el = e.target.closest && e.target.closest(_UI_HOVER_SEL);
+    if(!el || el === _lastHoverEl) return;
+    if(el.disabled) return;
+    _lastHoverEl = el;
+    _uiSfx('hover');
+  }, {passive:true});
+
+  document.addEventListener('pointerout', e=>{
+    if(_lastHoverEl && !_lastHoverEl.contains(e.relatedTarget)) _lastHoverEl = null;
+  }, {passive:true});
+
+  document.addEventListener('pointerdown', e=>{
+    if(typeof _isSoundEnabled === 'function' && !_isSoundEnabled('ui')) return;
+    const el = e.target.closest && e.target.closest(_UI_HOVER_SEL);
+    if(!el || el.disabled) return;
+    _uiSfx('click');
+  }, {passive:true});
+}
+
 function playSfx(name){
   if(typeof _isSoundEnabled==='function' && !_isSoundEnabled('sfx'))return;
   const fn=_SFX[name];
@@ -3611,7 +3691,7 @@ function playSfx(name){
    GPL-3.0 으로 공개해야 한다 — 결정 필요.) */
 // eDEX 원본 로그를 받아오면 통째로 갈아 끼운다 → const 가 아니라 let
 let _BOOT_LINES=[
-  ['','I ALWAYS WIN kernel — institutional quant terminal','ok'],
+  ['','Plutus kernel — institutional quant terminal','ok'],
   ['','Copyright (c) Tenko jun. All rights reserved.','dim'],
   ['','',''],
   ['','physical memory map initialized','ok'],
@@ -3749,6 +3829,7 @@ function _bootSkip(){
   // 그대로 멈춘다(실제로 TDZ 참조 하나로 부팅 화면이 영구히 남았다).
   // 최대 12초 뒤에는 무조건 걷어낸다.
   _bootGuard=setTimeout(()=>{ if(!_bootDone) _bootSkip(); }, 12000);
+  _initUiSounds();
   window.addEventListener('unhandledrejection', ()=>{
     if(!_bootDone) _bootSkip();
   }, {once:true});
@@ -6388,6 +6469,8 @@ function _isSoundEnabled(kind){
   try{
     if(!_appPref.soundMaster)return false;
     if(kind==='news')return _appPref.soundNews;
+    // UI 사운드는 따로 끌 수 있다 — 기본은 켜짐
+    if(kind==='ui')return _appPref.soundUi !== false;
     return true;
   }catch(e){return true;}
 }

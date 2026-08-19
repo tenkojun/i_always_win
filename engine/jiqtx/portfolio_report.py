@@ -184,7 +184,7 @@ def render_portfolio(P, title: str = "포트폴리오") -> str:
 
     return f"""<!DOCTYPE html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{E(title)} — I ALWAYS WIN 포트폴리오</title><style>{CSS}</style></head><body>
+<title>{E(title)} — Plutus 포트폴리오</title><style>{CSS}</style></head><body>
 <div class="wrap">
 <header><h1>{E(title)} · 책 레벨 분석</h1>
 <div class="sub">{len(r.tickers)}개 포지션 · {E(P.weight_source)} ·

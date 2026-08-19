@@ -1,5 +1,5 @@
 /**
- * I ALWAYS WIN — 중앙 인증 Worker
+ * Plutus — 중앙 인증 Worker
  * ================================
  * 내 PC 가 꺼져 있어도 계정·승인·세션이 살아 있어야 한다.
  * 그래서 인증은 Cloudflare Workers + D1 에 둔다(둘 다 무료 티어).

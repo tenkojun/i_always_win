@@ -41,7 +41,7 @@ def _search_brave(query: str, limit: int = 6) -> List[Dict[str, str]]:
             params={"q": query, "count": limit, "freshness": "pw"},
             headers={"X-Subscription-Token": key,
                      "Accept": "application/json",
-                     "User-Agent": "IAlwaysWin/2.0"},
+                     "User-Agent": "Plutus/2.0"},
             timeout=8,
         )
         if r.status_code != 200:

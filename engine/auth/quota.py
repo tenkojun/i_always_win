@@ -29,7 +29,57 @@ from typing import Any, Dict
 from engine.paths import AUTH_DB
 
 FREE_DAILY_REPORTS = 3
-TIERS = ("free", "premium")
+PREMIUM_DAILY_REPORTS = None          # 무제한
+
+# 등급 — 위로 갈수록 포함 관계다(플래티넘 ⊃ 프리미엄 ⊃ 무료).
+TIERS = ("free", "premium", "platinum")
+TIER_KO = {"free": "무료", "premium": "프리미엄", "platinum": "플래티넘"}
+
+# 기능 플래그. **화면에서 숨기는 것과 서버에서 막는 것은 다르다** —
+# 프론트는 이 값으로 UI 를 정리하고, 실제 차단은 라우트에서 한다.
+FEATURES = {
+    "free": {
+        "reports_per_day": FREE_DAILY_REPORTS,
+        "portfolio": True,       # 포트폴리오 분석
+        "market_flow": True,     # 수급 스캐너
+        "report_themes": False,  # 보고서 테마 선택
+        "vault": False,          # 보고서 보관함
+        "agent_chat": False,     # 에이전트 채팅
+        "tunnel": False,         # 외부 접근(터널)
+        "export": False,         # 보고서 다운로드
+        "priority": False,       # 분석 큐 우선순위
+    },
+    "premium": {
+        "reports_per_day": None,
+        "portfolio": True, "market_flow": True,
+        "report_themes": True, "vault": True,
+        "agent_chat": True, "tunnel": False,
+        "export": True, "priority": False,
+    },
+    # 플래티넘 = 전 기능 개방
+    "platinum": {
+        "reports_per_day": None,
+        "portfolio": True, "market_flow": True,
+        "report_themes": True, "vault": True,
+        "agent_chat": True, "tunnel": True,
+        "export": True, "priority": True,
+    },
+}
+
+
+def features(user_id: int) -> Dict[str, Any]:
+    """이 사용자가 쓸 수 있는 기능 표."""
+    t = get_tier(user_id)
+    f = dict(FEATURES.get(t, FEATURES["free"]))
+    f["tier"] = t
+    f["tier_ko"] = TIER_KO.get(t, t)
+    return f
+
+
+def can(user_id: int, feature: str) -> bool:
+    """기능 하나에 대한 허용 여부. 모르는 이름은 막는다(닫힌 기본값)."""
+    return bool(FEATURES.get(get_tier(user_id), FEATURES["free"])
+                .get(feature, False))
 
 
 def _conn() -> sqlite3.Connection:
@@ -99,11 +149,13 @@ def used_today(user_id: int, kind: str = "report") -> int:
 def quota_status(user_id: int, kind: str = "report") -> Dict[str, Any]:
     tier = get_tier(user_id)
     used = used_today(user_id, kind)
-    if tier == "premium":
-        return {"tier": tier, "unlimited": True, "used": used,
+    if FEATURES.get(tier, {}).get("reports_per_day") is None:
+        return {"tier": tier, "tier_ko": TIER_KO.get(tier, tier),
+                "unlimited": True, "used": used,
                 "limit": None, "remaining": None, "allowed": True}
     remaining = max(0, FREE_DAILY_REPORTS - used)
-    return {"tier": tier, "unlimited": False, "used": used,
+    return {"tier": tier, "tier_ko": TIER_KO.get(tier, tier),
+            "unlimited": False, "used": used,
             "limit": FREE_DAILY_REPORTS, "remaining": remaining,
             "allowed": remaining > 0}
 
@@ -124,9 +176,10 @@ def consume(user_id: int, kind: str = "report") -> Dict[str, Any]:
                              WHERE user_id=? AND day=? AND kind=?""",
                           (user_id, _today(), kind)).fetchone()
             used = int(r["n"]) if r else 0
-            if tier != "premium" and used >= FREE_DAILY_REPORTS:
+            cap = FEATURES.get(tier, {}).get("reports_per_day")
+            if cap is not None and used >= cap:
                 return {"ok": False, "error": (
-                    f"무료 등급은 하루 {FREE_DAILY_REPORTS}회까지 "
+                    f"{TIER_KO.get(tier, tier)} 등급은 하루 {cap}회까지 "
                     "보고서를 만들 수 있습니다. 자정에 초기화됩니다."),
                     **quota_status(user_id, kind)}
             c.execute("""INSERT INTO usage_daily(user_id,day,kind,n)

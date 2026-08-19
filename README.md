@@ -2,21 +2,32 @@
 
 <br>
 
-# I ALWAYS WIN
+<img src="webapp/static/plutus.png" alt="Plutus" width="200">
+
+<br><br>
+
+# PLUTUS
+
+**RESEARCH &nbsp;&amp;&nbsp; ANALYTICS**
+
+<br>
 
 ### 기관급 퀀트 분석 터미널
 
 종목 하나를 넣으면 데이터 무결성부터 유동성·변동성·레짐·팩터·리스크까지 훑고,<br>
-전문가 패널 심의를 거쳐 **외부 리소스 0개의 자기완결 HTML 보고서**를 만든다.
+전문가 패널 14인의 심의를 거쳐 **외부 리소스 0개의 자기완결 HTML 보고서**를 만든다.
 
 <br>
 
-![version](https://img.shields.io/badge/version-2.22.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
-![python](https://img.shields.io/badge/python-3.12-5b8def?style=for-the-badge&labelColor=0b0d11)
-![engine](https://img.shields.io/badge/engine-32%20modules%20·%2014.8k%20LOC-2ec27e?style=for-the-badge&labelColor=0b0d11)
-![license](https://img.shields.io/badge/license-MIT-2ec27e?style=for-the-badge&labelColor=0b0d11)
+![version](https://img.shields.io/badge/version-3.0.0-c9a227?style=for-the-badge&labelColor=000000)
+![python](https://img.shields.io/badge/python-3.12-c9a227?style=for-the-badge&labelColor=000000)
+![engine](https://img.shields.io/badge/engine-32_modules_·_15k_LOC-c9a227?style=for-the-badge&labelColor=000000)
+![license](https://img.shields.io/badge/license-MIT-c9a227?style=for-the-badge&labelColor=000000)
 
-`Flask` · `pywebview` · `PyInstaller` · `Cloudflare Workers + D1` · `numpy / pandas / scipy / scikit-learn`
+<br>
+
+`Flask` · `pywebview` · `PyInstaller` · `Cloudflare Workers + D1`<br>
+`numpy` · `pandas` · `scipy` · `scikit-learn`
 
 **Tenko jun · 정준화**
 
@@ -28,17 +39,66 @@
 
 <div align="center">
 
-|  | |
-|:--|:--|
-| **기권하는 엔진** | 검정을 통과 못 한 모듈은 점수를 깎지 않고 **출력을 없앤다** |
-| **3축 분리 판정** | 방향 · 리스크 예산 · 모델 신뢰도를 하나로 합치지 않는다 |
-| **단 / 중 / 장 다지평** | 63일 · 252일 · 1260일을 **평균하지 않고** 어긋나는 지점을 드러낸다 |
-| **자산군 맞춤 거시** | 금과 소프트웨어를 같은 렌즈로 보지 않는다 · `\|t\|<2` 면 중립 |
-| **당일 수급 스캐너** | 어제 같은 시각 대비 자금 이동 · 집중 매수/매도 · 섹터 강약 |
-| **자기완결 보고서** | 섹션 37종 · 인라인 SVG 차트 21종 · 테마 4종 · 외부 요청 0 |
-| **무키 완전 동작** | API 키 없이 전 기능 동작 (야후 · Stooq) · 키는 보강재 |
+### 이름에 대하여
+
+> **Plutus** (Πλοῦτος) — 그리스 신화의 부(富)의 신.
+> 눈이 멀어 부를 **공정하게** 나눈다고 전해진다.
+>
+> 이 엔진도 같은 원칙을 따른다 — 보고 싶은 결론이 아니라
+> **데이터가 허락하는 결론만** 낸다.
 
 </div>
+
+---
+
+## 무엇이 다른가
+
+|  |  |
+|:--|:--|
+| **기권하는 엔진** | 검정을 통과 못 한 모듈은 점수를 깎지 않고 **출력을 없앤다.** OOS 정확도 50%는 약한 신호가 아니라 신호 없음이다 |
+| **3축 분리 판정** | 방향 · 리스크 예산 · 모델 신뢰도를 **하나로 합치지 않는다.** 성질이 다른 정보를 한 숫자로 뭉개면 정보가 파괴된다 |
+| **단 / 중 / 장 다지평** | 63일 · 252일 · 1260일을 **평균하지 않고** 어긋나는 지점을 드러낸다 |
+| **자산군 맞춤 렌즈** | 금과 소프트웨어를 같은 팩터로 보지 않는다. 자산군 19종 × 아키타입 9종 |
+| **거시 대시보드** | 종목별로 **유의한 거시 변수만** 남긴다. `\|t\| < 2` 면 중립 |
+| **당일 수급 스캐너** | 어제 **같은 시각** 대비 자금 이동 · 집중 매수/매도 · 섹터 강약 |
+| **자기완결 보고서** | 섹션 37종 · 인라인 SVG 21종 · 테마 4종 · **외부 요청 0** |
+| **용어 툴팁 66개** | 정의가 아니라 **왜 보는지 + 어떤 값이면 문제인지** |
+| **무키 완전 동작** | API 키 없이 전 기능 동작. 키는 "있으면 좋아지는 보강재" |
+
+---
+
+## 30초 시작
+
+```bash
+git clone https://github.com/tenkojun/i_always_win.git
+cd i_always_win
+pip install -r requirements.txt
+python run_desktop.py          # → http://127.0.0.1:8765
+```
+
+EXE 빌드:
+
+```bash
+pyinstaller app.spec --noconfirm   # → dist/Plutus/Plutus.exe (193MB)
+```
+
+---
+
+## 회원 등급
+
+| | 무료 | 프리미엄 | 플래티넘 |
+|:--|:--:|:--:|:--:|
+| 보고서 생성 | **3회/일** | 무제한 | 무제한 |
+| 정밀 분석 · 수급 스캐너 | ● | ● | ● |
+| 보고서 테마 · 보관함 · 다운로드 | — | ● | ● |
+| 에이전트 채팅 | — | ● | ● |
+| 외부 접근 (터널) | — | — | ● |
+| 분석 큐 우선순위 | — | — | ● |
+
+한도와 기능 판정은 **전부 서버에서** 한다. 프론트에서만 막으면 라우트를
+직접 호출하면 그만이다. 확인과 증가를 한 트랜잭션에서 처리해 동시 클릭으로
+한도를 넘길 수 없다.
+
 
 ---
 
@@ -379,7 +439,7 @@ python run_desktop.py
 build_windows_exe.bat
 ```
 
-`dist/IAlwaysWin/IAlwaysWin.exe` — **콘솔 창 없이 앱 창만** 열린다.
+`dist/Plutus/Plutus.exe` — **콘솔 창 없이 앱 창만** 열린다.
 진단 로그는 화면이 아니라 `.data/logs/app.log` 로 간다.
 
 바탕화면 바로가기:

@@ -1,6 +1,6 @@
 """
 ================================================================
-  I ALWAYS WIN  ―  웹 서버 (Flask)
+  Plutus  ―  웹 서버 (Flask)
 ================================================================
 eDEX-UI 풍 사이파이 터미널 + 토스 편의성 대시보드의 백엔드.
 
@@ -2382,8 +2382,11 @@ def api_jiqtx_analyze():
 @app.route("/api/quota")
 @require_auth
 def api_quota():
-    from engine.auth.quota import quota_status
-    return jsonify({"ok": True, **quota_status(g.user["id"], "report")})
+    from engine.auth.quota import quota_status, features, TIER_KO, TIERS
+    return jsonify({"ok": True,
+                    **quota_status(g.user["id"], "report"),
+                    "features": features(g.user["id"]),
+                    "tiers": [{"id": t, "ko": TIER_KO[t]} for t in TIERS]})
 
 
 @app.route("/api/quota/tier", methods=["POST"])

@@ -96,7 +96,7 @@ eDEX-UI 자산을 전부 걷어내고 **직접 만든 것으로 대체**했다.
 
 ### 변경 — 부팅 화면을 eDEX-UI 원본으로
 사운드 13종 · 부팅 로그 원문 · 줄별 지연 타이밍을 **그대로** 가져왔다.
-제품명(`eDEX-UI` → `I ALWAYS WIN`, `eDEX` → `IAW`)과 로고(여우)만 우리 것.
+제품명(`eDEX-UI` → `Plutus`, `eDEX` → `IAW`)과 로고(여우)만 우리 것.
 
 타이밍은 eDEX 의 `_renderer.js` `displayLine()` 지연표를 그대로 이식했다.
 균일 간격으로 흘리면 밋밋한데, 특정 지점에서 길게 멈추는 게 이 연출의
@@ -657,10 +657,10 @@ CMA 는 쓸 만한 무료 프록시가 없어 제외 — 없는 팩터를 SPY �
     콘솔이 없는 앱에서 진단 수단은 이 파일뿐이다.
   - 외부 프로세스(cloudflared, taskkill)는 이미 `CREATE_NO_WINDOW` 로
     띄우고 있어 검은 창이 번쩍이지 않는다.
-- **실행 파일 이름** `QuantTerminal.exe` → `IAlwaysWin.exe`
+- **실행 파일 이름** `QuantTerminal.exe` → `Plutus.exe`
 - **아이콘** — 앱의 여우 마크를 다크 원형 + 시안 링에 얹어
   `assets/app.ico` (16~256px 7종). 브라우저 탭 파비콘도 같이 생성.
-- **파일 속성** — 오른쪽 클릭 → 속성에 제품명 `I ALWAYS WIN`,
+- **파일 속성** — 오른쪽 클릭 → 속성에 제품명 `Plutus`,
   버전, 개발자 `Tenko jun - 정준화` 가 뜬다.
   `tools/make_version_info.py` 가 `version.py` 에서 생성하며,
   파일이 없으면 `app.spec` 이 빌드 중에 알아서 만든다.
@@ -683,7 +683,7 @@ CMA 는 쓸 만한 무료 프록시가 없어 제외 — 없는 팩터를 SPY �
   패턴에 주석이 그대로 붙어 무효가 되고 있었다.
 
 ### 주의
-- 빌드 후 EXE 를 한 번이라도 실행하면 `dist/IAlwaysWin/.data/` 가 생기고
+- 빌드 후 EXE 를 한 번이라도 실행하면 `dist/Plutus/.data/` 가 생기고
   거기에 **API 키와 계정 DB** 가 들어간다. 남에게 폴더를 전달하기 전에
   반드시 지울 것. `build_windows_exe.bat` 이 빌드 끝에 자동으로 지우고
   경고도 출력한다.
@@ -713,7 +713,7 @@ CMA 는 쓸 만한 무료 프록시가 없어 제외 — 없는 팩터를 SPY �
   끊김 + N초 후 재시도 / 자동 복구 N회), 고정 주소 안내 블록
 
 ### 수정
-- 리브랜딩 과정에서 환경변수 이름이 `JIQT_PORT` → `I ALWAYS WIN_PORT`
+- 리브랜딩 과정에서 환경변수 이름이 `JIQT_PORT` → `Plutus_PORT`
   (공백 포함)로 깨져 있던 것 → `IAW_PORT`
 - 앱 종료 훅이 터널만 내리고 감시자를 남기던 문제
 
@@ -846,13 +846,13 @@ Cloudflare Workers + D1 (둘 다 무료 티어) 위의 인증 서버를 손봤�
 `JIQT` 표기를 코드·UI·문서·빌드 메타데이터 전반에서 걷어냈다.
 
 ### 변경
-- 브랜드 → **I ALWAYS WIN**, 개발자 표기 → **Tenko jun - 정준화**
+- 브랜드 → **Plutus**, 개발자 표기 → **Tenko jun - 정준화**
 - 창 제목·페이지 타이틀·콘솔 배너·PyInstaller 스펙 모두 `version.py` 참조
 - 식별자 정리: `jiqt.*` → `iaw.*` (localStorage),
   `text/jiqt-*` → `text/iaw-*` (드래그앤드롭),
   `jiqt_session` → `iaw_session` (쿠키),
   `jiqt-auth` → `iaw-auth` (D1), `jiqt-tunnel` → `iaw-tunnel`
-- User-Agent `JIQT/1.0` → `IAlwaysWin/2.0`
+- User-Agent `JIQT/1.0` → `Plutus/2.0`
 - README 전면 재작성 (설치·키·`.data/`·구조·한계)
 
 ### 추가
@@ -919,7 +919,7 @@ Cloudflare Workers + D1 (둘 다 무료 티어) 위의 인증 서버를 손봤�
 
 ## [2.0.0] — 2026-08-18
 
-`JIQT` → **I ALWAYS WIN** 리브랜딩과 함께 시작하는 새 계보.
+`JIQT` → **Plutus** 리브랜딩과 함께 시작하는 새 계보.
 
 ### 추가
 - `version.py` — 앱 이름·버전·개발자 표기의 단일 소스

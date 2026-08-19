@@ -177,7 +177,7 @@ def build_demo_world(N: int = 1700, seed: int = 42):
 
 def run_demo(outdir="./reports_demo", n_sims=6000):
     print("=" * 74)
-    print("I ALWAYS WIN 오프라인 데모 — 자산군·성격별 렌즈 분기 확인")
+    print("Plutus 오프라인 데모 — 자산군·성격별 렌즈 분기 확인")
     print("=" * 74)
     assets, macro, proxies = build_demo_world()
     cfg = replace(RUN, n_sims=n_sims, lookback_years=7)

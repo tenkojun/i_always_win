@@ -298,7 +298,7 @@ def health_check(local_port: int = 8765,
     try:
         r = requests.get(state["url"], timeout=timeout,
                          allow_redirects=True,
-                         headers={"User-Agent": "IAlwaysWin-HealthCheck"})
+                         headers={"User-Agent": "Plutus-HealthCheck"})
         out["response_code"] = r.status_code
         out["response_time_ms"] = round((time.time() - t0) * 1000)
         out["external_reachable"] = r.status_code in (200, 302, 401)

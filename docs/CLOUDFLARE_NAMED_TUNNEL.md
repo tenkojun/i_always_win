@@ -128,7 +128,7 @@ Cloudflare Access(Zero Trust, 무료 50명)로 추가 인증:
 
 ### 7-2. Application 생성
 - Access → Applications → Add an application → Self-hosted
-- Application name: I ALWAYS WIN
+- Application name: Plutus
 - Subdomain: terminal
 - Domain: example.com
 
@@ -140,7 +140,7 @@ Cloudflare Access(Zero Trust, 무료 50명)로 추가 인증:
 이제 https://terminal.example.com 접속 시:
 1. Cloudflare 로그인 화면 표시
 2. 본인 이메일 입력 → OTP 코드 메일 수신
-3. 인증 통과 후 I ALWAYS WIN 로그인 화면
+3. 인증 통과 후 Plutus 로그인 화면
 
 **이중 보호**: Cloudflare Access (외부 차단) + 앱 자체 계정 시스템.
 
@@ -176,7 +176,7 @@ NAME 열의 `iaw-terminal`에 해당하는 ID 사용.
 | 설정 시간 | 5분 | 30분 |
 | URL | 매번 변경 | 고정 |
 | 도메인 | trycloudflare.com | 본인 도메인 |
-| 인증 | I ALWAYS WIN 로그인만 | + Cloudflare Access |
+| 인증 | Plutus 로그인만 | + Cloudflare Access |
 | 비용 | 0 | 0 (도메인 별도) |
 | 신뢰성 | 낮음 (URL 변경) | 높음 |
 | 운영 추천 | ✗ | ✓ |

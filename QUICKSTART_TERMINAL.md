@@ -1,4 +1,4 @@
-# I ALWAYS WIN — 실행 안내
+# Plutus — 실행 안내
 
 eDEX-UI 풍 사이파이 터미널 + 토스 편의성을 결합한 금융 대시보드.
 기존 `engine_kr` 분석 엔진이 "종목 분석 / 포트폴리오" 두뇌로 들어가 있습니다.
@@ -44,7 +44,7 @@ python tools/make_version_info.py
 pyinstaller app.spec --noconfirm
 ```
 
-결과물: `dist/IAlwaysWin/IAlwaysWin.exe`
+결과물: `dist/Plutus/Plutus.exe`
 이 폴더를 통째로 복사해 배포합니다. exe 더블클릭 →
 **콘솔 창 없이 앱 창만** 열립니다.
 

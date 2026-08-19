@@ -13,8 +13,8 @@ pip install pyinstaller pillow
 python tools\make_version_info.py
 pyinstaller app.spec --noconfirm
 ```
-- 결과: `dist\IAlwaysWin\IAlwaysWin.exe`
-- 배포: `dist\IAlwaysWin\` 폴더 통째로 복사 (EXE 단독 불가)
+- 결과: `dist\Plutus\Plutus.exe`
+- 배포: `dist\Plutus\` 폴더 통째로 복사 (EXE 단독 불가)
 - 소요: 5~15분
 
 ## app.spec 설정
@@ -26,7 +26,7 @@ pyinstaller app.spec --noconfirm
 - hiddenimports 에 `engine.jiqtx.*` 25개 모듈 전부 명시
   (동적 임포트가 많아 PyInstaller 가 놓친다)
 - NotoSansKR-Engine.ttf 번들 포함
-- 앱 이름: IAlwaysWin
+- 앱 이름: Plutus
 
 ## 폰 접속
 1. `python run_desktop.py` 실행

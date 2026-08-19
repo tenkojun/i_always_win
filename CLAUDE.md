@@ -1,11 +1,11 @@
-# I ALWAYS WIN — 기관급 퀀트 분석 터미널
+# Plutus — 기관급 퀀트 분석 터미널
 
 ## 프로젝트
 - 목표: BlackRock Aladdin 동급+ 퀀트 분석 플랫폼
 - 개발자: Tenko jun - 정준화 / 저장소: https://github.com/tenkojun/i_always_win
 - 버전 단일 소스: `version.py` — **업데이트마다 올린다**(현재 2.14.0)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
-- EXE: `pyinstaller app.spec --noconfirm` → `dist\IAlwaysWin\` (약 138MB)
+- EXE: `pyinstaller app.spec --noconfirm` → `dist\Plutus\` (약 138MB)
 
 ## 기술 스택
 - **Backend**: Python 3.12.10 (pyenv-win), Flask (포트 8765)

@@ -28,7 +28,7 @@ class ClaudeError(Exception):
 
 
 # ── 주식 에이전트 시스템 프롬프트 ─────────────────────────────────
-_SYSTEM_BASE = """당신은 I ALWAYS WIN(기관급 퀀트 분석 터미널)에 \
+_SYSTEM_BASE = """당신은 Plutus(기관급 퀀트 분석 터미널)에 \
 탑재된 시니어 주식 분석 에이전트입니다.
 
 역할:

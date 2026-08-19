@@ -1,4 +1,4 @@
-# 프론트엔드 터미널 — I ALWAYS WIN Frontend Agent
+# 프론트엔드 터미널 — Plutus Frontend Agent
 
 ## 역할
 webapp/templates/index.html (UI/CSS/JS) 전담

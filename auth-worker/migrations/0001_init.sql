@@ -1,4 +1,4 @@
--- I ALWAYS WIN 중앙 인증 — D1 스키마 (v1)
+-- Plutus 중앙 인증 — D1 스키마 (v1)
 -- 적용: wrangler d1 execute iaw-auth --file=migrations/0001_init.sql
 
 CREATE TABLE IF NOT EXISTS users (

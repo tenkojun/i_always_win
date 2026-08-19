@@ -34,7 +34,7 @@ VSVersionInfo(
          StringStruct('FileVersion', {__version__!r}),
          StringStruct('InternalName', {APP_NAME!r}),
          StringStruct('LegalCopyright', {f'© 2026 {DEVELOPER}'!r}),
-         StringStruct('OriginalFilename', 'IAlwaysWin.exe'),
+         StringStruct('OriginalFilename', 'Plutus.exe'),
          StringStruct('ProductName', {APP_NAME!r}),
          StringStruct('ProductVersion', {__version__!r})])
     ]),

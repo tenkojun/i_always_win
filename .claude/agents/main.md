@@ -34,7 +34,7 @@
 - "Aladdin", "기관", "방법론" → `docs/aladdin.md`
 
 ## 기본 컨텍스트 (항상 유지)
-- 프로젝트: I ALWAYS WIN (기관급 퀀트 분석 터미널)
+- 프로젝트: Plutus (기관급 퀀트 분석 터미널)
 - 경로: C:\Users\jun\Desktop\e\
 - 실행: python run_desktop.py
 - 단계별 진행 → 완료 후 보고 → 확인 후 다음

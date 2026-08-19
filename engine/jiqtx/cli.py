@@ -23,7 +23,7 @@ from .report import save
 
 
 FULL_DOCUMENTATION = r'''
-# I ALWAYS WIN
+# Plutus
 
 **범자산 정밀 분석 엔진 · 통합 문서 v0.6**
 
@@ -264,7 +264,7 @@ Level 1이 핵심이다. 메타데이터는 자주 틀린다.
 
 ### 5.1 시나리오 — 분위수가 아니라 드라이버로 정의
 
-| | 기존 | I ALWAYS WIN |
+| | 기존 | Plutus |
 |---|---|---|
 | 정의 | 분포의 10/50/90 분위 | **상위 드라이버 ±1σ/±2σ 조합** |
 | 손익 | 분위 그 자체 | **팩터 델타 × 충격** |
@@ -777,7 +777,7 @@ GARCH·점프모델·분위회귀·EVT·HRP는 전부 직접 구현했다.
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="python -m engine.jiqtx.cli",
-        description="I ALWAYS WIN 범자산 정밀 분석 엔진",
+        description="Plutus 범자산 정밀 분석 엔진",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="예)  python -m engine.jiqtx.cli GLD NVDA TLT --portfolio --fast\n"
                "     python -m engine.jiqtx.cli --demo\n"

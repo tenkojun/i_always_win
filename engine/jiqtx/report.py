@@ -8,7 +8,7 @@ jiqtx.report — 분석 결과를 마크다운 리포트로 렌더링.
 원본 리포트와의 출력 차이
 -------------------------
 원본: 단일 점수 1개 (52.9점) + 감점 사유
-I ALWAYS WIN: 3축 분리 — 방향확률 / 리스크예산 / 모델신뢰도
+Plutus: 3축 분리 — 방향확률 / 리스크예산 / 모델신뢰도
         그리고 '기권'이 정상 출력이다.
 """
 
@@ -52,7 +52,7 @@ def render(a) -> str:
     add = L.append
 
     # ============================================== 헤더
-    add(f"# {a.ticker} — I ALWAYS WIN 정밀 분석 리포트\n")
+    add(f"# {a.ticker} — Plutus 정밀 분석 리포트\n")
     add(f"**기준일** {a.asof} · **자산군** {spec.label_ko} "
         f"(신뢰도 {cls.confidence:.0%}) · **연율화** √{spec.ann_factor}\n")
 
