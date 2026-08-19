@@ -42,7 +42,7 @@ hiddenimports = [
     # ── 앱 ──────────────────────────────────────────────────
     'version',
     'webapp', 'webapp.server',
-    'engine', 'engine.paths',
+    'engine', 'engine.paths', 'engine.console',
 
     # ── 정밀 분석 엔진 (동적 임포트가 많아 전부 명시) ───────
     'engine.jiqtx',
@@ -56,6 +56,9 @@ hiddenimports = [
     'engine.jiqtx.portfolio_report', 'engine.jiqtx.data',
     'engine.jiqtx.ledger', 'engine.jiqtx.pipeline', 'engine.jiqtx.replay',
     'engine.jiqtx.report',
+    # v2.13~2.14 신규 — 용어사전 · 다지평 · 거시보드 · 보고서 테마
+    'engine.jiqtx.glossary', 'engine.jiqtx.horizons',
+    'engine.jiqtx.macro_board', 'engine.jiqtx.report_theme',
 
     # ── 기존 엔진 ───────────────────────────────────────────
     'engine.analysis.timeframe', 'engine.data.loader',
