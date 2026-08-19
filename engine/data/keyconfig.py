@@ -18,6 +18,13 @@ I ALWAYS WIN 다중소스 데이터 레이어의 API 키를 안전하게 관리�
 - FINNHUB_API_KEY      : 실시간 시세·뉴스·펀더멘털 (분당 60콜)
 - ALPHAVANTAGE_API_KEY : 기술지표·펀더멘털 (분당 5콜/일 25콜)
 - FMP_API_KEY          : 재무제표·SEC공시·밸류에이션 (일 250콜)
+- ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY
+      시장 수급 스캐너용. 무료 Basic 등급으로도 **SIP(전 거래소 통합)**
+      히스토리컬 바를 받을 수 있다 — 단 `end` 가 15분 이전이어야 한다
+      (그 안쪽을 조회하면 42210000 `subscription does not permit
+      querying recent SIP data`). 흔히 알려진 "무료는 IEX 2.5% 뿐"은
+      **실시간 스트림에만** 해당한다.
+      없으면 야후(통합 거래량)로 폴백하므로 필수 아님.
 """
 from __future__ import annotations
 
@@ -34,6 +41,9 @@ _ENV_MAP = {
     "deepl": "DEEPL_API_KEY",
     "brave": "BRAVE_SEARCH_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
+    # Alpaca 는 ID/시크릿 두 값이 한 쌍이다
+    "alpaca": "ALPACA_API_KEY_ID",
+    "alpaca_secret": "ALPACA_API_SECRET_KEY",
 }
 
 from engine.paths import DATA_DIR as _CONFIG_DIR, KEYS_FILE as _CONFIG_FILE
