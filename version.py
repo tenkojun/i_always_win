@@ -7,7 +7,7 @@ Plutus — 버전 단일 소스(single source of truth).
 """
 from __future__ import annotations
 
-__version__ = "3.0.1"
+__version__ = "3.1.0"
 
 APP_NAME = "Plutus"
 APP_SLUG = "plutus"

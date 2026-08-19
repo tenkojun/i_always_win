@@ -68,7 +68,7 @@ hiddenimports = [
     'engine.llm', 'engine.auth', 'engine.auth.middleware',
     'engine.auth_remote', 'engine.cloud', 'engine.cloud.tunnel',
     'engine.cloud.supervisor', 'engine.cloud.named_tunnel',
-    'engine.jobs', 'engine.analyze_history',
+    'engine.jobs', 'engine.analyze_history', 'engine.updater',
 
     # ── 과학 스택 (PyInstaller 가 자주 놓치는 것들) ─────────
     'numpy', 'pandas', 'scipy', 'scipy.special.cython_special',

@@ -2378,6 +2378,89 @@ def api_jiqtx_analyze():
                     "quota": q})
 
 
+# ── 자동 업데이트 ─────────────────────────────────────────
+_UPD: Dict[str, Any] = {"state": "idle", "pct": 0, "msg": "", "error": ""}
+
+
+@app.route("/api/update/check")
+@require_auth
+def api_update_check():
+    """새 버전이 있는지 조회. 실패해도 200 으로 사유를 담아 돌려준다."""
+    from engine.updater import check
+    return jsonify(check())
+
+
+@app.route("/api/update/start", methods=["POST"])
+@require_auth
+def api_update_start():
+    """
+    내려받기 + 검증 + 압축 해제까지. **교체는 하지 않는다** —
+    사용자가 한 번 더 확인한 뒤 /api/update/apply 를 부른다.
+    """
+    from engine.updater import check, download, verify_and_stage
+
+    if _UPD["state"] in ("downloading", "staging"):
+        return jsonify({"ok": False, "error": "이미 진행 중입니다."}), 409
+
+    info = check()
+    if not info.get("ok") or not info.get("newer"):
+        return jsonify({"ok": False, "error": "받을 새 버전이 없습니다."}), 400
+    asset = info.get("asset")
+    if not asset or not asset.get("url"):
+        return jsonify({"ok": False,
+                        "error": "릴리스에 윈도우 배포본(zip)이 없습니다."}), 400
+
+    def _run():
+        try:
+            _UPD.update(state="downloading", pct=0, msg="내려받는 중", error="")
+
+            def prog(got, total):
+                _UPD["pct"] = int(got * 100 / max(total, 1))
+
+            zp = download(asset["url"], asset.get("size") or 0, progress=prog)
+            _UPD.update(state="staging", pct=100, msg="검증 · 압축 해제")
+            r = verify_and_stage(zp)
+            if not r.get("ok"):
+                _UPD.update(state="error", error=r.get("error") or "검증 실패")
+                return
+            _UPD.update(state="ready", msg=f"준비 완료 · 파일 {r['files']}개")
+        except Exception as e:
+            _UPD.update(state="error", error=f"{type(e).__name__}: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"ok": True, "state": "downloading",
+                    "asset": asset, "latest": info.get("latest")})
+
+
+@app.route("/api/update/status")
+@require_auth
+def api_update_status():
+    return jsonify({"ok": True, **_UPD})
+
+
+@app.route("/api/update/apply", methods=["POST"])
+@require_auth
+def api_update_apply():
+    """
+    교체 스크립트를 띄우고 앱을 내린다. 실행 중인 exe 는 윈도우가
+    잠그므로 앱이 살아 있는 동안에는 바꿀 수 없다.
+    """
+    from engine.updater import apply_staged
+    if _UPD.get("state") != "ready":
+        return jsonify({"ok": False,
+                        "error": "준비된 업데이트가 없습니다."}), 400
+    r = apply_staged()
+    if not r.get("ok"):
+        return jsonify(r), 400
+
+    # 응답이 브라우저에 도착한 뒤에 내려간다
+    def _bye():
+        time.sleep(1.5)
+        os._exit(0)
+    threading.Thread(target=_bye, daemon=True).start()
+    return jsonify(r)
+
+
 # ── 회원 등급 · 보고서 한도 ────────────────────────────────
 @app.route("/api/quota")
 @require_auth
