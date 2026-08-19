@@ -1064,6 +1064,15 @@ def r_perf(a) -> str:
         ("왜도 / 첨도",
          f"{_f(p.get('skew'),'{:.2f}')} / {_f(p.get('kurtosis'),'{:.1f}')}"),
     ]))
+    # '최대낙폭 -34%' 로는 **얼마나 오래 물려 있었는지**를 알 수 없다.
+    # 회복 기간은 운용에서 깊이만큼 중요하므로 곡선으로 보여준다.
+    # a.prices 는 DataFrame 이 아니라 종가 1차원 배열이다(pipeline 참조).
+    px = getattr(a, "prices", None)
+    if px is not None and len(px) > 20:
+        arr = np.asarray(px, dtype=float)
+        arr = arr[np.isfinite(arr)]
+        out.append(ch.drawdown_curve(arr[-2520:]))   # 최근 10년이면 충분
+
     out.append(note(E(a.drawdown.recovery_note)))
     return "".join(out)
 
@@ -1809,6 +1818,24 @@ def r_horizons(a) -> str:
         })
     out.append(df_table(pd.DataFrame(rows), nd=4))
 
+    # 표만으로는 부호가 어디서 뒤집히는지 눈에 안 들어온다.
+    # 묶은 막대로 0선을 기준으로 나란히 놓는다.
+    labs = [st.label_ko for st in hz.stats]
+    _f = lambda v: (float(v) if v is not None and v == v else None)
+    out.append(ch.horizon_compare(
+        labs,
+        {"누적수익": [_f(s.cum_return) for s in hz.stats],
+         "연변동성": [_f(s.ann_vol) for s in hz.stats],
+         "최대낙폭": [_f(s.max_drawdown) for s in hz.stats]},
+        title="지평별 수익 · 변동성 · 낙폭", fmt="pct"))
+    sh = [_f(s.sharpe) for s in hz.stats]
+    bt = [_f(s.beta_mkt) for s in hz.stats]
+    if any(v is not None for v in sh) or any(v is not None for v in bt):
+        out.append(ch.horizon_compare(
+            labs, {"샤프": sh, "시장 베타": bt},
+            title="지평별 샤프 · 시장 베타 (부호 역전 확인)",
+            fmt="num", h=210))
+
     # 드리프트 신뢰도 — 짧은 지평일수록 SE 가 커진다
     drows = []
     for st in hz.stats:
@@ -1875,6 +1902,21 @@ def r_macro(a) -> str:
         })
     out.append(df_table(pd.DataFrame(rows), nd=4))
     out.append(note(mb.note))
+
+    # 유의한(|t|>=2) 변수만 기여도 토네이도로. 유의하지 않은 베타를
+    # 그림으로 그리면 없는 서사가 생긴다.
+    sig = [r for r in mb.rows
+           if r.tstat is not None and abs(float(r.tstat)) >= 2.0
+           and r.contribution == r.contribution]
+    if len(sig) >= 2:
+        out.append(ch.tornado(
+            [r.label_ko for r in sig],
+            [float(r.contribution) * 100.0 for r in sig],
+            title="최근 3개월 거시 기여도 (유의한 변수만 · 베타 × 변화)",
+            unit="%"))
+        out.append(note(
+            "|t| &lt; 2 인 변수는 이 그림에서 뺐습니다. 유의하지 않은 베타로 "
+            "그림을 그리면 없던 이야기가 생깁니다."))
 
     # 판단 3종
     out.append(

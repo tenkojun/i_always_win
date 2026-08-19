@@ -2345,13 +2345,50 @@ def api_jiqtx_analyze():
     if not ticker:
         return jsonify({"ok": False, "error": "ticker 필요"}), 400
     fast = bool(d.get("fast", True))
+
+    # 한도는 **서버에서** 센다. 프론트만 막으면 이 라우트를 직접 때리면
+    # 그만이다. 확인과 증가를 한 트랜잭션에서 해서 동시 클릭으로 한도를
+    # 넘기지 못하게 한다.
+    from engine.auth.quota import consume
+    q = consume((g.user or {}).get("id"), "report")
+    if not q.get("ok"):
+        return jsonify({"ok": False, "error": q.get("error"),
+                        "quota": q}), 429
+
     job_id = "jx_%d" % int(time.time() * 1000)
     _JX_JOBS[job_id] = {"status": "running", "ticker": ticker}
     threading.Thread(
         target=_run_jiqtx_job,
         args=(job_id, ticker, fast, (g.user or {}).get("id")),
         daemon=True).start()
-    return jsonify({"ok": True, "job_id": job_id, "status": "running"})
+    return jsonify({"ok": True, "job_id": job_id, "status": "running",
+                    "quota": q})
+
+
+# ── 회원 등급 · 보고서 한도 ────────────────────────────────
+@app.route("/api/quota")
+@require_auth
+def api_quota():
+    from engine.auth.quota import quota_status
+    return jsonify({"ok": True, **quota_status(g.user["id"], "report")})
+
+
+@app.route("/api/quota/tier", methods=["POST"])
+@require_auth
+def api_quota_set_tier():
+    """
+    등급 변경. **관리자만** — 본인이 스스로 프리미엄으로 올릴 수 있으면
+    한도가 있으나 마나다.
+    """
+    from engine.auth.quota import set_tier, quota_status
+    if (g.user or {}).get("role") != "admin":
+        return jsonify({"ok": False, "error": "관리자만 변경할 수 있습니다."}), 403
+    d = request.get_json(force=True, silent=True) or {}
+    uid = d.get("user_id") or g.user["id"]
+    r = set_tier(int(uid), (d.get("tier") or "free"))
+    if not r.get("ok"):
+        return jsonify(r), 400
+    return jsonify({"ok": True, **quota_status(int(uid), "report")})
 
 
 @app.route("/api/jiqtx/analyze/<job_id>")

@@ -635,3 +635,161 @@ def hbar(labels: Sequence[str], values: Sequence[float], title="",
         body.append(_txt(x + 4, h - 10, f"한도 {fmt.format(threshold)}", 9,
                          PAL["warn"]))
     return _svg(w, h, "".join(body), title)
+
+
+# ------------------------------------------------- 다지평 비교 (v2.17)
+
+def horizon_compare(labels: Sequence[str],
+                    series: Dict[str, Sequence[float]],
+                    title: str = "지평 비교",
+                    fmt: str = "pct", w: int = 720, h: int = 250) -> str:
+    """
+    단/중/장 지표를 **묶은 막대**로 나란히 놓는다.
+
+    지평별 숫자를 표로만 주면 어긋나는 지점이 눈에 안 들어온다. 부호가
+    뒤집히는 곳을 보이게 하는 게 이 차트의 목적이라 0선을 항상 그린다.
+
+    series: {지표명: [단기, 중기, 장기]} — 라벨 수와 길이가 같아야 한다.
+    """
+    keys = [k for k, v in series.items() if len(v) == len(labels)]
+    if not keys or not labels:
+        return ""
+    pad_l, pad_r, pad_t, pad_b = 52, 14, 34, 34
+    pw, ph = w - pad_l - pad_r, h - pad_t - pad_b
+
+    vals = [float(v) for k in keys for v in series[k]
+            if v is not None and np.isfinite(v)]
+    if not vals:
+        return ""
+    vmax, vmin = max(vals), min(vals)
+    if vmax == vmin:
+        vmax, vmin = vmax + 1e-9, vmin - 1e-9
+    span = vmax - vmin
+    vmax += span * 0.12
+    vmin -= span * 0.12
+    if vmin > 0:
+        vmin = 0.0
+    if vmax < 0:
+        vmax = 0.0
+
+    def y_of(v):
+        return pad_t + ph * (vmax - v) / (vmax - vmin)
+
+    colors = [PAL["accent"], PAL["accent2"], PAL["warn"], PAL["up"]]
+    body = [_grid(pad_l, pad_t, pw, ph, 4),
+            _txt(pad_l, 18, title, 12, PAL["text"], weight="600")]
+
+    # 0선 — 부호 역전을 읽는 기준
+    y0 = y_of(0.0)
+    body.append(f'<line x1="{pad_l}" y1="{y0:.1f}" x2="{pad_l+pw}" '
+                f'y2="{y0:.1f}" stroke="{PAL["muted"]}" stroke-width="1.2"/>')
+
+    gw = pw / len(labels)                  # 지평 하나가 쓰는 폭
+    bw = min(26.0, gw / (len(keys) + 1.2))  # 막대 하나 폭
+    for gi, lab in enumerate(labels):
+        gx = pad_l + gw * gi + gw / 2
+        total = bw * len(keys)
+        for ki, k in enumerate(keys):
+            v = series[k][gi]
+            if v is None or not np.isfinite(v):
+                continue
+            v = float(v)
+            x = gx - total / 2 + bw * ki
+            yv = y_of(v)
+            top, hh = min(yv, y0), abs(yv - y0)
+            body.append(f'<rect x="{x:.1f}" y="{top:.1f}" width="{bw-3:.1f}" '
+                        f'height="{max(hh,1):.1f}" rx="2" '
+                        f'fill="{colors[ki % len(colors)]}" opacity=".88"/>')
+            s = (f"{v*100:.1f}%" if fmt == "pct" else f"{v:.2f}")
+            body.append(_txt(x + (bw - 3) / 2, top - 4 if v >= 0 else top + hh + 11,
+                             s, 9, PAL["text"], "middle"))
+        body.append(_txt(gx, pad_t + ph + 16, lab, 11, PAL["text"], "middle",
+                         weight="600"))
+
+    # 범례
+    lx = pad_l
+    for ki, k in enumerate(keys):
+        body.append(f'<rect x="{lx}" y="{h-13}" width="9" height="9" rx="2" '
+                    f'fill="{colors[ki % len(colors)]}"/>')
+        body.append(_txt(lx + 13, h - 5, k, 9.5, PAL["muted"]))
+        lx += 16 + max(46, len(k) * 7)
+    return _svg(w, h, "".join(body), title)
+
+
+def drawdown_curve(prices: Sequence[float], title: str = "낙폭 (수중 곡선)",
+                   w: int = 720, h: int = 200) -> str:
+    """
+    전고점 대비 낙폭을 시간축으로 그린다.
+
+    '최대낙폭 -34%' 라는 숫자 하나로는 **얼마나 오래 물려 있었는지**를
+    알 수 없다. 회복까지 걸린 기간이 실제 운용에서는 깊이만큼 중요해서
+    곡선으로 보여준다.
+    """
+    p = np.asarray([x for x in prices if x is not None and np.isfinite(x)],
+                   dtype=float)
+    if len(p) < 5:
+        return ""
+    peak = np.maximum.accumulate(p)
+    dd = np.where(peak > 0, p / peak - 1.0, 0.0)
+    pad_l, pad_r, pad_t, pad_b = 52, 14, 30, 22
+    pw, ph = w - pad_l - pad_r, h - pad_t - pad_b
+    lo = float(min(dd.min(), -1e-4))
+
+    xs = [pad_l + pw * i / (len(dd) - 1) for i in range(len(dd))]
+    ys = [pad_t + ph * (0.0 - d) / (0.0 - lo) for d in dd]
+    pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys))
+
+    body = [_grid(pad_l, pad_t, pw, ph, 3),
+            _txt(pad_l, 17, title, 12, PAL["text"], weight="600"),
+            f'<polygon points="{pad_l},{pad_t} {pts} {pad_l+pw},{pad_t}" '
+            f'fill="{PAL["down"]}" opacity=".18"/>',
+            f'<polyline points="{pts}" fill="none" stroke="{PAL["down"]}" '
+            f'stroke-width="1.6"/>']
+    # 최저점 표시
+    i = int(np.argmin(dd))
+    body.append(f'<circle cx="{xs[i]:.1f}" cy="{ys[i]:.1f}" r="3.2" '
+                f'fill="{PAL["down"]}"/>')
+    body.append(_txt(xs[i], ys[i] + 15, f"최대 {dd[i]*100:.1f}%", 10,
+                     PAL["down"], "middle", weight="600"))
+    body.append(_txt(pad_l - 6, pad_t + 4, "0%", 9.5, PAL["muted"], "end"))
+    body.append(_txt(pad_l - 6, pad_t + ph, f"{lo*100:.0f}%", 9.5,
+                     PAL["muted"], "end"))
+    return _svg(w, h, "".join(body), title)
+
+
+def tornado(labels: Sequence[str], values: Sequence[float],
+            title: str = "기여도", unit: str = "%",
+            w: int = 720, row_h: int = 22) -> str:
+    """
+    부호가 있는 기여도를 절대값 순으로 정렬해 좌우로 뻗는 막대.
+
+    0 을 가운데 두어 방향이 한눈에 보이게 한다. 절대값 정렬이라
+    "무엇이 가장 크게 밀고 당기는가" 가 위에서부터 읽힌다.
+    """
+    pairs = [(str(l), float(v)) for l, v in zip(labels, values)
+             if v is not None and np.isfinite(v)]
+    if not pairs:
+        return ""
+    pairs.sort(key=lambda kv: -abs(kv[1]))
+    n = len(pairs)
+    pad_l, pad_r, pad_t = 118, 60, 30
+    h = pad_t + row_h * n + 14
+    pw = w - pad_l - pad_r
+    m = max(abs(v) for _, v in pairs) or 1.0
+    cx = pad_l + pw / 2
+
+    body = [_txt(14, 17, title, 12, PAL["text"], weight="600"),
+            f'<line x1="{cx}" y1="{pad_t-4}" x2="{cx}" y2="{pad_t+row_h*n}" '
+            f'stroke="{PAL["grid"]}" stroke-width="1"/>']
+    for i, (lab, v) in enumerate(pairs):
+        y = pad_t + row_h * i
+        bl = abs(v) / m * (pw / 2 - 6)
+        col = PAL["up"] if v > 0 else PAL["down"]
+        x = cx if v > 0 else cx - bl
+        body.append(f'<rect x="{x:.1f}" y="{y+4:.1f}" width="{max(bl,1):.1f}" '
+                    f'height="{row_h-9}" rx="2" fill="{col}" opacity=".85"/>')
+        body.append(_txt(pad_l - 10, y + row_h / 2 + 4, lab, 10.5,
+                         PAL["text"], "end"))
+        body.append(_txt(w - pad_r + 8, y + row_h / 2 + 4,
+                         f"{v:+.2f}{unit}", 10, col, "start"))
+    return _svg(w, h, "".join(body), title)
