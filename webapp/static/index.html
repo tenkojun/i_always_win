@@ -3365,7 +3365,7 @@ function _ac(){
   }catch(e){ return null; }
 
   const ctx=_AC;
-  _BUS = ctx.createGain();  _BUS.gain.value = 0.9;
+  _BUS = ctx.createGain();  _BUS.gain.value = 1.7;
 
   // IR: 지수 감쇠 노이즈 + 초반 이른 반사 몇 개
   const dur=1.1, n=Math.floor(ctx.sampleRate*dur);
@@ -3382,7 +3382,7 @@ function _ac(){
     });
   }
   const conv=ctx.createConvolver(); conv.buffer=ir;
-  _WET=ctx.createGain(); _WET.gain.value=0.26;
+  _WET=ctx.createGain(); _WET.gain.value=0.32;
 
   // 고역을 살짝 깎아 디지털 쨍함을 줄인다
   const tone=ctx.createBiquadFilter();
@@ -3492,9 +3492,9 @@ const _SFX = {
   // 로그 한 줄 — '티리릭'. FM 으로 금속성을 주고 클릭을 얹는다
   stdout: function(ctx,t){
     const f = 900 + Math.random()*700;
-    _fm(ctx,t,{carrier:f, ratio:3.4, index:f*1.6, dur:0.045, gain:0.055,
+    _fm(ctx,t,{carrier:f, ratio:3.4, index:f*1.6, dur:0.048, gain:0.085,
                attack:0.001, pan:(Math.random()-0.5)*0.5});
-    _hiss(ctx,t,{f0:5200,f1:3000,dur:0.016,gain:0.022,q:1.2});
+    _hiss(ctx,t,{f0:5200,f1:3000,dur:0.018,gain:0.032,q:1.2});
   },
   stdin: function(ctx,t){
     _fm(ctx,t,{carrier:620, ratio:2.1, index:900, dur:0.055, gain:0.06});

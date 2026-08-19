@@ -99,6 +99,11 @@ excludes = [
     'transformers', 'huggingface_hub', 'einops',
     'tkinter', 'PyQt5', 'PyQt6', 'PySide2', 'PySide6',
     'notebook', 'IPython', 'jupyter',
+    # v2.15.0 에서 구엔진(engine/report/plotter.py)을 지우면서 matplotlib
+    # 계열이 필요 없어졌다. 보고서 차트는 전부 인라인 SVG 를 문자열로
+    # 만들기 때문에 그리기 라이브러리가 아예 없어도 된다.
+    # 그런데도 딸려 들어와 26MB 를 먹고 있었다 (matplotlib 15M + PIL 11M).
+    'matplotlib', 'PIL', 'Pillow',
 ]
 
 a = Analysis(

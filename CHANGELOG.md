@@ -7,6 +7,18 @@
 
 ## [2.20.0] — 2026-08-19
 
+### 빌드 — matplotlib · PIL 제외 (−28MB)
+v2.15.0 에서 구엔진 `engine/report/plotter.py` 를 지우면서 그리기
+라이브러리가 필요 없어졌는데도 계속 딸려 들어와 26MB 를 먹고 있었다
+(matplotlib 15M + PIL 11M). 보고서 차트는 인라인 SVG 를 **문자열로**
+만들기 때문에 그리기 라이브러리가 아예 없어도 된다.
+
+import 를 차단한 상태에서 `engine` · `engine.jiqtx` · `charts` ·
+`dynamic_report` · `market_flow` · `quota` · `webapp.server` 전부
+임포트되는 것을 확인한 뒤 excludes 에 넣었다.
+
+빌드 221MB → **193MB**, exe 20.5MB.
+
 ### 개선 — 효과음이 밋밋했던 이유
 v2.19.0 의 합성음은 **오실레이터 하나 + 단순 포락선**이었다. 소리는
 나지만 얇고 말라서 "삐" 에 가까웠다. 세 가지를 더했다.
