@@ -118,6 +118,7 @@ PARTS: List[Tuple[str, str, str]] = [
 
 SECTION_PART: Dict[str, str] = {
     "exec": "I", "verdict": "I", "character": "I", "gates": "I",
+    "horizons": "I", "macro": "II",
     "thesis": "II", "trade": "II", "hedge": "II", "kill": "II", "attrib": "II",
     "panel": "III", "agents": "III", "red": "III",
     "fundamentals": "IV", "runway": "IV", "crowding": "IV", "jump": "IV",
@@ -1661,6 +1662,9 @@ details.sec>summary:hover{background:#161a22}
 .body{padding:2px 16px 18px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
  gap:10px;margin:6px 0 14px}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+@media(max-width:760px){.cards3{grid-template-columns:1fr}}
+.src{margin-top:10px;font-size:11.5px;color:#8b93a3;line-height:1.6}
 .card{background:#171a21;border:1px solid #252a34;border-radius:10px;padding:14px}
 .card.up{border-color:#2ec27e55}.card.down{border-color:#e0455f55}
 .cl{font-size:11px;color:#8b93a3}
@@ -1772,6 +1776,135 @@ document.addEventListener('click',function(e){
   d.scrollIntoView({behavior:'smooth',block:'start'});
 });
 """
+
+
+# ================================================================ 단/중/장
+
+def r_horizons(a) -> str:
+    hz = getattr(a, "horizons", None)
+    if hz is None or not hz.stats:
+        return ""
+    out = [note(
+        "지평별 결과를 <b>평균하지 않습니다.</b> 단기 55점·중기 72점·장기 74점을 "
+        "기간가중해 67점(BUY)을 만들면 '장기 구조적 상승 안의 중기 조정' 같은 "
+        "정보가 통째로 사라집니다. 평균 하나만 남고, 그 평균은 어느 기간에도 "
+        "해당하지 않습니다. 여기서는 지평별로 따로 계산하고 "
+        "<b>서로 어긋나는 지점</b>을 찾아 드러냅니다.")]
+
+    rows = []
+    for st in hz.stats:
+        rows.append({
+            "지평": f"{st.label_ko} ({st.days}일)",
+            "구간": f"{st.start} ~ {st.end}",
+            "누적수익": st.cum_return,
+            "연변동성": st.ann_vol,
+            "샤프": round(float(st.sharpe), 2) if st.sharpe == st.sharpe else None,
+            "최대낙폭": st.max_drawdown,
+            "추세": st.trend,
+            "SMA기울기": st.sma_slope_pct / 100.0,
+            "교차": st.ma_cross,
+            "시장β": (round(float(st.beta_mkt), 2)
+                     if st.beta_mkt is not None else None),
+        })
+    out.append(df_table(pd.DataFrame(rows), nd=4))
+
+    # 드리프트 신뢰도 — 짧은 지평일수록 SE 가 커진다
+    drows = []
+    for st in hz.stats:
+        drows.append({
+            "지평": st.label_ko,
+            "드리프트 μ̂": st.drift_ann,
+            "표준오차 σ/√T": st.drift_se,
+            "t": round(float(st.drift_t), 2) if st.drift_t == st.drift_t else None,
+            "판정": "의미 있음" if st.drift_meaningful else "0과 구별 불가",
+        })
+    out.append("<h4>드리프트 신뢰도</h4>")
+    out.append(df_table(pd.DataFrame(drows), nd=4))
+    out.append(note(
+        "드리프트 표준오차는 σ/√T 입니다. 지평이 짧을수록 커져서, 짧은 구간의 "
+        "기대수익률은 거의 언제나 0과 구별되지 않습니다. |t| < 2 인 지평의 "
+        "수익률로 미래를 말하면 안 됩니다."))
+
+    if hz.vol_term_structure:
+        out.append(f'<div class="hi">변동성 기간구조 — {E(hz.vol_term_structure)}</div>')
+
+    if hz.disagreements:
+        out.append("<h4>지평 간 불일치</h4>")
+        out.append("<ul>" + "".join(f"<li>{E(d)}</li>"
+                                    for d in hz.disagreements) + "</ul>")
+        out.append(note("불일치는 오류가 아니라 정보입니다. 어느 한 지평의 결론만 "
+                        "인용하면 정반대 이야기가 나온다는 뜻이므로, 보유 기간을 "
+                        "정하지 않은 채로는 결론을 낼 수 없습니다.", "warn"))
+    else:
+        out.append(note("지평 간 결론이 일치합니다 — 보유 기간에 크게 의존하지 "
+                        "않는 상태입니다."))
+    return "".join(out)
+
+
+r_horizons.applies = lambda a: getattr(a, "horizons", None) is not None \
+    and bool(getattr(a.horizons, "stats", None))
+REGISTRY.append(Section("horizons", "단기 · 중기 · 장기", "⏱", r_horizons.applies,
+                        r_horizons, priority=18, open_default=True))
+
+
+# ================================================================ 거시 대시보드
+
+def r_macro(a) -> str:
+    mb = getattr(a, "macro_board", None)
+    if mb is None or not mb.rows:
+        return ""
+    cls = a.classification
+    out = [note(
+        f"<b>{E(cls.spec.label_ko)}</b>에 실제로 영향을 주는 거시 변수만 "
+        "골라 봅니다. 자산군마다 보는 변수가 다릅니다 — 금에는 실질금리·달러가, "
+        "국채에는 명목금리·커브가, 개별주에는 시장·변동성·크레딧이 들어갑니다.")]
+
+    rows = []
+    for r in mb.rows:
+        rows.append({
+            "변수": r.label_ko,
+            "최신값": r.latest_str,
+            "기준일": r.as_of,
+            "1M 변화": round(float(r.chg_1m), 3) if r.chg_1m == r.chg_1m else None,
+            "3M 변화": round(float(r.chg_3m), 3) if r.chg_3m == r.chg_3m else None,
+            "베타": round(float(r.beta), 4) if r.beta is not None else None,
+            "t": round(float(r.tstat), 1) if r.tstat is not None else None,
+            "영향": r.impact,
+            "해석": r.comment,
+        })
+    out.append(df_table(pd.DataFrame(rows), nd=4))
+    out.append(note(mb.note))
+
+    # 판단 3종
+    out.append(
+        '<div class="cards3">'
+        f'<div class="card"><div class="ct">전술적 거시 판단</div>'
+        f'<div class="cv">{E(mb.tactical)}</div>'
+        f'<div class="cs">{E(mb.tactical_detail)}</div></div>'
+        f'<div class="card"><div class="ct">구조적 거시 판단</div>'
+        f'<div class="cv">{E(mb.structural)}</div>'
+        f'<div class="cs">{E(mb.structural_detail[:150])}</div></div>'
+        f'<div class="card"><div class="ct">핵심 전환 신호</div>'
+        f'<div class="cv">{E(mb.pivot)}</div>'
+        f'<div class="cs">{E(mb.pivot_detail)}</div></div>'
+        '</div>')
+
+    if mb.scenarios:
+        out.append("<h4>거시 시나리오 매트릭스</h4>")
+        out.append(df_table(pd.DataFrame([
+            {"시나리오": x["name"], "발생 조건": x["condition"],
+             "방향": x["direction"], "관찰 지표": x["watch"]}
+            for x in mb.scenarios])))
+
+    if mb.sources:
+        out.append(f'<div class="src">출처: {E(" · ".join(mb.sources))}</div>')
+    return "".join(out)
+
+
+r_macro.applies = lambda a: getattr(a, "macro_board", None) is not None \
+    and bool(getattr(a.macro_board, "rows", None))
+REGISTRY.append(Section("macro", "거시경제 대시보드", "🌐", r_macro.applies,
+                        r_macro, priority=28, open_default=True))
 
 
 def build_sections(a) -> List[Section]:

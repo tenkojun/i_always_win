@@ -47,6 +47,8 @@ from . import taxonomy as tax
 from . import thesis as ths
 from . import trade as trd
 from . import vol as volm
+from .horizons import analyze_horizons
+from .macro_board import build_macro_board
 
 
 
@@ -83,6 +85,9 @@ class Analysis:
     prices: Any = None
     returns: Any = None
     index: Any = None
+    macro: Any = None            # FRED 원본 (거시 대시보드가 쓴다)
+    horizons: Any = None         # 단/중/장 다지평 패널
+    macro_board: Any = None      # 자산군 맞춤 거시 대시보드
     equity: Any = None
     scenarios: Any = None
     scenario_ev: Any = None
@@ -379,7 +384,25 @@ def analyze(ticker: str, df: Optional[pd.DataFrame] = None,
         f"· 사이즈 {verdict.risk_budget_weight:.1%} · 신뢰도 {verdict.model_confidence}")
     tick("adjudicate")
 
-    return Analysis(
+    # ── 단/중/장 다지평 (점수를 합치지 않고 불일치를 드러낸다) ──
+    hz = None
+    try:
+        mkt_px = None
+        if proxies:
+            # pandas Series 는 `or` 로 고를 수 없다(진리값 모호). 명시적으로.
+            for _k in ("SPY", "mkt_excess"):
+                _v = proxies.get(_k)
+                if _v is not None and len(_v):
+                    mkt_px = _v
+                    break
+        hz = analyze_horizons(pd.Series(close, index=idx), ann=ann, mkt=mkt_px)
+        if hz and hz.disagreements:
+            log(f"지평 → {hz.summary}")
+    except Exception as e:
+        warns.append(f"다지평 분석 실패: {e}")
+    tick("horizons")
+
+    out = Analysis(
         ticker=ticker, asof=str(idx[-1].date()), classification=cls,
         integrity=integ, liquidity=liq, perf=perf, vol_profile=vp, regime=rg,
         factor_model=fm, delta_panel=dp, tvb=tvb, ml=mlr, sim=sim, var=v,
@@ -390,4 +413,16 @@ def analyze(ticker: str, df: Optional[pd.DataFrame] = None,
         prices=close, returns=r_full, index=idx, equity=eqp,
         scenarios=scen, scenario_ev=ev_sc, kill=kill, monitor=mon,
         catalysts=cat, trade=tp, hedge=hp, attribution=attrib,
-        factor_panel=F, panel=panel)
+        factor_panel=F, panel=panel, macro=macro, horizons=hz)
+
+    # 거시 대시보드 — 완성된 Analysis 를 받아야 델타 패널을 쓸 수 있다
+    try:
+        out.macro_board = build_macro_board(out)
+        if out.macro_board:
+            log(f"거시 → 변수 {len(out.macro_board.rows)}개 · "
+                f"전술 '{out.macro_board.tactical}'")
+    except Exception as e:
+        warns.append(f"거시 대시보드 실패: {e}")
+    tick("macro_board")
+
+    return out
