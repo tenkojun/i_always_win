@@ -55,6 +55,14 @@ PALETTE_KEYS: Dict[str, str] = {
     "#5b8def": "accent",        # 링크/강조
     "#7ba6ff": "accent-2",
     "#9ec1ff": "accent-3",
+    # 용어 툴팁 (glossary.build_css) — 라이트 테마에서 흰 바탕에 흰 글씨가
+    # 되지 않도록 팔레트에 편입한다
+    "#4a5568": "term-line",     # 점선 밑줄
+    "#7dd3fc": "term-hi",       # 강조 / 툴팁 제목
+    "#bae6fd": "term-hover",
+    "#111722": "tip-bg",
+    "#dbe3ef": "tip-txt",
+    "#2b6d84": "tip-line",
 }
 
 # 테마 = 변수명 → 값. 없는 키는 dark 값을 그대로 쓴다.
@@ -73,6 +81,9 @@ _LIGHT: Dict[str, str] = {
     "down-faint": "#c5283d11",
     "warn": "#a86a12", "warn-bg": "#fdf5e6", "danger-bg": "#fdecef",
     "accent": "#1a56db", "accent-2": "#1a56db", "accent-3": "#3b73e8",
+    # 밝은 바탕 위에서는 어두운 툴팁이 대비가 가장 좋다 (GitHub 방식)
+    "term-line": "#94a3b8", "term-hi": "#0369a1", "term-hover": "#075985",
+    "tip-bg": "#1f2937", "tip-txt": "#f1f5f9", "tip-line": "#0ea5e9",
 }
 
 _SEPIA: Dict[str, str] = {
@@ -88,6 +99,8 @@ _SEPIA: Dict[str, str] = {
     "down-faint": "#a32e2e11",
     "warn": "#8a5a12", "warn-bg": "#f6e9cd", "danger-bg": "#f6dfd9",
     "accent": "#2f5fa8", "accent-2": "#2f5fa8", "accent-3": "#4a7ac0",
+    "term-line": "#a89478", "term-hi": "#8a5a12", "term-hover": "#6b4517",
+    "tip-bg": "#2b2317", "tip-txt": "#f4ecd8", "tip-line": "#8a6a3a",
 }
 
 # 높은 대비 — 저시력/프로젝터용
@@ -104,6 +117,8 @@ _HICON: Dict[str, str] = {
     "down-faint": "#ff525218",
     "warn": "#ffc107", "warn-bg": "#241d00", "danger-bg": "#2a0d0d",
     "accent": "#64b5f6", "accent-2": "#82c4ff", "accent-3": "#a5d6ff",
+    "term-line": "#8a8a8a", "term-hi": "#00e5ff", "term-hover": "#7df9ff",
+    "tip-bg": "#000000", "tip-txt": "#ffffff", "tip-line": "#00e5ff",
 }
 
 THEMES: Dict[str, Dict[str, object]] = {

@@ -213,35 +213,46 @@ TERMS: Dict[str, Tuple[str, str]] = {
 
 
 def build_css() -> str:
-    """툴팁 스타일. 자기완결 HTML 이라 외부 CSS 를 못 쓴다."""
+    """
+    툴팁 스타일. 자기완결 HTML 이라 외부 CSS 를 못 쓴다.
+
+    툴팁을 용어 안에 넣지 않는다
+    ---------------------------
+    예전에는 `.term` 안에 `position:absolute` 인 `.tip` 을 넣었다. 그런데
+    보고서에는 잘라내는 조상이 둘 있다 — `details.sec{overflow:hidden}`
+    (모든 섹션)과 `.tw{overflow-x:auto}` (표 감싸개). absolute 는 그
+    조상 박스에서 잘리므로, 툴팁이 **화면 안쪽에 있어도** 섹션 가장자리나
+    표 안에서는 잘렸다. 붙는 방향을 바꾸는 것(tip-left/tip-right)으로는
+    고칠 수 없다. 자르는 주체가 뷰포트가 아니라 조상이기 때문이다.
+
+    그래서 `<body>` 바로 아래 **`position:fixed` 단일 레이어** 하나를 두고
+    그 안에 내용만 갈아 끼운다. fixed 는 overflow 조상을 벗어난다.
+    (조상에 transform/filter 가 있으면 fixed 도 갇히는데, 이 보고서에서
+    그런 속성은 sticky 헤더의 backdrop-filter 뿐이고 툴팁은 body 직속이라
+    영향을 받지 않는다.)
+    """
     return """
 /* ── 용어 툴팁 ───────────────────────────────────────────── */
-.term{border-bottom:1px dotted #4a5568;cursor:help;position:relative}
-.term:hover{border-bottom-color:#7dd3fc;color:#bae6fd}
-.term .tip{
-  visibility:hidden;opacity:0;position:absolute;z-index:60;
-  left:50%;transform:translateX(-50%) translateY(6px);
-  bottom:calc(100% + 8px);width:min(330px,78vw);
+.term{border-bottom:1px dotted #4a5568;cursor:help}
+.term:hover,.term:focus{border-bottom-color:#7dd3fc;color:#bae6fd;outline:none}
+#tipbox{
+  position:fixed;z-index:9999;left:0;top:0;
+  width:max-content;max-width:min(360px,88vw);
   background:#111722;color:#dbe3ef;border:1px solid #2b6d84;
-  border-radius:6px;padding:10px 12px;
+  border-radius:8px;padding:11px 13px;
   font-size:12.5px;line-height:1.62;font-weight:400;
   text-align:left;letter-spacing:0;white-space:normal;
-  box-shadow:0 10px 30px rgba(0,0,0,.55);
-  transition:opacity .14s ease,transform .14s ease;pointer-events:none}
-.term:hover .tip,.term:focus .tip{
-  visibility:visible;opacity:1;transform:translateX(-50%) translateY(0)}
-.term .tip b{color:#7dd3fc;display:block;margin-bottom:4px;font-size:12px;
+  box-shadow:0 12px 34px rgba(0,0,0,.55);
+  opacity:0;visibility:hidden;transform:translateY(4px);
+  transition:opacity .13s ease,transform .13s ease;pointer-events:none}
+#tipbox.on{opacity:1;visibility:visible;transform:translateY(0)}
+#tipbox b{color:#7dd3fc;display:block;margin-bottom:5px;font-size:12px;
   letter-spacing:.3px}
-.term .tip::after{content:"";position:absolute;top:100%;left:50%;
-  margin-left:-6px;border:6px solid transparent;border-top-color:#2b6d84}
-/* 화면 왼쪽/오른쪽 끝에서 잘리지 않게 */
-.term.tip-left .tip{left:0;transform:translateX(0) translateY(6px)}
-.term.tip-left:hover .tip{transform:translateX(0) translateY(0)}
-.term.tip-left .tip::after{left:18px}
-.term.tip-right .tip{left:auto;right:0;transform:translateX(0) translateY(6px)}
-.term.tip-right:hover .tip{transform:translateX(0) translateY(0)}
-.term.tip-right .tip::after{left:auto;right:12px}
-@media print{.term .tip{display:none}}
+#tipbox::after{content:"";position:absolute;left:var(--ax,50%);
+  border:6px solid transparent;transform:translateX(-6px)}
+#tipbox.up::after{top:100%;border-top-color:#2b6d84}
+#tipbox.down::after{bottom:100%;border-bottom-color:#2b6d84}
+@media print{#tipbox{display:none}}
 """
 
 
@@ -264,6 +275,10 @@ def build_js() -> str:
   function decorate(root){
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(n){
+        // /g 정규식의 test() 는 lastIndex 를 남긴다. 리셋하지 않으면
+        // 다음 노드를 중간부터 검사해 **한 노드 걸러 하나씩** 통째로
+        // 놓친다 (용어의 절반이 조용히 툴팁을 못 얻는다).
+        re.lastIndex = 0;
         if(!n.nodeValue || !re.test(n.nodeValue)) return NodeFilter.FILTER_REJECT;
         let p = n.parentElement;
         while(p){
@@ -290,14 +305,11 @@ def build_js() -> str:
         const span = document.createElement('span');
         span.className = 'term';
         span.tabIndex = 0;
+        // 설명은 DOM 에 넣지 않고 데이터로만 들고 있는다. 본문에 심으면
+        // 표 폭 계산에 끼어들고, 다음 순회에서 다시 스캔 대상이 된다.
+        span.dataset.tt = t[0];
+        span.dataset.td = t[1];
         span.appendChild(document.createTextNode(m[1]));
-        const tip = document.createElement('span');
-        tip.className = 'tip';
-        const b = document.createElement('b');
-        b.textContent = t[0];
-        tip.appendChild(b);
-        tip.appendChild(document.createTextNode(t[1]));
-        span.appendChild(tip);
         frag.appendChild(span);
         last = m.index + m[1].length;
       }
@@ -307,13 +319,56 @@ def build_js() -> str:
     });
   }
 
-  // 화면 밖으로 나가는 툴팁은 붙는 방향을 바꾼다
-  function place(e){
+  // ── 툴팁 레이어 — body 직속 fixed 하나를 돌려 쓴다 ──────────
+  const PAD = 8;        // 뷰포트 가장자리 여백
+  const GAP = 10;       // 용어와 툴팁 사이
+  let box = null;
+
+  function ensureBox(){
+    if(box) return box;
+    box = document.createElement('div');
+    box.id = 'tipbox';
+    box.setAttribute('role','tooltip');
+    document.body.appendChild(box);
+    return box;
+  }
+
+  function hide(){ if(box) box.classList.remove('on'); }
+
+  function show(e){
     const el = e.currentTarget;
-    el.classList.remove('tip-left','tip-right');
-    const r = el.getBoundingClientRect();
-    if(r.left < 180) el.classList.add('tip-left');
-    else if(window.innerWidth - r.right < 180) el.classList.add('tip-right');
+    const b = ensureBox();
+    b.textContent = '';
+    const h = document.createElement('b');
+    h.textContent = el.dataset.tt || '';
+    b.appendChild(h);
+    b.appendChild(document.createTextNode(el.dataset.td || ''));
+
+    // visibility:hidden 이어도 레이아웃은 잡히므로 미리 잰다
+    b.classList.remove('up','down');
+    b.style.left = '0px';
+    b.style.top  = '0px';
+    const r  = el.getBoundingClientRect();
+    const bw = b.offsetWidth, bh = b.offsetHeight;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    // 가로 — 용어 중앙 정렬 후 뷰포트 안으로 밀어 넣는다
+    const cx = r.left + r.width / 2;
+    let x = cx - bw / 2;
+    x = Math.max(PAD, Math.min(x, vw - bw - PAD));
+
+    // 세로 — 위가 좁으면 아래로 뒤집는다
+    let y = r.top - bh - GAP, dir = 'up';
+    if(y < PAD){ y = r.bottom + GAP; dir = 'down'; }
+    y = Math.max(PAD, Math.min(y, vh - bh - PAD));
+
+    // 화살표는 툴팁이 밀린 만큼 되돌려 용어를 계속 가리킨다
+    b.style.setProperty('--ax',
+      Math.max(14, Math.min(cx - x, bw - 14)) + 'px');
+    b.style.left = x + 'px';
+    b.style.top  = y + 'px';
+    b.classList.add('on', dir);
   }
 
   function init(root){
@@ -321,13 +376,21 @@ def build_js() -> str:
     root.querySelectorAll('.term').forEach(el=>{
       if(el.dataset.tipBound) return;
       el.dataset.tipBound = '1';
-      el.addEventListener('mouseenter', place);
-      el.addEventListener('focus', place);
+      el.addEventListener('mouseenter', show);
+      el.addEventListener('focus', show);
+      el.addEventListener('mouseleave', hide);
+      el.addEventListener('blur', hide);
     });
   }
 
   document.addEventListener('DOMContentLoaded', function(){
     init(document.body);
+    // 스크롤/리사이즈하면 좌표가 어긋난다 — 다시 계산하지 말고 감춘다
+    window.addEventListener('scroll', hide, {passive:true, capture:true});
+    window.addEventListener('resize', hide, {passive:true});
+    document.addEventListener('keydown', function(ev){
+      if(ev.key === 'Escape') hide();
+    });
     // 접혀 있던 섹션이 열리면 그 안도 처리
     document.querySelectorAll('details.sec').forEach(d=>{
       d.addEventListener('toggle', function(){ if(d.open) init(d); },

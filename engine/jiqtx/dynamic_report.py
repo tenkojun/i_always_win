@@ -1996,7 +1996,7 @@ def render_html(a, theme: str = DEFAULT_THEME) -> str:
     skipped = [x.title for x in REGISTRY if x not in secs]
     return f"""<!DOCTYPE html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{E(a.ticker)} — I ALWAYS WIN</title><style>{themed_css(CSS, theme)}{_tip_css()}</style></head><body>
+<title>{E(a.ticker)} — I ALWAYS WIN</title><style>{themed_css(CSS + _tip_css(), theme)}</style></head><body>
 <div class="topbar"><span class="tb-t">{E(a.ticker)}</span>
 <span class="tb-g">{E(v.grade)}</span>
 <span class="tb-s">{E(cls.spec.label_ko)}</span>

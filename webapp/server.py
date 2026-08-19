@@ -2091,119 +2091,6 @@ def api_news():
     return jsonify({"live": live, "items": uniq[:15]})
 
 
-# ── API: 종목 분석 / 포트폴리오 (엔진 연동) ──────────────────────
-_ANALYZE_JOBS: Dict[str, Dict[str, Any]] = {}
-
-
-def _run_analyze_job(job_id: str, ticker: str, user_id=None):
-    try:
-        from main import analyze
-        offline = not bool(_get_yf())
-        use_synth = offline or ticker.upper() in ("DEMO", "TEST")
-        res = analyze(
-            ticker if not use_synth else "DEMO",
-            start="1990-01-01",
-            use_synthetic=use_synth,
-            ml_model="rf", regime_method="kmeans",
-            out_dir=_REPORTS,
-        )
-        inst = res.get("institutional", {})
-        sc = inst.get("scorecard", {})
-        nv = inst.get("narratives", {})
-        meta = inst.get("meta", {})
-        explanation = inst.get("explanation", {})
-        precision = inst.get("precision", {})
-        html_path = res.get("report_paths", {}).get("html", "")
-        report_url = ""
-        archive_url = ""
-        if html_path and os.path.exists(html_path):
-            report_url = "/report/" + os.path.basename(html_path)
-            # C9: 타임스탬프 아카이브 — 영구 이력 보존
-            try:
-                import shutil
-                base = os.path.basename(html_path)  # 예: AAPL_report.html
-                name_root, ext = os.path.splitext(base)
-                ts_str = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-                arch_name = f"{name_root}_{ts_str}{ext}"
-                arch_path = os.path.join(_REPORTS, arch_name)
-                shutil.copy2(html_path, arch_path)
-                archive_url = "/report/" + arch_name
-            except Exception:
-                pass
-        tfs = {}
-        for k, v in res.get("timeframes", {}).items():
-            tfs[k] = {
-                "signal": v.get("signal"),
-                "score": v.get("score"),
-                "ret": v.get("momentum", {}).get("cum_return_pct"),
-            }
-        # meta_verdict: signal_engine 판정 요약 (XAI 레이어)
-        meta_verdict = {}
-        if meta:
-            vd = meta.get("verdict", {})
-            rs = meta.get("resolved", {})
-            meta_verdict = {
-                "signal":         vd.get("signal"),
-                "score":          vd.get("score"),
-                "grade":          vd.get("grade"),
-                "verdict":        vd.get("verdict"),
-                "n_vetoes":       vd.get("n_vetoes", 0),
-                "conflict_ratio": vd.get("conflict_ratio", 0.0),
-                "n_evidence":     meta.get("n_evidence", 0),
-                "stance":         rs.get("stance"),
-                "trace_text":     explanation.get("trace_text", ""),
-                "headline":       explanation.get("headline", ""),
-                "risk_grade":     explanation.get("risk_chain", {}).get("risk_grade"),
-                "risk_summary":   explanation.get("risk_chain", {}).get("summary", ""),
-                "dsr":            (precision.get("dsr") or {}).get("dsr"),
-                "psr":            (precision.get("psr") or {}).get("psr"),
-                "robust":         precision.get("robust", True),
-                "robustness_flags": precision.get("robustness_flags", []),
-            }
-        job_result = {
-            "status": "done",
-            "ticker": ticker,
-            "live": not use_synth,
-            "overall_signal": res.get("overall_signal"),
-            "overall_score": res.get("overall_score"),
-            "grade": sc.get("overall_grade"),
-            "grade_score": sc.get("overall_score"),
-            "verdict": sc.get("verdict"),
-            "axes": sc.get("pillars", {}),
-            "timeframes": tfs,
-            "narratives": {k: v for k, v in nv.items() if v},
-            "report_url": report_url,
-            "report_archive_url": archive_url,
-            "meta_verdict": meta_verdict,
-        }
-        _ANALYZE_JOBS[job_id] = job_result
-        # C9: 분석 이력 영구 저장 (실패해도 무시)
-        try:
-            from engine.analyze_history import save_analysis
-            # 아카이브 URL을 우선 저장 (덮어쓰기 안 됨)
-            persist = dict(job_result)
-            if archive_url:
-                persist["report_url"] = archive_url
-            save_analysis(user_id, ticker, persist)
-        except Exception as _e:
-            print("[analyze_history] save failed:", _e)
-    except Exception as e:  # pragma: no cover
-        _ANALYZE_JOBS[job_id] = {"status": "error", "error": str(e)}
-
-
-@app.route("/api/analyze", methods=["POST"])
-def api_analyze():
-    data = request.get_json(force=True, silent=True) or {}
-    ticker = (data.get("ticker") or "DEMO").strip()
-    job_id = "job_%d" % int(time.time() * 1000)
-    _ANALYZE_JOBS[job_id] = {"status": "running", "ticker": ticker}
-    # C9: 사용자 id 전달 (이력에 기록)
-    uid = (g.user or {}).get("id") if getattr(g, "user", None) else None
-    threading.Thread(target=_run_analyze_job,
-                     args=(job_id, ticker, uid), daemon=True).start()
-    return jsonify({"job_id": job_id, "status": "running"})
-
-
 # C9: 분석 이력 조회 API
 @app.route("/api/analyze/history")
 @require_auth
@@ -2240,14 +2127,6 @@ def api_analyze_history_delete(hid):
     if not r.get("ok"):
         return jsonify(r), 403
     return jsonify(r)
-
-
-@app.route("/api/analyze/<job_id>")
-def api_analyze_status(job_id):
-    job = _ANALYZE_JOBS.get(job_id)
-    if not job:
-        abort(404)
-    return jsonify(job)
 
 
 # ══════════════════════════════════════════════════════════════

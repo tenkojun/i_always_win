@@ -31,7 +31,6 @@ block_cipher = None
 
 datas = [
     ('webapp/static', 'webapp/static'),
-    ('engine/report/assets', 'engine/report/assets'),
     ('assets', 'assets'),          # 앱 아이콘
     ('docs', 'docs'),              # 외부 접근 가이드 등 사용자 문서
     ('version.py', '.'),           # 버전 단일 소스
@@ -60,17 +59,16 @@ hiddenimports = [
     'engine.jiqtx.glossary', 'engine.jiqtx.horizons',
     'engine.jiqtx.macro_board', 'engine.jiqtx.report_theme',
 
-    # ── 기존 엔진 ───────────────────────────────────────────
-    'engine.analysis.timeframe', 'engine.data.loader',
-    'engine.data.keyconfig', 'engine.institutional',
-    'engine.risk', 'engine.factor', 'engine.volatility',
-    'engine.orderflow', 'engine.ml', 'engine.ml.models',
-    'engine.signal_engine', 'engine.explain', 'engine.portfolio',
-    'engine.awareness', 'engine.community', 'engine.llm',
-    'engine.auth', 'engine.auth.middleware', 'engine.auth_remote',
-    'engine.cloud', 'engine.cloud.tunnel', 'engine.cloud.supervisor',
-    'engine.cloud.named_tunnel', 'engine.jobs', 'engine.report',
-    'engine.analyze_history',
+    # ── 앱 지원 모듈 ────────────────────────────────────────
+    # v2.15.0 에서 구엔진(analysis/institutional/risk/factor/volatility/
+    # orderflow/ml/signal_engine/explain/report)을 제거했다. jiqtx 가
+    # 전부 대체하므로 여기서도 뺀다.
+    'engine.data.loader', 'engine.data.keyconfig',
+    'engine.portfolio', 'engine.awareness', 'engine.community',
+    'engine.llm', 'engine.auth', 'engine.auth.middleware',
+    'engine.auth_remote', 'engine.cloud', 'engine.cloud.tunnel',
+    'engine.cloud.supervisor', 'engine.cloud.named_tunnel',
+    'engine.jobs', 'engine.analyze_history',
 
     # ── 과학 스택 (PyInstaller 가 자주 놓치는 것들) ─────────
     'numpy', 'pandas', 'scipy', 'scipy.special.cython_special',
@@ -78,7 +76,9 @@ hiddenimports = [
     'sklearn', 'sklearn.utils._typedefs',
     'sklearn.neighbors._partition_nodes', 'sklearn.cluster',
     'sklearn.ensemble', 'sklearn.linear_model', 'sklearn.isotonic',
-    'statsmodels', 'arch', 'hmmlearn',
+    # statsmodels / arch / hmmlearn 은 설치돼 있지 않고 jiqtx 는 이들을
+    # 쓰지 않는다 (GJR-GARCH-t·HAR·Jump Model 을 scipy 로 직접 구현).
+    # 명시해 두면 매 빌드마다 "Hidden import not found" 경고만 남는다.
 
     # ── 웹 / 데스크톱 ───────────────────────────────────────
     'flask', 'jinja2', 'werkzeug', 'webview',

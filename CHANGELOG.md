@@ -5,6 +5,63 @@
 
 ---
 
+## [2.15.0] — 2026-08-19
+
+### 고침 — 용어 툴팁이 잘리던 진짜 이유
+"마우스 올리면 옆이 잘린다"는 제보를 따라가 보니, 화면 가장자리 문제가
+아니었다. 보고서에는 **잘라내는 조상이 둘** 있다.
+
+    details.sec { overflow:hidden }   ← 모든 섹션
+    .tw         { overflow-x:auto }   ← 모든 표 감싸개
+
+툴팁은 `.term` 안의 `position:absolute` 였다. absolute 는 저 조상 박스에서
+잘린다. 그래서 **화면 한복판에 있어도** 섹션 가장자리나 표 안에서는 잘렸다.
+붙는 방향을 바꾸던 기존 대응(tip-left/tip-right)으로는 고칠 수 없었다.
+자르는 주체가 뷰포트가 아니었기 때문이다.
+
+`<body>` 직속에 `position:fixed` 레이어 하나를 두고 내용만 갈아 끼우는
+방식으로 바꿨다. fixed 는 overflow 조상을 벗어난다. 좌표는
+`getBoundingClientRect()` 로 잡고 뷰포트 안으로 clamp 하며, 위가 좁으면
+아래로 뒤집고, 화살표는 밀린 만큼 되돌려 계속 용어를 가리킨다.
+
+실측(1280×720, 섹션+가로스크롤 표 안): 5개 위치 전부 뷰포트 이탈 0.
+
+### 고침 — 용어의 절반이 조용히 툴팁을 못 얻고 있었다
+같은 작업 중에 발견. 텍스트 노드 필터가 전역 정규식으로 `test()` 를
+불렀다. `/g` 정규식의 `test()` 는 `lastIndex` 를 남기므로 다음 노드를
+중간부터 검사한다. 결과가 `[true, false, true, false]` 로 **한 노드 걸러
+하나씩 통째로 누락**됐다. 본문 순회 쪽은 `lastIndex = 0` 을 하고 있었는데
+필터 쪽만 빠져 있었다. 눈에 띄지 않는 종류의 버그다 — 툴팁이 없어도
+화면은 멀쩡해 보인다.
+
+### 고침 — 툴팁이 테마를 타지 않았다
+`themed_css(CSS, theme) + _tip_css()` 로 툴팁 CSS 를 테마 밖에 붙이고
+있었다. 라이트/세피아에서 툴팁만 다크로 남고, 용어 밑줄·강조색이 밝은
+바탕에서 대비를 잃었다. `themed_css(CSS + _tip_css(), theme)` 로 합치고
+관련 6색을 팔레트에 편입했다.
+
+밝은 바탕에서는 어두운 툴팁이 대비가 가장 좋아 그 방향으로 잡았다
+(라이트 실측: 툴팁 13.40:1, 본문 17.46:1). 4테마 모두 미매핑 색 0.
+
+### 제거 — 구엔진 47파일 6,359줄
+`main.py` 의 13단계 오케스트레이터와, 그것만 참조하던 패키지 10종
+(ml · risk · volatility · factor · institutional · signal_engine ·
+explain · orderflow · analysis · report)을 지웠다. `engine/jiqtx` 가
+전부 대체한다.
+
+이들은 `arch` · `statsmodels` · `hmmlearn` · `torch` · `xgboost` 를
+import 하고 있었는데 그 라이브러리들은 설치돼 있지도 않았다. try/except
+폴백 덕에 죽지 않고 **성능만 낮아진 채** 돌고 있었을 뿐이다.
+
+`POST /api/analyze` 와 잡 러너도 server.py 에서 제거했다(-121줄).
+프론트는 이미 `/api/jiqtx/*` 만 쓰고 있었다. `engine/__init__.py` 의
+지연 export 와 `app.spec` 의 hiddenimports·폰트 자산도 정리했다.
+
+검증: `engine` · `engine.jiqtx` · `engine.data.loader` ·
+`engine.analyze_history` · `webapp.server` 전부 임포트 정상.
+
+---
+
 ## [2.14.0] — 2026-08-19
 
 ### 추가 — 앱 안에서 보고서 보기
