@@ -203,10 +203,14 @@
     0%{opacity:0;transform:scale(.92)}
     100%{opacity:1;transform:scale(1)}
   }
-  #boot img.fox{width:clamp(45px,7vw,85px);height:auto;
-    display:block;margin:0 auto 28px;
-    filter:drop-shadow(0 0 22px rgba(255,255,255,.18));
+  /* 로고 이미지에 워드마크(PLUTUS · RESEARCH & ANALYTICS)가 이미
+     들어 있다. 아래 t-name/t-sub 를 함께 띄우면 같은 글자가 두 번
+     나온다 — 이미지를 크게 쓰고 텍스트는 내린다. */
+  #boot img.fox{width:clamp(200px,26vw,340px);height:auto;
+    display:block;margin:0 auto;
+    filter:drop-shadow(0 0 34px rgba(255,255,255,.10));
     user-select:none;-webkit-user-drag:none}
+  #boot .t-name,#boot .t-sub{display:none}
   #boot .t-name{font-family:var(--mono);font-weight:800;
     font-size:clamp(20px,3.5vw,32px);
     letter-spacing:clamp(6px,1.4vw,12px);
@@ -1741,8 +1745,9 @@
 <div class="blk">
   <!-- Plutus 로고. 파일이 없으면 기존 이미지로 폴백한다 —
        로고 하나 때문에 부팅 화면이 깨진 채로 보이면 안 된다. -->
-  <img class="fox" src="/static/plutus.png" alt="Plutus" draggable="false"
-       onerror="this.onerror=null;this.src='/static/fox.png'">
+  <img class="fox" src="/static/plutus_mark.png" alt="Plutus" draggable="false"
+       onerror="this.onerror=null;this.src='/static/plutus.png';
+                this.onerror=function(){this.onerror=null;this.src='/static/fox.png'}">
 
   <div class="t-name">P&nbsp;L&nbsp;U&nbsp;T&nbsp;U&nbsp;S</div>
   <div class="t-sub">R E S E A R C H &nbsp;&amp;&nbsp; A N A L Y T I C S</div>
