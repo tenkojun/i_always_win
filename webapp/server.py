@@ -534,14 +534,21 @@ def api_heatmap_treemap():
         return jsonify(_HEATMAP_CACHE["data"])
 
     yf = _get_yf()
-    sectors: Dict[str, Dict[str, Any]] = {}
-    for sector, sym, name in HEATMAP_UNIVERSE:
-        q = _quote_one(sym)
-        cap = _ticker_marketcap(yf, sym) if yf else 0.0
+
+    # 종목마다 시세 + 시총을 **직렬로** 왕복하던 코드였다. 1종목에 약
+    # 1.9초(quote 1.2s + marketcap 0.6s)라 23종목이면 43초 — 프론트가
+    # 기다리다 끊긴다. 네트워크 대기가 대부분이라 스레드로 겹치면 된다.
+    def _one(entry):
+        sector, sym, name = entry
+        try:
+            q = _quote_one(sym)
+            cap = _ticker_marketcap(yf, sym) if yf else 0.0
+        except Exception:
+            q, cap = {}, 0.0
         # cap이 0이면 (오프라인 또는 fast_info 실패) 가격 기반 가중치
         if cap <= 0:
             cap = max(1.0, float(q.get("price") or 1.0)) * 1e9
-        item = {
+        return sector, {
             "ticker": sym,
             "name": name,
             "price": q.get("price"),
@@ -549,9 +556,15 @@ def api_heatmap_treemap():
             "cap": cap,
             "live": q.get("live", False),
         }
-        sectors.setdefault(sector, {"name": sector, "cap": 0.0, "items": []})
-        sectors[sector]["cap"] += cap
-        sectors[sector]["items"].append(item)
+
+    from concurrent.futures import ThreadPoolExecutor
+    sectors: Dict[str, Dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        for sector, item in ex.map(_one, HEATMAP_UNIVERSE):
+            sectors.setdefault(sector, {"name": sector, "cap": 0.0,
+                                        "items": []})
+            sectors[sector]["cap"] += item["cap"]
+            sectors[sector]["items"].append(item)
 
     # 섹터별 정렬 (cap desc), 섹터 리스트도 cap desc
     sector_list = []

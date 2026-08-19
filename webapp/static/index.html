@@ -324,8 +324,28 @@
   .badge.delayed{border-color:#7a5b1c;color:var(--amber)}
 
   /* ticker strip */
-  .strip{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
-  .strip::-webkit-scrollbar{display:none}
+  /* 시장 개요 — 타일이 화면보다 넓으면 가로 스크롤된다.
+     스크롤바를 숨겨 두었더니 **잘린다는 신호가 전혀 없어서** 오른쪽
+     타일이 그냥 잘린 것처럼 보였다(실측 넘침 540px · 잘린 타일 4개).
+     양 끝에 페이드를 넣어 "더 있다" 를 알린다. 스크롤 위치에 따라
+     JS 가 has-l / has-r 을 붙여 필요한 쪽만 흐린다. */
+  .strip-wrap{position:relative;min-width:0}
+  .strip-wrap::before,.strip-wrap::after{content:"";position:absolute;
+    top:0;bottom:0;width:44px;pointer-events:none;z-index:2;opacity:0;
+    transition:opacity .18s ease}
+  .strip-wrap::before{left:0;
+    background:linear-gradient(90deg,var(--panel),transparent)}
+  .strip-wrap::after{right:0;
+    background:linear-gradient(270deg,var(--panel),transparent)}
+  .strip-wrap.has-l::before{opacity:1}
+  .strip-wrap.has-r::after{opacity:1}
+  .strip{display:flex;gap:0;overflow-x:auto;scrollbar-width:thin;
+    scrollbar-color:var(--cyan-dim) transparent;
+    scroll-behavior:smooth;overscroll-behavior-x:contain}
+  .strip::-webkit-scrollbar{height:4px}
+  .strip::-webkit-scrollbar-track{background:transparent}
+  .strip::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:2px}
+  .strip::-webkit-scrollbar-thumb:hover{background:var(--cyan)}
   /* awareness alert 배지 (자산 셀 우상단) */
   .tk{position:relative;cursor:pointer;transition:background .15s}
   .tk:hover{background:rgba(61,240,255,.06)}
@@ -376,7 +396,7 @@
     text-decoration:none;justify-content:center}
   .aw-card .kd{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;
     color:var(--cyan-dim)}
-  .aw-card.hot .kd{color:var(--amber,#ffb44c)}
+  .aw-card.hot .kd{color:var(--amber)}
   .aw-card .ti{color:var(--txt);font-size:12.5px;line-height:1.5;
     display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
     overflow:hidden}
@@ -1096,8 +1116,8 @@
     text-align:right;font-variant-numeric:tabular-nums}
   .mf-chg{font-family:var(--mono);font-size:10.5px;flex:0 0 54px;
     text-align:right;font-variant-numeric:tabular-nums}
-  .mf-up{color:var(--up,#2ec27e)}
-  .mf-dn{color:var(--down,#e0455f)}
+  .mf-up{color:var(--up)}
+  .mf-dn{color:var(--down)}
   .mf-mut{color:var(--txt-mute)}
   /* 자금 이동 막대 — 0 을 가운데 두고 좌우로 뻗는다 */
   .mf-bar{flex:0 0 84px;height:13px;position:relative;
@@ -1105,7 +1125,9 @@
   .mf-bar i{position:absolute;top:0;bottom:0;display:block;border-radius:2px}
   .mf-bar .zero{position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;
     background:rgba(255,255,255,.22)}
-  .mf-note{padding:3px 10px 6px 62px;font-size:9.5px;color:var(--warn,#e8a33d);
+  /* --warn 은 **보고서** 팔레트 이름이다. 앱 팔레트에는 없어서 늘
+     폴백 색으로 떨어지고 있었다 — 테마를 바꿔도 이 줄만 안 따라온다. */
+  .mf-note{padding:3px 10px 6px 62px;font-size:9.5px;color:var(--amber);
     line-height:1.4}
   .mf-sub{padding:6px 10px 3px;font-family:var(--mono);font-size:9.5px;
     letter-spacing:1px;color:var(--txt-mute);
@@ -2642,7 +2664,9 @@
   <!-- 지수/환율/원자재 스트립 -->
   <div class="frame">
     <div class="ftitle"><span>MARKET OVERVIEW · 시장 개요</span><span class="dot"></span></div>
-    <div class="strip" id="strip"></div>
+    <div class="strip-wrap" id="strip-wrap">
+      <div class="strip" id="strip"></div>
+    </div>
   </div>
 
   <!-- 메인 (data-tpl: T1=1+2v, T2=1+3v, T3=2x2, T4=가로 2+1, T5=차트만) -->
@@ -4108,7 +4132,35 @@ async function loadOverview(){
         <div class="ch ${cls}">${ar} ${fmt(Math.abs(it.chg),dec)}
         (${it.pct>=0?'+':''}${it.pct.toFixed(2)}%)</div></div>`;
     }).join('');
+    _initStrip();          // 타일이 채워진 뒤에 폭이 정해진다
+    _syncStripFade();
   }catch(e){}
+}
+
+/* 시장 개요 스크롤 상태 — 양 끝 페이드를 켜고 끈다.
+   휠은 세로로 오므로 가로 스크롤로 돌려 준다(트랙패드 가로 제스처는
+   그대로 통과시킨다). */
+function _syncStripFade(){
+  const w=$('#strip-wrap'), s=$('#strip');
+  if(!w||!s)return;
+  const max=s.scrollWidth-s.clientWidth;
+  w.classList.toggle('has-l', s.scrollLeft > 4);
+  w.classList.toggle('has-r', max > 4 && s.scrollLeft < max - 4);
+}
+function _initStrip(){
+  const s=$('#strip');
+  if(!s||s.dataset.bound)return;
+  s.dataset.bound='1';
+  s.addEventListener('scroll', _syncStripFade, {passive:true});
+  window.addEventListener('resize', _syncStripFade, {passive:true});
+  s.addEventListener('wheel', e=>{
+    if(Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;   // 이미 가로
+    const max=s.scrollWidth-s.clientWidth;
+    if(max<=0) return;
+    s.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, {passive:false});
+  _syncStripFade();
 }
 
 /* ---------- awareness drawer — 속보 + 관련 뉴스 ----------
@@ -4763,7 +4815,7 @@ function _renderQuotaBlock(j){
   const q=j.quota||{};
   $('#abody').innerHTML=`<div class="hint" style="padding:26px 16px;
     text-align:center;line-height:1.7">
-    <div style="color:var(--amber,#ffb44c);font-size:13px;margin-bottom:6px">
+    <div style="color:var(--amber);font-size:13px;margin-bottom:6px">
       오늘 보고서 한도를 다 썼습니다</div>
     <div style="color:var(--txt-dim);font-size:12px">
       ${_histEsc(j.error||'')}</div>
@@ -7806,7 +7858,7 @@ function _mfBar(v,max){
   if(v==null||!isFinite(v)||!max)return '<span class="mf-bar"><i class="zero"></i></span>';
   const w=Math.min(Math.abs(v)/max,1)*50;
   const pos=v>0;
-  const color=pos?'var(--up,#2ec27e)':'var(--down,#e0455f)';
+  const color=pos?'var(--up)':'var(--down)';
   const style=pos?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
   return `<span class="mf-bar"><i style="${style};background:${color};opacity:.75"></i>`+
          `<i class="zero"></i></span>`;

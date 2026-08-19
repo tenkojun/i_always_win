@@ -24,14 +24,71 @@ def _bytes_to_gb(b: int) -> float:
     return round(b / (1024 ** 3), 1)
 
 
+def _ram_windows() -> Dict[str, int]:
+    """psutil 없이 RAM 조회 — Win32 GlobalMemoryStatusEx."""
+    import ctypes
+
+    class MEMORYSTATUSEX(ctypes.Structure):
+        _fields_ = [("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+
+    st = MEMORYSTATUSEX()
+    st.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st))
+    return {"total": int(st.ullTotalPhys), "avail": int(st.ullAvailPhys)}
+
+
 def _detect_cpu_ram() -> Dict[str, Any]:
-    """psutil 기반 CPU/RAM."""
-    import psutil
+    """
+    CPU/RAM. psutil 이 있으면 쓰고, 없으면 표준 라이브러리로 내려간다.
+
+    psutil 은 이 프로젝트의 필수 의존이 아닌데 여기서만 무조건 import
+    하고 있었다. 미설치 환경에서 `/api/llm/status` 가 통째로 500 을
+    뱉었다 — 하드웨어 정보 하나 때문에 화면 전체가 죽을 이유가 없다.
+    """
+    try:
+        import psutil
+        return {
+            "cpu_cores_physical": psutil.cpu_count(logical=False) or 0,
+            "cpu_cores_logical":  psutil.cpu_count(logical=True) or 0,
+            "ram_total_gb":       _bytes_to_gb(psutil.virtual_memory().total),
+            "ram_available_gb":   _bytes_to_gb(psutil.virtual_memory().available),
+            "source":             "psutil",
+        }
+    except Exception:
+        pass
+
+    import os
+    logical = os.cpu_count() or 0
+    total = avail = 0
+    try:
+        if os.name == "nt":
+            m = _ram_windows()
+            total, avail = m["total"], m["avail"]
+        else:                                     # POSIX
+            total = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+            try:
+                avail = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_AVPHYS_PAGES")
+            except (ValueError, AttributeError):
+                avail = 0
+    except Exception:
+        pass
+
     return {
-        "cpu_cores_physical": psutil.cpu_count(logical=False) or 0,
-        "cpu_cores_logical":  psutil.cpu_count(logical=True) or 0,
-        "ram_total_gb":       _bytes_to_gb(psutil.virtual_memory().total),
-        "ram_available_gb":   _bytes_to_gb(psutil.virtual_memory().available),
+        # 물리 코어는 표준 라이브러리로 알 수 없다 — 논리 코어의 절반으로
+        # 추정하되(대부분 SMT 2-way) 추정값임을 source 로 알린다.
+        "cpu_cores_physical": max(1, logical // 2) if logical else 0,
+        "cpu_cores_logical":  logical,
+        "ram_total_gb":       _bytes_to_gb(total) if total else 0.0,
+        "ram_available_gb":   _bytes_to_gb(avail) if avail else 0.0,
+        "source":             "stdlib (물리 코어는 추정값)",
     }
 
 
