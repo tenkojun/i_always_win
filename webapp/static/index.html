@@ -965,6 +965,50 @@
     background:var(--cyan);box-shadow:0 0 8px var(--cyan);
     cursor:grab;border:2px solid var(--bg)}
 
+  /* ── 시장 수급 위젯 ── */
+  .mf-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);
+    background:#050a10;flex:none}
+  .mf-tab{flex:1;background:transparent;border:0;border-bottom:2px solid
+    transparent;color:var(--txt-mute);font-family:var(--mono);font-size:10px;
+    letter-spacing:.5px;padding:7px 4px;cursor:pointer;transition:.12s}
+  .mf-tab:hover{color:var(--txt-dim);background:rgba(61,240,255,.05)}
+  .mf-tab.on{color:var(--cyan);border-bottom-color:var(--cyan);
+    text-shadow:var(--glow)}
+  .mf-head{padding:7px 10px;font-size:10.5px;line-height:1.55;
+    color:var(--txt-dim);border-bottom:1px solid var(--line);
+    background:#060b11;flex:none}
+  .mf-head b{color:var(--cyan)}
+  .mf-body{flex:1;min-height:0;overflow-y:auto;background:#04060a;
+    padding:4px 0}
+  /* 한 행 = 종목/섹터 하나 */
+  .mf-row{display:flex;align-items:center;gap:7px;padding:5px 10px;
+    border-bottom:1px solid rgba(255,255,255,.035);font-size:11px}
+  .mf-row:hover{background:rgba(61,240,255,.05)}
+  .mf-tk{font-family:var(--mono);font-weight:600;color:var(--txt);
+    flex:0 0 52px;letter-spacing:.3px}
+  .mf-nm{flex:1;min-width:0;color:var(--txt-dim);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;font-size:10.5px}
+  .mf-amt{font-family:var(--mono);font-size:11px;flex:0 0 62px;
+    text-align:right;font-variant-numeric:tabular-nums}
+  .mf-chg{font-family:var(--mono);font-size:10.5px;flex:0 0 54px;
+    text-align:right;font-variant-numeric:tabular-nums}
+  .mf-up{color:var(--up,#2ec27e)}
+  .mf-dn{color:var(--down,#e0455f)}
+  .mf-mut{color:var(--txt-mute)}
+  /* 자금 이동 막대 — 0 을 가운데 두고 좌우로 뻗는다 */
+  .mf-bar{flex:0 0 84px;height:13px;position:relative;
+    background:rgba(255,255,255,.045);border-radius:2px}
+  .mf-bar i{position:absolute;top:0;bottom:0;display:block;border-radius:2px}
+  .mf-bar .zero{position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;
+    background:rgba(255,255,255,.22)}
+  .mf-note{padding:3px 10px 6px 62px;font-size:9.5px;color:var(--warn,#e8a33d);
+    line-height:1.4}
+  .mf-sub{padding:6px 10px 3px;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:1px;color:var(--txt-mute);
+    border-bottom:1px solid rgba(255,255,255,.05)}
+  .mf-caveat{padding:8px 10px;font-size:9.5px;line-height:1.5;
+    color:var(--txt-mute);border-top:1px solid var(--line);background:#050a10}
+
   /* ── 우측 슬롯 시스템 (드래그 가능) ── */
   .wslot{flex:1;display:flex;flex-direction:column;min-height:0;
     background:var(--panel);position:relative;border:1px solid var(--line);
@@ -2708,6 +2752,35 @@
           <div id="mm-body" style="height:calc(100% - 36px);
             background:#04060a;display:flex;flex-direction:column;
             padding:3px;gap:2px;overflow:hidden">
+            <div class="hint" style="padding:24px 14px">로딩 중…</div>
+          </div>
+        </div>
+
+        <!-- FLOW (당일 시장 수급) -->
+        <div class="widget" id="w-marketflow" data-wid="marketflow">
+          <div style="padding:6px 10px;border-bottom:1px solid var(--line);
+            display:flex;align-items:center;gap:8px;background:#070b10">
+            <span style="font-family:var(--mono);font-size:10px;
+              letter-spacing:1.5px;color:var(--cyan-dim)">
+              시장 수급 · 당일
+            </span>
+            <span id="mf-ts" style="font-family:var(--mono);font-size:9px;
+              color:var(--txt-mute);margin-left:auto"></span>
+            <button onclick="loadMarketFlow(true)" title="새로 계산"
+              style="background:transparent;color:var(--txt-dim);
+              border:1px solid var(--line);font-family:var(--mono);
+              font-size:10px;padding:3px 8px;cursor:pointer">↻</button>
+          </div>
+          <div class="mf-tabs">
+            <button class="mf-tab on" data-mftab="rot"
+              onclick="mfTab('rot')">자금 이동</button>
+            <button class="mf-tab" data-mftab="side"
+              onclick="mfTab('side')">매수 / 매도</button>
+            <button class="mf-tab" data-mftab="sec"
+              onclick="mfTab('sec')">섹터 강약</button>
+          </div>
+          <div id="mf-head" class="mf-head"></div>
+          <div id="mf-body" class="mf-body">
             <div class="hint" style="padding:24px 14px">로딩 중…</div>
           </div>
         </div>
@@ -6993,6 +7066,120 @@ async function autoSetupLLM(){
   }
 }
 
+/* ---------- 시장 수급 위젯 ----------
+   세 질문에 답한다:
+   ① 어제 같은 시각 대비 자금이 어디로 이동했나
+   ② 지금 어디를 집중 매수/매도하나
+   ③ 오늘 어느 섹터가 강세인가
+   미국은 주체별(기관/외국인/개인) 데이터가 공개되지 않으므로 방향은
+   봉 모양에서 추정한 프록시다. 그 사실을 화면 하단에 적어 둔다. */
+let _mfData=null, _mfTab='rot', _mfBusy=false;
+
+function _mfMoney(x){
+  if(x==null||!isFinite(x))return '-';
+  const a=Math.abs(x), s=x>0?'+':(x<0?'-':'');
+  if(a>=1e9)return s+'$'+(a/1e9).toFixed(1)+'B';
+  if(a>=1e6)return s+'$'+Math.round(a/1e6)+'M';
+  return s+'$'+Math.round(a).toLocaleString();
+}
+function _mfCls(x){return (x==null||!isFinite(x))?'mf-mut':(x>0?'mf-up':(x<0?'mf-dn':'mf-mut'));}
+function _mfPct(x,d){return (x==null||!isFinite(x))?'-':((x>0?'+':'')+x.toFixed(d==null?2:d)+'%');}
+
+/* 0 을 가운데 둔 좌우 막대. 최대 절대값으로 정규화한다. */
+function _mfBar(v,max){
+  if(v==null||!isFinite(v)||!max)return '<span class="mf-bar"><i class="zero"></i></span>';
+  const w=Math.min(Math.abs(v)/max,1)*50;
+  const pos=v>0;
+  const color=pos?'var(--up,#2ec27e)':'var(--down,#e0455f)';
+  const style=pos?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
+  return `<span class="mf-bar"><i style="${style};background:${color};opacity:.75"></i>`+
+         `<i class="zero"></i></span>`;
+}
+
+async function loadMarketFlow(fresh){
+  if(_mfBusy)return;
+  _mfBusy=true;
+  const body=$('#mf-body');
+  if(body && !_mfData) body.innerHTML='<div class="hint" style="padding:24px 14px">수급 계산 중… (최초 10~30초)</div>';
+  try{
+    const r=await(await fetch('/api/market/flow?top=40'+(fresh?'&fresh=1':''))).json();
+    if(!r.ok){ _mfErr(r.error||'수급 데이터를 가져오지 못했습니다'); return; }
+    _mfData=r;
+    const ts=$('#mf-ts');
+    if(ts) ts.textContent=(r.session||'')+' · '+(r.asof||'').slice(11,16);
+    _mfRender();
+  }catch(e){ _mfErr(String(e)); }
+  finally{ _mfBusy=false; }
+}
+function _mfErr(msg){
+  const b=$('#mf-body');
+  if(b) b.innerHTML='<div class="hint" style="padding:20px 14px;color:var(--down)">'
+    +_histEsc(msg)+'</div>';
+}
+function mfTab(t){
+  _mfTab=t;
+  document.querySelectorAll('.mf-tab').forEach(b=>
+    b.classList.toggle('on', b.dataset.mftab===t));
+  _mfRender();
+}
+
+function _mfRender(){
+  const d=_mfData; if(!d)return;
+  const head=$('#mf-head'), body=$('#mf-body');
+  if(head) head.innerHTML=_histEsc(d.headline||'');
+
+  let h='';
+  if(_mfTab==='rot'){
+    const rot=d.rotation||[];
+    if(!rot.length) h='<div class="hint" style="padding:20px 14px">어제 데이터가 없어 비교할 수 없습니다.</div>';
+    else{
+      h+='<div class="mf-sub">어제 같은 시각 대비 거래대금 비중 변화</div>';
+      const max=Math.max(...rot.map(s=>Math.abs(s.share_delta||0)))||1;
+      rot.forEach(s=>{
+        h+=`<div class="mf-row">
+          <span class="mf-tk" style="flex:0 0 92px;font-size:10.5px">${_histEsc(s.sector)}</span>
+          ${_mfBar(s.share_delta,max)}
+          <span class="mf-amt ${_mfCls(s.share_delta)}">${_mfPct(s.share_delta,2).replace('%','%p')}</span>
+          <span class="mf-chg mf-mut">${(s.share_prev*100).toFixed(1)}→${(s.share*100).toFixed(1)}%</span>
+        </div>`;
+      });
+    }
+  }else if(_mfTab==='side'){
+    const mk=(list,title)=>{
+      if(!list||!list.length)return '';
+      const max=Math.max(...list.map(r=>Math.abs(r.net_flow||0)))||1;
+      let s=`<div class="mf-sub">${title}</div>`;
+      list.forEach(r=>{
+        s+=`<div class="mf-row">
+          <span class="mf-tk">${_histEsc(r.ticker)}</span>
+          ${_mfBar(r.net_flow,max)}
+          <span class="mf-amt ${_mfCls(r.net_flow)}">${_mfMoney(r.net_flow)}</span>
+          <span class="mf-chg ${_mfCls(r.chg_pct)}">${_mfPct(r.chg_pct)}</span>
+        </div>`;
+        if(r.note) s+=`<div class="mf-note">${_histEsc(r.note)}</div>`;
+      });
+      return s;
+    };
+    h=mk(d.top_buy,'집중 매수 — 순매수 프록시 상위')
+     +mk(d.top_sell,'집중 매도 — 순매도 프록시 상위');
+  }else{
+    const secs=(d.sectors||[]).slice().sort((a,b)=>(b.avg_chg??-99)-(a.avg_chg??-99));
+    h+='<div class="mf-sub">섹터 강약 — 등락과 자금이 함께 말할 때만 라벨</div>';
+    const max=Math.max(...secs.map(s=>Math.abs(s.net_flow||0)))||1;
+    secs.forEach(s=>{
+      const tag=s.strength==='강세'?'mf-up':(s.strength==='약세'?'mf-dn':'mf-mut');
+      h+=`<div class="mf-row">
+        <span class="mf-tk ${tag}" style="flex:0 0 30px;font-size:10px">${_histEsc(s.strength)}</span>
+        <span class="mf-nm">${_histEsc(s.sector)}</span>
+        ${_mfBar(s.net_flow,max)}
+        <span class="mf-chg ${_mfCls(s.avg_chg)}">${_mfPct(s.avg_chg)}</span>
+      </div>`;
+    });
+  }
+  if(d.caveat) h+='<div class="mf-caveat">'+_histEsc(d.caveat)+'</div>';
+  if(body) body.innerHTML=h;
+}
+
 /* ---------- 우측 슬롯 시스템 (드래그 앤 드롭) ---------- */
 const _WIDGETS=[
   {id:'watchlist', label:'WATCHLIST',kr:'관심종목',icon:'◉',onShow:loadWatchlist},
@@ -7005,6 +7192,7 @@ const _WIDGETS=[
   {id:'calendar',  label:'CALENDAR', kr:'캘린더', icon:'▤',onShow:loadCalendar},
   {id:'heatmap',   label:'HEATMAP',  kr:'히트맵', icon:'▩',onShow:loadHeatmap},
   {id:'macromap',  label:'MACRO',    kr:'거시맵', icon:'▦',onShow:loadMacroMap},
+  {id:'marketflow',label:'FLOW',     kr:'수급',   icon:'⇄',onShow:loadMarketFlow},
   {id:'youtube',   label:'LIVE',     kr:'실시간', icon:'▶',onShow:loadYoutube},
   // community는 dock에서 제거됨 — 상단 💬 버튼으로 팝업
 ];
@@ -7043,8 +7231,47 @@ function _loadLayout(){
     _wlayout=merged;
   }catch(e){}
 }
+/* 레이아웃은 localStorage 만으로는 유지되지 않는다.
+   EXE 웹뷰는 프로필이 갈리면 저장소가 비고, 다른 브라우저·터널로 들어오면
+   애초에 다른 저장소다. 그래서 **서버(사용자 prefs)를 정본**으로 두고
+   localStorage 는 즉시 그리기용 캐시로만 쓴다. */
 function _saveLayout(){
   try{localStorage.setItem(_LAYOUT_KEY,JSON.stringify(_wlayout));}catch(e){}
+  _pushLayoutToServer();
+}
+
+let _layoutPushT=null;
+function _pushLayoutToServer(){
+  // 드래그 중 연타되므로 묶어서 한 번만 보낸다
+  clearTimeout(_layoutPushT);
+  _layoutPushT=setTimeout(()=>{
+    fetch('/api/prefs/patch',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({patch:{layout:_wlayout}}),
+    }).catch(()=>{});
+  }, 600);
+}
+
+/* 로그인 직후 서버 레이아웃을 받아 적용한다. 서버에 없으면 현재(로컬)
+   값을 정본으로 올려 다음 로그인부터 유지되게 한다. */
+async function syncLayoutFromServer(){
+  try{
+    const r=await(await fetch('/api/prefs')).json();
+    const srv=r&&r.prefs&&r.prefs.layout;
+    if(srv&&_LAYOUT_TEMPLATES[srv.tpl]){
+      const merged={..._LAYOUT_DEFAULT, ...srv};
+      const seen=new Set();
+      ['A','B','C','D'].forEach(s=>{
+        if(!_WID_MAP[merged[s]]||seen.has(merged[s])) merged[s]=_LAYOUT_DEFAULT[s];
+        seen.add(merged[s]);
+      });
+      _wlayout=merged;
+      try{localStorage.setItem(_LAYOUT_KEY,JSON.stringify(_wlayout));}catch(e){}
+      applyLayout();
+    }else{
+      _pushLayoutToServer();
+    }
+  }catch(e){}
 }
 
 /* ---------- B6: 위젯 전체화면 모달 ---------- */
@@ -7225,9 +7452,10 @@ function _initSlotDnD(){
 }
 
 function initWidgetSystem(){
-  _loadLayout();
+  _loadLayout();      // 로컬 캐시로 즉시 그린다 (깜빡임 방지)
   applyLayout();
   _initSlotDnD();
+  syncLayoutFromServer();   // 그 다음 서버 정본으로 덮어쓴다
 }
 
 /* ---------- 위젯: WATCHLIST 관심종목 ---------- */

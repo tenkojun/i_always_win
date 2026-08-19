@@ -1895,6 +1895,29 @@ def api_jobs_result(job_id):
                      "job": job})
 
 
+# ── 시장 수급 스캐너 ──────────────────────────────────────
+@app.route("/api/market/flow")
+@require_auth
+def api_market_flow():
+    """
+    당일 수급 보드. 세 질문에 답한다 —
+    어제 대비 자금이 어디로 이동했나 / 지금 어디를 집중 매수·매도하나 /
+    오늘 어느 섹터가 강세인가.
+
+    계산이 수 초 걸리므로 엔진 쪽에서 3분 캐시를 둔다. 15분 지연
+    데이터라 그보다 자주 돌 이유가 없다.
+    """
+    from engine.data.market_flow import build_board
+    market = (request.args.get("market") or "US").upper()
+    try:
+        top = max(5, min(int(request.args.get("top") or 30), 60))
+    except ValueError:
+        top = 30
+    fresh = request.args.get("fresh") == "1"
+    board = build_board(market=market, top=top, use_cache=not fresh)
+    return jsonify({"ok": not board.error, **board.to_dict()})
+
+
 # ── 사용자 prefs 영구 저장 (위젯 배치, 테마, 폰트 등) ──────
 @app.route("/api/prefs", methods=["GET"])
 @require_auth

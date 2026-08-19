@@ -139,6 +139,12 @@ class FlowRow:
     cmf: float = float("nan")            # -1 ~ +1
     net_flow: float = float("nan")       # 순매수 프록시(달러)
 
+    # 어제 **같은 시각까지** 의 값. 하루 전체와 비교하면 장중엔 언제나
+    # "어제보다 줄었다" 가 나온다 — RVOL 과 같은 함정이다.
+    dollar_vol_prev: float = float("nan")
+    net_flow_prev: float = float("nan")
+    net_flow_delta: float = float("nan")  # 오늘 - 어제 (순매수 프록시)
+
     score: float = float("nan")          # 종합 이상활동 점수
     direction: str = "중립"              # 매수우위 / 매도우위 / 중립
     agree: bool = True                   # 두 방향 프록시가 일치하는가
@@ -161,6 +167,13 @@ class SectorFlow:
     avg_chg: float = float("nan")
     share: float = float("nan")          # 전체 거래대금 중 비중
 
+    # 어제 같은 시각 대비 — "어제와 달리 어디로 몰리는가" 가 여기서 나온다
+    share_prev: float = float("nan")
+    share_delta: float = float("nan")    # %p. 양수면 자금이 이 섹터로 이동
+    net_flow_prev: float = float("nan")
+    net_flow_delta: float = float("nan")
+    strength: str = "중립"               # 강세 / 약세 / 중립
+
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         return {k: (None if isinstance(v, float) and not math.isfinite(v) else v)
@@ -175,8 +188,12 @@ class FlowBoard:
     session: str = ""                    # 장중 / 장마감 / 장전
     progress: float = float("nan")       # 세션 경과 0~1
     rows: List[FlowRow] = field(default_factory=list)
+    top_buy: List[FlowRow] = field(default_factory=list)    # 집중 매수
+    top_sell: List[FlowRow] = field(default_factory=list)   # 집중 매도
+    rotation: List[SectorFlow] = field(default_factory=list)  # 어제 대비 이동
     sectors: List[SectorFlow] = field(default_factory=list)
     breadth: Dict[str, Any] = field(default_factory=dict)
+    headline: str = ""                   # 한 줄 요약
     source: str = ""
     caveat: str = ""
     error: str = ""
@@ -188,8 +205,12 @@ class FlowBoard:
             "progress": (None if not math.isfinite(self.progress)
                          else round(self.progress, 4)),
             "rows": [r.to_dict() for r in self.rows],
+            "top_buy": [r.to_dict() for r in self.top_buy],
+            "top_sell": [r.to_dict() for r in self.top_sell],
+            "rotation": [s.to_dict() for s in self.rotation],
             "sectors": [s.to_dict() for s in self.sectors],
             "breadth": self.breadth, "source": self.source,
+            "headline": self.headline,
             "caveat": self.caveat, "error": self.error,
         }
 
@@ -313,6 +334,30 @@ def compute_direction(bars_today: pd.DataFrame) -> Tuple[float, float, float]:
     return up_share, cmf, net
 
 
+def prev_session_slice(bars: "pd.DataFrame", now_mod: int
+                       ) -> Optional["pd.DataFrame"]:
+    """
+    직전 거래일을 **오늘과 같은 시각까지만** 잘라 돌려준다.
+
+    오늘 오전 10시의 자금 유입을 어제 **하루 전체** 와 비교하면 언제나
+    "어제보다 줄었다" 가 나온다. RVOL 에서 이미 겪은 함정과 같은 종류라
+    여기서도 같은 시각으로 자른다.
+    """
+    b = bars.dropna(subset=["volume"])
+    if b.empty:
+        return None
+    days = sorted(set(b.index.date))
+    if len(days) < 2:
+        return None
+    prev_day = days[-2]
+    prev = b[b.index.date == prev_day]
+    if prev.empty:
+        return None
+    pm = prev.index.hour * 60 + prev.index.minute
+    sliced = prev[pm <= now_mod]
+    return sliced if len(sliced) >= 2 else None
+
+
 def _score(rvol: float, dollar_vol: float, chg_pct: float,
            dv_rank: float) -> float:
     """
@@ -365,6 +410,17 @@ def build_rows(frames: Dict[str, pd.DataFrame],
             else:
                 dv = float("nan")
 
+            # 어제 같은 시각까지 — "어제와 달리" 를 답하기 위한 기준선
+            now_mod = int(btoday.index[-1].hour * 60
+                          + btoday.index[-1].minute) if len(btoday) else 0
+            pslice = prev_session_slice(bars, now_mod)
+            if pslice is not None and len(pslice):
+                _, _, pnet = compute_direction(pslice)
+                pdv = float(np.nansum(pslice["volume"].astype(float).values
+                                      * pslice["close"].astype(float).values))
+            else:
+                pnet, pdv = float("nan"), float("nan")
+
             r = FlowRow(
                 ticker=tk,
                 name=names.get(tk, tk),
@@ -373,6 +429,10 @@ def build_rows(frames: Dict[str, pd.DataFrame],
                 cum_volume=cum, base_volume=base, rvol=rvol,
                 dollar_vol=dv,
                 up_vol_share=up_share, cmf=cmf, net_flow=net,
+                dollar_vol_prev=pdv, net_flow_prev=pnet,
+                net_flow_delta=(net - pnet
+                                if np.isfinite(net) and np.isfinite(pnet)
+                                else float("nan")),
             )
             rows.append(r)
         except Exception as e:                      # 한 종목 실패가 전체를
@@ -405,6 +465,16 @@ def build_rows(frames: Dict[str, pd.DataFrame],
                        "매도우위" if votes <= -2 else
                        "혼조" if votes == 0 and np.isfinite(r.cmf) else "중립")
         r.agree = abs(votes) != 1
+
+        # 순매수 프록시와 당일 등락이 어긋나는 경우를 표시한다.
+        # CMF 는 봉 **안에서** 종가가 어디 찍혔는지만 보므로, 하루 종일
+        # 흘러내리면서도 매 봉 저가를 딛고 올라오면 순매수로 잡힌다.
+        # 그대로 '집중 매수' 라고만 쓰면 오해를 부른다.
+        if np.isfinite(r.net_flow) and np.isfinite(r.chg_pct):
+            if r.net_flow > 0 and r.chg_pct < -0.5:
+                r.note = "하락 중 저가 매수세 (봉 내 매수, 일간은 하락)"
+            elif r.net_flow < 0 and r.chg_pct > 0.5:
+                r.note = "상승 중 차익 매도세 (봉 내 매도, 일간은 상승)"
     return rows
 
 
@@ -419,6 +489,17 @@ def aggregate_sectors(rows: List[FlowRow]) -> List[SectorFlow]:
         if np.isfinite(r.net_flow):
             s.net_flow += r.net_flow
 
+    # 어제 같은 시각까지의 섹터 합계
+    prev_dv: Dict[str, float] = {}
+    for r in rows:
+        if np.isfinite(r.dollar_vol_prev):
+            prev_dv[r.sector] = prev_dv.get(r.sector, 0.0) + r.dollar_vol_prev
+        if np.isfinite(r.net_flow_prev):
+            s = acc.get(r.sector)
+            if s is not None:
+                s.net_flow_prev = (0.0 if not np.isfinite(s.net_flow_prev)
+                                   else s.net_flow_prev) + r.net_flow_prev
+
     for name, s in acc.items():
         rs = [r.rvol for r in rows if r.sector == name and np.isfinite(r.rvol)]
         cs = [r.chg_pct for r in rows
@@ -427,8 +508,22 @@ def aggregate_sectors(rows: List[FlowRow]) -> List[SectorFlow]:
         s.avg_chg = float(np.mean(cs)) if cs else float("nan")
 
     total = sum(s.dollar_vol for s in acc.values()) or 1.0
-    for s in acc.values():
+    total_prev = sum(prev_dv.values()) or float("nan")
+    for name, s in acc.items():
         s.share = s.dollar_vol / total
+        if np.isfinite(total_prev) and total_prev > 0:
+            s.share_prev = prev_dv.get(name, 0.0) / total_prev
+            s.share_delta = (s.share - s.share_prev) * 100.0   # %p
+        if np.isfinite(s.net_flow_prev):
+            s.net_flow_delta = s.net_flow - s.net_flow_prev
+
+        # 강세 판정 — 등락과 자금 방향이 **함께** 말할 때만 라벨을 준다.
+        # 오르는데 순매도이거나, 내리는데 순매수면 그건 중립으로 남긴다.
+        up = np.isfinite(s.avg_chg) and s.avg_chg > 0.2
+        dn = np.isfinite(s.avg_chg) and s.avg_chg < -0.2
+        inflow = np.isfinite(s.net_flow) and s.net_flow > 0
+        s.strength = ("강세" if (up and inflow) else
+                      "약세" if (dn and not inflow) else "중립")
     return sorted(acc.values(), key=lambda x: -x.dollar_vol)
 
 
@@ -616,6 +711,49 @@ def alpaca_universe(limit: int = 400) -> List[str]:
         return []
 
 
+def _fmt_money(x: float) -> str:
+    """달러 금액을 읽기 좋게. 부호는 유지한다."""
+    if not np.isfinite(x):
+        return "-"
+    a = abs(x)
+    sign = "+" if x > 0 else ("-" if x < 0 else "")
+    if a >= 1e9:
+        return f"{sign}${a/1e9:.1f}B"
+    if a >= 1e6:
+        return f"{sign}${a/1e6:.0f}M"
+    return f"{sign}${a:,.0f}"
+
+
+def _headline(b: "FlowBoard") -> str:
+    """
+    한 줄 요약 — 세 질문에 바로 답한다.
+    데이터가 약하면 단정하지 않고 그 사실을 말한다.
+    """
+    parts: List[str] = []
+    strong = [s for s in b.sectors if s.strength == "강세"]
+    weak = [s for s in b.sectors if s.strength == "약세"]
+    if strong:
+        top = max(strong, key=lambda s: (s.avg_chg if np.isfinite(s.avg_chg)
+                                         else -99))
+        parts.append(f"강세 {top.sector} ({top.avg_chg:+.1f}%)")
+    if weak:
+        bot = min(weak, key=lambda s: (s.avg_chg if np.isfinite(s.avg_chg)
+                                       else 99))
+        parts.append(f"약세 {bot.sector} ({bot.avg_chg:+.1f}%)")
+    if b.rotation:
+        mv = b.rotation[0]
+        d = mv.share_delta
+        if abs(d) >= 1.0:
+            parts.append(f"어제 대비 자금 {mv.sector} "
+                         f"{'유입' if d > 0 else '이탈'} {abs(d):.1f}%p")
+    share = b.breadth.get("up_dollar_share")
+    if share is not None:
+        parts.append(f"상승측 거래대금 {share*100:.0f}%")
+    if not parts:
+        return "판단할 만한 차이가 없다 — 자금이 한쪽으로 쏠리지 않았다."
+    return " · ".join(parts)
+
+
 def build_board(market: str = "US",
                 universe: Optional[List[str]] = None,
                 lookback: int = 20,
@@ -667,6 +805,20 @@ def build_board(market: str = "US",
         board.sectors = aggregate_sectors(rows)
         board.breadth = compute_breadth(rows)
         board.session, board.progress = sess, prog
+
+        # ① 지금 집중 매수/매도가 어디인가 — 순매수 프록시 절대액 기준.
+        #    점수(이상활동) 순이 아니라 **금액 방향** 순이어야 답이 된다.
+        buys = [r for r in rows if np.isfinite(r.net_flow) and r.net_flow > 0]
+        sells = [r for r in rows if np.isfinite(r.net_flow) and r.net_flow < 0]
+        board.top_buy = sorted(buys, key=lambda r: -r.net_flow)[:10]
+        board.top_sell = sorted(sells, key=lambda r: r.net_flow)[:10]
+
+        # ② 어제와 달리 어디로 몰리는가 — 거래대금 비중 변화(%p) 순
+        rot = [s for s in board.sectors if np.isfinite(s.share_delta)]
+        board.rotation = sorted(rot, key=lambda s: -abs(s.share_delta))[:8]
+
+        # ③ 오늘 강세 섹터 + 한 줄 요약
+        board.headline = _headline(board)
         board.source = ("Alpaca 유니버스 + 야후 통합 분봉"
                         if alpaca_available() else "야후 통합 분봉 (무키)")
         board.caveat = (
