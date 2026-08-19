@@ -3340,6 +3340,58 @@ function _playBootSound(){
   }catch(e){}
 }
 
+/* ---------- eDEX-UI 사운드 뱅크 ----------
+   webapp/static/audio/*.wav 는 eDEX-UI(GPL-3.0, 사운드 IceWolf)의
+   원본 파일이다. `python tools/fetch_edex_assets.py` 로 받는다.
+
+   **파일이 없어도 앱은 돌아야 한다.** 받지 않기로 했거나 다운로드가
+   실패한 경우 조용히 Web Audio 합성음으로 떨어진다 — 소리 때문에
+   화면이 죽는 일은 없어야 한다.
+
+   같은 소리가 겹쳐 나야 하므로(로그가 빠르게 흐를 때) 노드 하나를
+   재사용하지 않고 풀에서 돌려 쓴다. */
+const _SFX_SRC = {
+  stdout:'stdout', stdin:'stdin', theme:'theme', keyboard:'keyboard',
+  granted:'granted', denied:'denied', panels:'panels', expand:'expand',
+  scan:'scan', alarm:'alarm', error:'error', info:'info', folder:'folder',
+};
+const _SFX_VOL = {                     // 원본은 꽤 크다 — 균형을 맞춘다
+  stdout:.30, stdin:.30, theme:.55, keyboard:.25, granted:.5, denied:.5,
+  panels:.4, expand:.4, scan:.4, alarm:.5, error:.5, info:.4, folder:.35,
+};
+const _sfxPool = {};                   // name → [HTMLAudioElement...]
+let _sfxReady = null;                  // null=미확인 true=있음 false=없음
+
+function _sfxProbe(){
+  if(_sfxReady!==null) return Promise.resolve(_sfxReady);
+  return fetch('/static/audio/stdout.wav', {method:'HEAD'})
+    .then(r=>{_sfxReady = r.ok; return r.ok;})
+    .catch(()=>{_sfxReady=false; return false;});
+}
+
+function playSfx(name, vol){
+  if(typeof _isSoundEnabled==='function' && !_isSoundEnabled('sfx'))return;
+  if(_sfxReady===false) return;        // 파일 없음 — 합성음 쪽에서 처리
+  const base=_SFX_SRC[name];
+  if(!base) return;
+  try{
+    let pool=_sfxPool[name];
+    if(!pool){
+      pool=_sfxPool[name]=[];
+      for(let i=0;i<4;i++){            // 겹쳐 재생용 4개
+        const a=new Audio('/static/audio/'+base+'.wav');
+        a.preload='auto';
+        pool.push(a);
+      }
+    }
+    const a=pool.find(x=>x.paused||x.ended)||pool[0];
+    a.currentTime=0;
+    a.volume=Math.min(1, (vol!=null?vol:(_SFX_VOL[name]||.4)));
+    const p=a.play();
+    if(p&&p.catch)p.catch(()=>{});     // 자동재생 정책 거부는 무시
+  }catch(e){}
+}
+
 /* ---------- 부팅 시퀀스 ----------
    터미널 로그가 좌르륵 흐르고 → '띠딕' 스냅 → 로고 → 로그인.
    **연출이 실제 준비를 늦추면 안 된다.** start() 는 예정대로 부르고,
@@ -3353,7 +3405,8 @@ function _playBootSound(){
    GPL 이 된다. 그래서 **형식만 참고해 우리 시스템 내용으로 새로 썼고**,
    소리는 Web Audio 로 합성한다.  (원 저작물을 그대로 쓰려면 이 저장소를
    GPL-3.0 으로 공개해야 한다 — 결정 필요.) */
-const _BOOT_LINES=[
+// eDEX 원본 로그를 받아오면 통째로 갈아 끼운다 → const 가 아니라 let
+let _BOOT_LINES=[
   ['','I ALWAYS WIN kernel — institutional quant terminal','ok'],
   ['','Copyright (c) Tenko jun. All rights reserved.','dim'],
   ['','',''],
@@ -3426,12 +3479,14 @@ const _BOOT_LINES=[
   ['','Boot Complete.','ok'],
 ];
 let _bootDone=false;
+let _bootGuard=null;
 
-/* 줄마다 짧은 blip. eDEX 는 stdout 사운드를 쓰지만 그 파일은 GPL 이라
-   여기서는 Web Audio 로 합성한다. 마스터 사운드가 꺼져 있으면 침묵. */
+/* 줄마다 나는 '티리릭'. eDEX-UI 의 stdout.wav 를 그대로 쓴다.
+   파일이 없으면(자산을 안 받았으면) Web Audio 합성음으로 떨어진다. */
 let _bootAC=null;
 function _bootBlip(){
   if(typeof _isSoundEnabled==='function' && !_isSoundEnabled('boot'))return;
+  if(_sfxReady){ playSfx('stdout'); return; }
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return;
@@ -3449,9 +3504,57 @@ function _bootBlip(){
   }catch(e){}
 }
 
+/* eDEX-UI 의 줄별 지연을 그대로 옮겼다 (src/_renderer.js displayLine).
+   균일 간격으로 흘리면 밋밋해서, 특정 지점에서 길게 멈추는 게 이 연출의
+   리듬을 만든다 — 2번째 줄 500ms, 25번째 400ms, 42번째 300ms 등.
+   전체 약 3.2초. */
+function _bootDelay(i, n){
+  if(i<=1) return 0;
+  if(i===2) return 500;
+  if(i>=4 && i<=24) return 30;
+  if(i===25) return 400;
+  if(i===42) return 300;
+  if(i>=43 && i<=81) return 25;
+  if(i===83) return 25;
+  if(i>=n-2) return 300;
+  return Math.pow(1-(i/1000),3)*25;
+}
+
+/* eDEX 원본 부팅 로그를 쓴다. 없으면 우리가 쓴 로그로 폴백한다. */
+async function _loadBootLog(){
+  try{
+    const r=await fetch('/static/audio/boot_log.txt');
+    if(!r.ok) return null;
+    const txt=await r.text();
+    // 원본 파일은 eDEX 가 innerHTML 로 바로 넣는 용도라 &lt; &quot; 같은
+    // **HTML 엔티티가 이미 들어 있다.** 그대로 다시 escape 하면
+    // &amp;lt; 가 되어 화면에 &lt; 가 글자로 찍힌다. 한 번 풀어 준 뒤
+    // 렌더 시점에 우리 escape 를 한 번만 적용한다.
+    const dec=document.createElement('textarea');
+    dec.innerHTML=txt;                 // textarea 안에서는 실행되지 않는다
+    const plain=dec.value;
+
+    // 제품명만 우리 것으로 바꾼다. 나머지 커널 메시지는 그대로 둔다 —
+    // 이름과 로고만 우리 것이라는 방침.
+    const lines=plain.replace(/eDEX-UI/g, 'I ALWAYS WIN')
+                     .replace(/eDEX/g, 'IAW')
+                     .split(/\r?\n/);
+    if(lines.length<10) return null;
+    return lines.map(l=>{
+      const t=l.trim();
+      let cls='ok';
+      if(!t) cls='';
+      else if(/^\[|begin\]|end\]/i.test(t)) cls='dim';
+      else if(/error|fail|warn|denied|unsupported/i.test(t)) cls='wn';
+      return ['', l, cls];
+    });
+  }catch(e){ return null; }
+}
+
 function _bootSkip(){
   if(_bootDone)return;
   _bootDone=true;
+  try{ if(typeof _bootGuard!=='undefined' && _bootGuard) clearTimeout(_bootGuard); }catch(e){}
   const b=$('#boot');
   if(!b){return;}
   b.classList.add('out');
@@ -3459,13 +3562,30 @@ function _bootSkip(){
   setTimeout(()=>{if(b.parentNode)b.remove();},420);
 }
 
-(function boot(){
-  _playBootSound();
+(async function boot(){
   const b=$('#boot'), term=$('#boot-term');
   if(!b){start();return;}
 
   // 실제 앱 준비는 연출과 무관하게 지금 시작한다
   start();
+
+  // 안전장치 — 연출 도중 무엇이 터지든 화면이 갇히면 안 된다.
+  // async 함수 안에서 던진 예외는 조용한 rejection 이 되어 시퀀스가
+  // 그대로 멈춘다(실제로 TDZ 참조 하나로 부팅 화면이 영구히 남았다).
+  // 최대 12초 뒤에는 무조건 걷어낸다.
+  _bootGuard=setTimeout(()=>{ if(!_bootDone) _bootSkip(); }, 12000);
+  window.addEventListener('unhandledrejection', ()=>{
+    if(!_bootDone) _bootSkip();
+  }, {once:true});
+
+  // eDEX 원본(사운드 + 부팅 로그)을 그대로 쓴다.
+  // 예전 합성 부팅음(_playBootSound, F#장조 sustain)은 '우우웅' 하고
+  // 길게 깔려서 로그 blip 을 덮었다 — 쓰지 않는다.
+  const has=await _sfxProbe();
+  if(has){
+    const real=await _loadBootLog();
+    if(real && real.length) _BOOT_LINES=real;
+  }
 
   const reduce=window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3482,37 +3602,44 @@ function _bootSkip(){
   }, {once:true});
 
   let i=0;
+  const N=_BOOT_LINES.length;
+  const cap=Math.max(24, Math.floor((window.innerHeight-60)/15));
+
   (function tick(){
     if(_bootDone)return;
-    if(i>=_BOOT_LINES.length){
-      // 2단계 — 띠딕
-      b.classList.add('snap');
+    if(i>=N){
+      // 로그가 끝나면 300ms 뒤 타이틀 — eDEX 도 displayTitleScreen 을
+      // 300ms 지연으로 부른다.
       setTimeout(()=>{
         if(_bootDone)return;
-        b.classList.remove('snap');
-        b.classList.add('logo');           // 3단계 — 로고
-        setTimeout(_bootSkip, 1500);       // 4단계 — 로그인으로
+        b.classList.add('snap');                 // 2단계 — 띠딕
+        setTimeout(()=>{
+          if(_bootDone)return;
+          b.classList.remove('snap');
+          b.classList.add('logo');               // 3단계 — 로고(여우)
+          // eDEX 는 타이틀 화면에서 theme 사운드를 400ms 뒤 재생한다
+          setTimeout(()=>{ if(!_bootDone) playSfx('theme'); }, 400);
+          setTimeout(_bootSkip, 2600);           // 4단계 — 로그인으로
+        }, 300);
       }, 300);
       return;
     }
-    // 한 프레임에 여러 줄을 몰아 찍는다. 하드웨어 초기화가 비동기라
-    // 실제 커널 로그는 뭉쳐서 쏟아지고 잠깐 멈추기를 반복한다.
-    const burst=1+Math.floor(Math.random()*3);
-    for(let k=0;k<burst && i<_BOOT_LINES.length;k++){
-      const [,msg,cls]=_BOOT_LINES[i++];
-      const el=document.createElement('div');
-      el.className='bl';
-      el.innerHTML = msg
-        ? '<span class="'+(cls||'')+'">'+_histEsc(msg)+'</span>'
-        : '&nbsp;';
-      term.appendChild(el);
-    }
-    if(Math.random()<0.5) _bootBlip();     // 매 줄마다 울리면 시끄럽다
+
+    const [,msg,cls]=_BOOT_LINES[i];
+    const el=document.createElement('div');
+    el.className='bl';
+    el.innerHTML = msg
+      ? '<span class="'+(cls||'')+'">'+_histEsc(msg)+'</span>'
+      : '&nbsp;';
+    term.appendChild(el);
     // 화면을 넘치면 위에서부터 버린다 (DOM 무한 증가 방지)
-    const cap=Math.max(18, Math.floor((window.innerHeight-70)/16));
     while(term.childElementCount>cap) term.removeChild(term.firstChild);
-    // 불규칙한 간격 — 가끔 길게 멈춘다
-    setTimeout(tick, 26+Math.random()*40 + (Math.random()<0.12?150:0));
+    // 줄마다 울리면 너무 시끄럽다 — 3줄에 한 번쯤 '티리릭'
+    if(i%3===0) _bootBlip();
+
+    const d=_bootDelay(i, N);
+    i++;
+    setTimeout(tick, d);
   })();
 })();
 
@@ -6066,6 +6193,7 @@ function _isSoundEnabled(kind){
     return true;
   }catch(e){return true;}
 }
+
 
 // "뿅" 효과음 (Web Audio 합성)
 function playPongSound(){
@@ -9716,9 +9844,11 @@ async function doLogin(){
     });
     const d=await r.json();
     if(!r.ok || !d.ok){
+      playSfx('denied');
       _setLoginMsg(d.error||'실패');
       return;
     }
+    playSfx('granted');
     if(_loginMode==='register'){
       _setLoginMsg(d.message||'신청 완료 — 어드민 승인 대기','ok');
       _loginMode='login';

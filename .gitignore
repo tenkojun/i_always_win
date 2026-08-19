@@ -53,3 +53,7 @@ desktop.ini
 
 # 작업용 임시 스크립트 (_ 로 시작)
 _*.py
+
+# eDEX-UI 자산 — tools/fetch_edex_assets.py 로 받는다.
+# 저장소에 커밋하지 않는 편이 낫다고 판단하면 아래 주석을 해제할 것.
+# webapp/static/audio/

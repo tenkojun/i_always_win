@@ -11,10 +11,10 @@
 
 <br>
 
-![version](https://img.shields.io/badge/version-2.17.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
+![version](https://img.shields.io/badge/version-2.18.0-3df0ff?style=for-the-badge&labelColor=0b0d11)
 ![python](https://img.shields.io/badge/python-3.12-5b8def?style=for-the-badge&labelColor=0b0d11)
 ![engine](https://img.shields.io/badge/engine-32%20modules%20·%2014.8k%20LOC-2ec27e?style=for-the-badge&labelColor=0b0d11)
-![license](https://img.shields.io/badge/license-proprietary-8b93a3?style=for-the-badge&labelColor=0b0d11)
+![license](https://img.shields.io/badge/license-GPL--3.0-e8a33d?style=for-the-badge&labelColor=0b0d11)
 
 `Flask` · `pywebview` · `PyInstaller` · `Cloudflare Workers + D1` · `numpy / pandas / scipy / scikit-learn`
 
@@ -39,6 +39,22 @@
 | **무키 완전 동작** | API 키 없이 전 기능 동작 (야후 · Stooq) · 키는 보강재 |
 
 </div>
+
+---
+
+## 라이선스 — GPL-3.0
+
+부팅 화면에 **eDEX-UI**(GPL-3.0)의 사운드·부팅 로그·타이밍을 사용한다.
+GPL 은 전염성이므로 **이 저장소 전체가 GPL-3.0** 이다. 배포 시 전체
+소스를 함께 제공해야 하며 독점 배포는 불가하다.
+
+- 원저작물 https://github.com/GitSquared/edex-ui (GitSquared)
+- 사운드 **IceWolf** 작곡
+- 상세 고지 [`NOTICE.md`](NOTICE.md) · 전문 [`LICENSE`](LICENSE)
+
+GPL 을 원치 않으면 `webapp/static/audio/` 를 지우면 된다. 앱은 자동으로
+합성 사운드와 자체 부팅 로그로 폴백하며, 그 상태에는 GPL 자산이 하나도
+남지 않는다.
 
 ---
 
