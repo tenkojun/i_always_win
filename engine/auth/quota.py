@@ -83,8 +83,17 @@ def can(user_id: int, feature: str) -> bool:
 
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(str(AUTH_DB), timeout=10)
+    # timeout 은 잠금이 풀리기를 기다리는 시간이다. 기본 5초로는 서버가
+    # 다른 작업으로 DB를 쥐고 있을 때 쉽게 터진다 — 그 실패가 곧 한도
+    # 판정 실패로 이어지므로 넉넉히 준다.
+    c = sqlite3.connect(str(AUTH_DB), timeout=20)
     c.row_factory = sqlite3.Row
+    try:
+        # WAL 이면 읽기와 쓰기가 서로를 막지 않아 잠금 충돌이 크게 준다.
+        c.execute("PRAGMA journal_mode=WAL")
+        c.execute("PRAGMA busy_timeout=20000")
+    except Exception:
+        pass                      # 지원 안 되는 환경이면 기본 모드로 간다
     return c
 
 
@@ -167,6 +176,17 @@ def consume(user_id: int, kind: str = "report") -> Dict[str, Any]:
     확인과 증가를 따로 하면 동시에 두 번 눌렀을 때 둘 다 통과한다.
     무료 3회가 4회가 되는 경로라 여기서 원자적으로 처리한다.
     """
+    # user_id 가 없으면 한도를 셀 방법이 없다. 예전엔 그대로 진행해서
+    # NULL 키로 행을 넣었는데, SQLite 는 PRIMARY KEY 에 NULL 중복을
+    # 허용하므로 **매 호출이 새 행**이 됐다 — 카운트가 누적되지 않아
+    # 무료 3회 제한이 통째로 우회됐다(실측 10/10 통과).
+    if user_id is None:
+        return {"ok": False,
+                "error": "사용자를 식별할 수 없습니다. 다시 로그인하세요.",
+                "tier": "free", "tier_ko": TIER_KO["free"],
+                "unlimited": False, "used": 0,
+                "limit": FREE_DAILY_REPORTS, "remaining": 0, "allowed": False}
+
     tier = get_tier(user_id)
     try:
         with _conn() as c:
@@ -187,7 +207,27 @@ def consume(user_id: int, kind: str = "report") -> Dict[str, Any]:
                          ON CONFLICT(user_id,day,kind) DO UPDATE
                          SET n = n + 1""", (user_id, _today(), kind))
     except Exception as e:
-        # 계량 실패가 분석 자체를 막지는 않게 한다 — 과금이 아니라 한도다
-        return {"ok": True, "warn": f"{type(e).__name__}: {e}",
-                **quota_status(user_id, kind)}
+        # 예전엔 여기서 ok=True 로 통과시켰다("계량 실패가 분석을 막을
+        # 이유는 없다"). 그런데 DB 잠금은 **동시 요청이 많을 때** 나는
+        # 것이라, 정확히 한도를 지켜야 하는 순간에 문이 열린다.
+        # 실측 — 이미 99회 쓴 무료 계정이 잠금 상황에서 그대로 통과했다.
+        #
+        # 그래서 이미 한도를 넘긴 게 확인되면 막고, 판단이 불가능할 때만
+        # 통과시킨다. 계량 실패로 정상 사용자를 막지 않으면서 명백한
+        # 초과는 잡는다.
+        try:
+            st = quota_status(user_id, kind)
+            if not st.get("allowed", True):
+                return {"ok": False,
+                        "error": "일시적으로 사용량을 확인할 수 없습니다. "
+                                 "이미 한도를 사용해 잠시 후 다시 시도하세요.",
+                        "warn": f"{type(e).__name__}", **st}
+            return {"ok": True, "warn": f"{type(e).__name__}: {e}", **st}
+        except Exception:
+            # 상태 조회조차 안 되면 판단 근거가 없다 — 통과시키되 알린다
+            return {"ok": True, "warn": f"{type(e).__name__}: {e}",
+                    "tier": tier, "tier_ko": TIER_KO.get(tier, tier),
+                    "unlimited": False, "used": None,
+                    "limit": FREE_DAILY_REPORTS, "remaining": None,
+                    "allowed": True}
     return {"ok": True, **quota_status(user_id, kind)}

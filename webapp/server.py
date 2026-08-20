@@ -2398,6 +2398,13 @@ def api_update_start():
     사용자가 한 번 더 확인한 뒤 /api/update/apply 를 부른다.
     """
     from engine.updater import check, download, verify_and_stage
+    # **관리자만.** 이 앱은 터널로 여러 명이 한 인스턴스에 붙는
+    # 구조라, @require_auth 만 걸면 아무 사용자나 서버를 통째로
+    # 재시작시킬 수 있다. 확인(check)은 누구나 해도 되지만 받기와
+    # 교체는 소유자만 한다.
+    if (g.user or {}).get("role") != "admin":
+        return jsonify({"ok": False,
+                        "error": "업데이트는 관리자만 실행할 수 있습니다."}), 403
 
     if _UPD["state"] in ("downloading", "staging"):
         return jsonify({"ok": False, "error": "이미 진행 중입니다."}), 409
@@ -2446,6 +2453,13 @@ def api_update_apply():
     잠그므로 앱이 살아 있는 동안에는 바꿀 수 없다.
     """
     from engine.updater import apply_staged
+    # **관리자만.** 이 앱은 터널로 여러 명이 한 인스턴스에 붙는
+    # 구조라, @require_auth 만 걸면 아무 사용자나 서버를 통째로
+    # 재시작시킬 수 있다. 확인(check)은 누구나 해도 되지만 받기와
+    # 교체는 소유자만 한다.
+    if (g.user or {}).get("role") != "admin":
+        return jsonify({"ok": False,
+                        "error": "업데이트는 관리자만 실행할 수 있습니다."}), 403
     if _UPD.get("state") != "ready":
         return jsonify({"ok": False,
                         "error": "준비된 업데이트가 없습니다."}), 400

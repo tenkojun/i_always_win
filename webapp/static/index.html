@@ -3745,7 +3745,12 @@ function _initUiSounds(){
   }, {passive:true});
 
   document.addEventListener('pointerout', e=>{
-    if(_lastHoverEl && !_lastHoverEl.contains(e.relatedTarget)) _lastHoverEl = null;
+    if(!_lastHoverEl) return;
+    // 위젯은 자주 통째로 다시 그려진다. 그때 _lastHoverEl 이 사라진
+    // 노드를 계속 붙잡으면 그 서브트리가 GC 되지 않고, 같은 자리에
+    // 새로 그려진 요소는 '직전과 다름' 판정을 못 받는다.
+    if(!_lastHoverEl.isConnected || !_lastHoverEl.contains(e.relatedTarget))
+      _lastHoverEl = null;
   }, {passive:true});
 
   document.addEventListener('pointerdown', e=>{

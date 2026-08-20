@@ -764,7 +764,9 @@ def build_board(market: str = "US",
     돌려준다 — 대시보드 위젯 하나가 화면 전체를 죽이면 안 된다.
     """
     import time as _time
-    key = f"{market}:{top}:{len(universe or [])}"
+    # 캐시 키에 파라미터를 다 넣지 않으면 값을 바꿔도 예전 결과가 나온다.
+    # lookback 이 빠져 있어서 20일 기준과 60일 기준이 같은 칸을 썼다.
+    key = f"{market}:{top}:{lookback}:{len(universe or [])}"
     if use_cache:
         with _CACHE_LOCK:
             hit = _CACHE.get(key)
