@@ -446,7 +446,15 @@
   /* ── 로그인/가입 모달 — z-index를 auth-shield 위로 ── */
   .login-mask{position:fixed;inset:0;z-index:10001;
     background:var(--bg);   /* 완전 불투명 — 차트 새어나옴 방지 */
-    display:none;align-items:center;justify-content:center}
+    /* column 이어야 버전이 로그인창 **아래**로 간다. row 면 옆에 붙는다. */
+    display:none;flex-direction:column;align-items:center;
+    justify-content:center}
+  .login-ver{margin-top:16px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:1.6px;color:var(--txt-mute);user-select:text;
+    position:relative;z-index:2;text-align:center;line-height:1.7}
+  .login-ver b{color:var(--cyan-dim);font-weight:600}
+  .login-ver .upd{color:var(--amber);cursor:pointer}
+  .login-ver .upd:hover{text-decoration:underline}
   .login-mask::before{
     /* 추가 backdrop: 그라데이션 + blur로 시각 차단 강화 */
     content:""; position:absolute; inset:0;
@@ -1892,6 +1900,9 @@
         승인 대기 중이라면 어드민(JUNHWA) 승인을 기다리세요.
       </div>
     </div>
+    <!-- 마인크래프트처럼 로그인창 아래에 버전. 지금 무엇이 돌고 있는지
+         한눈에 보이면 "업데이트가 됐나?" 를 묻지 않아도 된다. -->
+    <div class="login-ver" id="login-ver">Plutus</div>
   </div>
 
   <!-- 에이전트 채팅 모달 -->
@@ -7756,6 +7767,21 @@ function _fxSyncButtons(){
     b.classList.toggle('on', +b.dataset.fx===lv);
   });
 }
+
+/* 로그인창 아래 버전 — 로그인 **전에도** 보여야 하므로 인증이 필요
+   없는 /api/app/info 를 쓴다. 실패해도 조용히 둔다(로그인은 되어야
+   한다). 지금 무엇이 돌고 있는지 보이면 "업데이트가 됐나?" 를
+   묻지 않아도 된다. */
+async function _paintLoginVersion(){
+  const el=$('#login-ver');
+  if(!el)return;
+  try{
+    const a=await(await fetch('/api/app/info')).json();
+    el.innerHTML=`${_histEsc(a.app||'Plutus')} <b>v${_histEsc(a.version||'')}</b>`
+      + `<br><span style="opacity:.7">${_histEsc(a.developer||'')}</span>`;
+  }catch(e){}
+}
+_paintLoginVersion();
 
 async function refreshInfoPane(){
   try{
