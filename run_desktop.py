@@ -143,6 +143,17 @@ def _pick_port() -> tuple[int, bool]:
     return base, False
 
 
+def _start_server(port: int, url: str) -> bool:
+    """서버를 띄우고 준비될 때까지 기다린다."""
+    threading.Thread(target=_serve, args=(port,), daemon=True).start()
+    print("서버 시작 대기 중…", flush=True)
+    if _wait_for_server(f"{url}/api/health", timeout=40.0):
+        print("서버 준비 완료.", flush=True)
+        return True
+    print("주의: 서버가 응답하지 않습니다.", flush=True)
+    return False
+
+
 def _wait_for_server(url: str, timeout: float = 40.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -275,6 +286,29 @@ def warn_missing_webview2(url: str) -> None:
     _browser_mode(url)
 
 
+def _warn_no_server(url: str) -> None:
+    """
+    서버가 못 떴다고 알린다.
+
+    이걸 안 하면 창은 열리는데 안에 브라우저의 "연결할 수 없습니다"
+    페이지가 뜬다. 사용자 눈에는 앱이 고장난 것으로만 보이고, 무엇을
+    해야 하는지 알 길이 없다 (v3.4.4 에서 실제로 그랬다).
+    """
+    MB_OK, MB_ICONERROR, MB_SETFOREGROUND = 0x0, 0x10, 0x10000
+    nl = "\n"
+    print("[!] server did not start - aborting window.", flush=True)
+    _msgbox(
+        f"{APP_NAME} 의 내부 서버가 시작되지 않았습니다.{nl}{nl}"
+        f"주소: {url}{nl}{nl}"
+        f"이미 실행 중인 {APP_NAME} 를 완전히 종료한 뒤 다시 실행해 "
+        f"보세요. 작업 관리자에서 Plutus 가 남아 있는지 확인하면 "
+        f"확실합니다.{nl}{nl}"
+        f"계속 안 되면 앱 폴더의 `진단.ps1` 을 실행해 주세요. "
+        f"자세한 기록은 .data/logs/app.log 에 남습니다.",
+        f"{APP_NAME} — 서버를 시작할 수 없음",
+        MB_OK | MB_ICONERROR | MB_SETFOREGROUND)
+
+
 def _browser_mode(url: str) -> None:
     """창 대신 브라우저로 띄우고 서버를 살려 둔다."""
     try:
@@ -305,13 +339,26 @@ def main() -> None:
 
     if reuse:
         print("이미 실행 중인 인스턴스를 찾았습니다. 창만 엽니다.")
+        # `_already_running` 은 **한 순간의 health 확인**일 뿐이다. 그 뒤
+        # 창이 열리기까지 몇 초 사이에 그 인스턴스가 종료될 수 있다.
+        # 설정을 바꾸고 앱을 다시 켤 때 실제로 났다 — 옛 인스턴스가
+        # 내려가는 중인데 새 인스턴스가 "쟤가 살아 있네" 하고 서버를
+        # 안 띄우는 바람에, 창은 뜨는데 ERR_CONNECTION_REFUSED 였다.
+        # 그러니 믿지 말고 다시 본다. 없으면 우리가 띄운다.
+        if not _wait_for_server(f"{url}/api/health", timeout=4.0):
+            print("그 인스턴스가 사라졌습니다. 서버를 직접 띄웁니다.",
+                  flush=True)
+            port, reuse = _pick_port()
+            url = f"http://127.0.0.1:{port}"
+            _start_server(port, url)
     else:
-        threading.Thread(target=_serve, args=(port,), daemon=True).start()
-        print("서버 시작 대기 중…", flush=True)
-        if _wait_for_server(f"{url}/api/health", timeout=40.0):
-            print("서버 준비 완료.", flush=True)
-        else:
-            print("주의: 서버 응답이 늦습니다. 그래도 창을 엽니다.", flush=True)
+        _start_server(port, url)
+
+    # 죽은 주소로 창을 열지 않는다. 여기까지 와서도 응답이 없으면 창에
+    # 브라우저 오류 페이지가 뜰 뿐이라 사용자는 이유를 알 수 없다.
+    if not _already_running(port):
+        _warn_no_server(url)
+        return
 
     # 창을 만들기 **전에** 런타임부터 본다. pywebview 는 런타임이 없으면
     # 창을 띄우다 실패하는데, console=False 라 그 오류가 아무 데도 안 보인다.
