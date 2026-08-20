@@ -2393,6 +2393,37 @@ def api_jiqtx_analyze():
                     "quota": q})
 
 
+# ── 바로가기 (바탕화면 · 시작 메뉴) ────────────────────────
+@app.route("/api/shortcuts/status")
+@require_auth
+def api_shortcuts_status():
+    from engine.shortcuts import status
+    return jsonify({"ok": True, **status()})
+
+
+@app.route("/api/shortcuts/create", methods=["POST"])
+@require_auth
+def api_shortcuts_create():
+    """
+    바탕화면 · 시작 메뉴 바로가기 생성.
+    시작 메뉴 쪽이 있어야 **윈도우 검색에 뜬다.**
+    """
+    from engine.shortcuts import create
+    d = request.get_json(force=True, silent=True) or {}
+    r = create(desktop=bool(d.get("desktop", True)),
+               start_menu=bool(d.get("start_menu", True)))
+    return jsonify(r), (200 if r.get("ok") else 400)
+
+
+@app.route("/api/shortcuts/dismiss", methods=["POST"])
+@require_auth
+def api_shortcuts_dismiss():
+    """'다음에' — 다시 묻지 않게 표시만 남긴다."""
+    from engine.shortcuts import mark_asked
+    mark_asked()
+    return jsonify({"ok": True})
+
+
 # ── 자동 업데이트 ─────────────────────────────────────────
 _UPD: Dict[str, Any] = {"state": "idle", "pct": 0, "msg": "", "error": ""}
 

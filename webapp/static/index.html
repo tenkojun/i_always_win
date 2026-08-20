@@ -271,10 +271,54 @@
      애니메이션 지연을 페이지 로드 기준으로 잡으면 단계와 어긋나므로
      전부 **클래스로** 켠다. */
   #boot .blk{visibility:hidden;animation:none}
-  #boot.logo .blk{visibility:visible;
-    animation:bootFadeIn .55s ease-out backwards}
+  /* ── 로고 등장 ─────────────────────────────────────────────
+     단순 페이드는 밋밋하다. 네 겹을 겹쳐 쓴다.
+       1) 블록      : 아래에서 살짝 올라오며 스케일 인
+       2) 로고      : 블러가 걷히며 초점이 맞는 느낌
+       3) 광륜      : 뒤에서 빛이 퍼졌다 잦아든다
+       4) 스윕      : 로고 위를 광택이 한 번 지나간다
+     전부 transform/opacity 기반이라 레이아웃을 다시 계산하지 않는다. */
+  #boot.logo .blk{visibility:visible;position:relative;
+    animation:bootRise .72s cubic-bezier(.16,1,.3,1) backwards}
+  #boot.logo img.fox{
+    animation:logoFocus .95s cubic-bezier(.2,.9,.25,1) backwards}
+  /* 광륜 — 로고 뒤에서 퍼지는 빛 */
+  #boot.logo .blk::before{content:"";position:absolute;
+    left:50%;top:38%;width:min(560px,80vw);aspect-ratio:1;
+    transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,
+      color-mix(in srgb, var(--cyan) 28%, transparent) 0%,
+      transparent 62%);
+    animation:logoHalo 1.5s ease-out backwards;z-index:-1}
+  /* 스윕 — 광택이 한 번 훑고 지나간다 */
+  /* 마스크 없이 블록 전체를 훑는다. 로고 PNG 를 마스크로 쓰려면
+     ::after 가 이미지와 정확히 겹쳐야 하는데 워드마크까지 든 락업이라
+     정렬이 어긋난다 — 카드 광택처럼 지나가는 편이 안정적이다. */
+  #boot.logo .blk::after{content:"";position:absolute;
+    left:-10%;right:-10%;top:0;bottom:0;pointer-events:none;
+    background:linear-gradient(105deg,transparent 40%,
+      color-mix(in srgb, var(--txt) 30%, transparent) 50%,
+      transparent 60%);
+    animation:logoSweep 1.1s .34s ease-out backwards;opacity:0}
   #boot.logo .t-name{animation:bootText .5s .05s forwards}
   #boot.logo .t-sub{animation:bootText .5s .28s forwards}
+
+  @keyframes bootRise{
+    0%{opacity:0;transform:translateY(16px) scale(.94)}
+    60%{opacity:1}
+    100%{opacity:1;transform:none}}
+  @keyframes logoFocus{
+    0%{opacity:0;filter:blur(14px) brightness(2.4);transform:scale(1.14)}
+    45%{opacity:1;filter:blur(3px) brightness(1.5)}
+    100%{opacity:1;filter:blur(0) brightness(1);transform:scale(1)}}
+  @keyframes logoHalo{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}
+    28%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}
+    100%{opacity:.18;transform:translate(-50%,-50%) scale(1)}}
+  @keyframes logoSweep{
+    0%{opacity:0;transform:translateX(-115%)}
+    18%{opacity:1}
+    100%{opacity:0;transform:translateX(115%)}}
 
   /* eDEX-UI 처럼 위에서부터 채워 내려가고, 화면을 넘기면 스크롤된다.
      아래에서 밀어 올리면 첫 줄부터 읽을 수 없어 로그처럼 안 보인다. */
@@ -1143,6 +1187,17 @@
   #rng-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
     background:var(--cyan);box-shadow:0 0 8px var(--cyan);
     cursor:grab;border:2px solid var(--bg)}
+
+  /* ── 바로가기 안내 ── */
+  .sc-opt{display:flex;gap:10px;align-items:flex-start;margin-top:14px;
+    padding:12px 14px;border:1px solid var(--line);border-radius:5px;
+    background:#070c12;cursor:pointer;transition:.15s}
+  .sc-opt:hover{border-color:var(--cyan-dim)}
+  .sc-opt input{margin-top:3px;accent-color:var(--cyan);cursor:pointer}
+  .sc-opt span{font-size:12.5px;line-height:1.7;color:var(--txt-dim)}
+  .sc-opt b{color:var(--txt)}
+  .sc-opt i{font-style:normal;font-size:11.5px;color:var(--txt-mute)}
+  .sc-opt i b{color:var(--cyan-dim)}
 
   /* ── 업데이트 모달 ── */
   .upd-mask{position:fixed;inset:0;z-index:9990;display:none;
@@ -2750,6 +2805,11 @@
                   border:1px solid var(--line);font-family:var(--mono);
                   font-size:11px;padding:6px 12px;cursor:pointer">
                   업데이트 확인</button>
+                <button onclick="checkShortcuts(true)" style="
+                  background:transparent;color:var(--txt-dim);
+                  border:1px solid var(--line);font-family:var(--mono);
+                  font-size:11px;padding:6px 12px;cursor:pointer">
+                  바로가기 만들기</button>
                 <span style="font-size:10.5px;color:var(--txt-mute);
                   line-height:1.5">
                   GitHub 릴리스를 확인합니다. 설정·키·계정은 유지됩니다.</span>
@@ -3233,6 +3293,39 @@
         <span class="ico">⚙</span><span>설정</span></button>
     </div>
     <button class="wel-skip" onclick="_closeWelcome()">SKIP  ▸  ENTER TERMINAL</button>
+  </div>
+</div>
+
+<!-- ===== 바로가기 만들기 (첫 실행 시 1회) ===== -->
+<div id="sc-modal" class="upd-mask">
+  <div class="upd-box">
+    <div class="upd-head">
+      <span class="ti">바로가기를 만들까요?</span>
+    </div>
+    <div class="upd-body">
+      <div style="font-size:13.5px;line-height:1.8;color:var(--txt-dim)">
+        Plutus 는 설치 과정 없이 압축만 풀면 실행되는 방식입니다.
+        그래서 바로가기와 시작 메뉴 등록이 자동으로 만들어지지 않습니다.
+      </div>
+      <label class="sc-opt">
+        <input type="checkbox" id="sc-desktop" checked>
+        <span><b>바탕화면에 바로가기</b><br>
+          <i>바탕화면에서 바로 실행합니다.</i></span>
+      </label>
+      <label class="sc-opt">
+        <input type="checkbox" id="sc-start" checked>
+        <span><b>시작 메뉴에 등록</b><br>
+          <i>이걸 켜야 <b>윈도우 검색창에서 "Plutus" 로 찾을 수</b>
+            있습니다.</i></span>
+      </label>
+      <div class="upd-prog" id="sc-msg" style="display:none">
+        <div class="txt" id="sc-msg-text"></div>
+      </div>
+    </div>
+    <div class="upd-foot">
+      <button class="ghost" onclick="scDismiss()">다음에</button>
+      <button id="sc-go" onclick="scCreate()">만들기</button>
+    </div>
   </div>
 </div>
 
@@ -3839,113 +3932,114 @@ function playSfx(name){
    GPL-3.0 으로 공개해야 한다 — 결정 필요.) */
 // eDEX 원본 로그를 받아오면 통째로 갈아 끼운다 → const 가 아니라 let
 let _BOOT_LINES=[
-  ['','[   0.000000] Plutus kernel 3.3.0 (tenkojun@build-win11) #1 SMP PREEMPT_DYNAMIC x86_64 — institutional quant terminal','ok'],
-  ['','[   0.000000] Copyright (c) 2026 Tenko jun. All rights reserved.  Licensed under MIT.  build=release opt=O2 lto=thin','dim'],
+  ['','[   0.000000] Plutus kernel 3.3.2 (tenkojun@build-win11) #1 SMP PREEMPT_DYNAMIC x86_64 — institutional quant terminal · toolchain msvc-19.44 · python 3.12.10 · build=release opt=O2 lto=thin pgo=off · cmdline: run_desktop --port 8765 --no-console','ok'],
+  ['','[   0.000000] Copyright (c) 2026 Tenko jun. All rights reserved. Licensed under MIT — no third-party assets bundled, all audio synthesized at runtime, all charts emitted as inline SVG strings. Source: github.com/tenkojun/i_always_win','dim'],
   ['','',''],
-  ['','[   0.000412] [MEM] BIOS-provided physical RAM map: usable 0x0000000000001000-0x00000007ffffffff (32.0 GiB, 8388608 pages)','ok'],
-  ['','[   0.001884] [MEM] reserving simulation heap: 512.0 MiB @ 0x00007ff4c0000000  policy=first-touch  numa_node=0  thp=always','ok'],
-  ['','[   0.003201] [MEM] page tables mapped: 4-level paging, NX enabled, SMEP/SMAP active, KPTI off (no meltdown mitigation needed)','ok'],
-  ['','[   0.004770] [MEM] slab allocator online: 64 pools, quantum 8B, max_order 10, reclaim watermark lo=64MiB hi=256MiB','ok'],
-  ['','[   0.006115] [MEM] hugepage support: 2 MiB pages available (1 GiB unavailable), transparent_hugepage=madvise','ok'],
-  ['','[   0.009840] [MEM] zeroing arena 0x00007ff4c0000000+0x20000000 ... done in 3.42ms (149.7 GiB/s, avx2 nt-store path)','ok'],
-  ['','[   0.011203] [CPU] enumerating logical processors via CPUID leaf 0x0B ... 12 threads / 6 cores / 1 package detected','ok'],
-  ['','[   0.012558] [CPU] cpu0: family 6 model 154 stepping 3  base 2.30GHz turbo 4.70GHz  L1d 48K L1i 32K L2 1280K L3 24576K','ok'],
-  ['','[   0.013012] [CPU] cpu0..cpu11: vector units online — AVX2 / FMA3 / BMI2 / F16C  (AVX-512 absent on this part)','ok'],
-  ['','[   0.014487] [CPU] float64 denormal-flush enabled, FPU 80-bit extended precision disabled (strict IEEE-754 binary64)','ok'],
-  ['','[   0.016930] [BLAS] backend bound: OpenBLAS 0.3.27 pthread  threads=auto(12)  corename=alderlake  affinity=scatter','ok'],
-  ['','[   0.018245] [RNG] PCG64DXSM seeded from os.urandom(32), jump-ahead reserved for 64 independent simulation streams','ok'],
-  ['','[   0.019661] [SCHED] worker pool: 12 threads, nice=0, io-class=best-effort/4, timer resolution 1.00ms (high-res)','ok'],
+  ['','[   0.000412] [MEM] BIOS-provided physical RAM map: usable 0x0000000000001000-0x00000007ffffffff (32.0 GiB / 8388608 pages of 4 KiB) · reserved 0x00000000000a0000-0x00000000000fffff · ACPI NVS 0x0000000079e2f000-0x000000007a1befff','ok'],
+  ['','[   0.001884] [MEM] reserving simulation heap 512.0 MiB @ 0x00007ff4c0000000 · policy=first-touch numa_node=0 thp=always overcommit=heuristic · backing anonymous private, no swap reservation, mlock not requested (soft limit 64 KiB)','ok'],
+  ['','[   0.003201] [MEM] page tables mapped: 4-level paging (PML4), NX enabled, SMEP/SMAP active, KPTI off — no meltdown mitigation needed on this part · TLB 64+1536 entries, hugepage TLB 32 entries, PCID enabled, INVPCID available','ok'],
+  ['','[   0.004770] [MEM] slab allocator online: 64 pools, quantum 8B, max_order 10, reclaim watermark lo=64 MiB hi=256 MiB · per-cpu magazine depth 128, remote-free queue enabled, guard pages on pools >= 4 KiB for use-after-free','ok'],
+  ['','[   0.006115] [MEM] hugepage support: 2 MiB pages available (1 GiB unavailable on this SKU), transparent_hugepage=madvise, defrag=defer+madvise · khugepaged scan 4096 pages / 10s, max_ptes_none 511, shmem_enabled=never','ok'],
+  ['','[   0.009840] [MEM] zeroing arena 0x00007ff4c0000000+0x20000000 ... done in 3.42 ms (149.7 GiB/s via avx2 non-temporal stores, 32 B/cycle) · verify pass sampled 4096 cachelines, 0 mismatches, ECC scrub not applicable (non-ECC DIMM)','ok'],
+  ['','[   0.011203] [CPU] enumerating logical processors via CPUID leaf 0x0B ... 12 threads / 6 cores / 1 package · topology 6P+0E, SMT enabled, x2APIC present, hybrid=false · microcode revision 0x430, TSC invariant, constant_tsc set','ok'],
+  ['','[   0.012558] [CPU] cpu0: family 6 model 154 stepping 3 · base 2.30 GHz turbo 4.70 GHz · L1d 48K/core L1i 32K/core L2 1280K/core L3 24576K shared · cacheline 64 B, prefetchers all enabled, TAA/MDS mitigations not required','ok'],
+  ['','[   0.013012] [CPU] cpu0..cpu11 vector units online — AVX2 / FMA3 / BMI2 / F16C / MOVBE / POPCNT (AVX-512 absent on this part, falling back to 256-bit lanes for GARCH inner loop and FHS resampling kernels, ~0.8x of theoretical)','ok'],
+  ['','[   0.014487] [CPU] float64 denormal-flush enabled (FTZ+DAZ), FPU 80-bit extended precision disabled — strict IEEE-754 binary64 throughout · rounding mode nearest-even, exceptions masked except invalid, fp-contract=off in likelihoods','ok'],
+  ['','[   0.016930] [BLAS] backend bound: OpenBLAS 0.3.27 pthread · threads=auto(12) corename=alderlake affinity=scatter · gemm kernel avx2_haswell, dgemm peak 218 GFLOP/s measured, single-thread crossover at n=96 for our workloads','ok'],
+  ['','[   0.018245] [RNG] PCG64DXSM seeded from os.urandom(32) · jump-ahead reserved for 64 independent simulation streams, period 2^128, no shared state across worker threads — reproducibility via explicit seed only, never implicit','ok'],
+  ['','[   0.019661] [SCHED] worker pool: 12 threads, nice=0, io-class=best-effort/4, timer resolution 1.00 ms (high-res) · analysis jobs run detached from request thread so a closed browser tab never cancels a running pipeline','ok'],
   ['','',''],
-  ['','[   0.024118] [SEC] loading security policy from .data/ (mode 0700) ... 11 rules compiled, 0 conflicts, enforce=strict','ok'],
-  ['','[   0.025903] [SEC] session isolation: per-browser token (32B urandom), NOT per-PC — tunnel visitors never inherit owner','ok'],
-  ['','[   0.027441] [SEC] cookie flags: HttpOnly, SameSite=Lax, Secure(when-https), Max-Age=1209600, Path=/ , domain unset','ok'],
-  ['','[   0.029077] [SEC] password KDF: PBKDF2-HMAC-SHA256, iterations=100000 (Workers hard cap), salt 16B, dklen 32B','ok'],
-  ['','[   0.030812] [SEC] key store: env > .data/keys.json (chmod 0600) — values never logged, never returned by any route','ok'],
-  ['','[   0.032266] [SEC] report path guard: basename + realpath + common-prefix check installed on /report/* download','ok'],
-  ['','[   0.033901] [SEC] quota ledger: BEGIN IMMEDIATE txn, no fail-open on lock, NULL user_id rejected (would bypass cap)','ok'],
-  ['','[   0.035547] [SEC] tunnel origin allowlist armed; CSRF guard active on all state-changing routes (POST/PUT/DELETE)','ok'],
-  ['','[   0.037182] rooting via central auth endpoint: iaw-auth.tenkojun.workers.dev (Cloudflare Workers + D1, free tier)','ok'],
+  ['','[   0.024118] [SEC] loading security policy from .data/ (mode 0700) ... 11 rules compiled, 0 conflicts, enforce=strict · policy covers session scope, key exposure, path traversal, quota atomicity, tunnel origin, CSRF, and update authority','ok'],
+  ['','[   0.025903] [SEC] session isolation: per-browser token (32 B urandom) — NOT per-PC · a visitor arriving through the tunnel never inherits the owner\'s session; identity (central) and browser login (cookie) are deliberately separate','ok'],
+  ['','[   0.027441] [SEC] cookie flags: HttpOnly, SameSite=Lax, Secure(when-https), Max-Age=1209600, Path=/ , domain unset · token rotated on privilege change, invalidated server-side on logout, no JWT (revocation must be immediate)','ok'],
+  ['','[   0.029077] [SEC] password KDF: PBKDF2-HMAC-SHA256, iterations=100000 (Cloudflare Workers hard cap — exceeding it throws NotSupportedError at runtime, not at deploy), salt 16 B per user, dklen 32 B, constant-time comparison','ok'],
+  ['','[   0.030812] [SEC] key store: environment > .data/keys.json (chmod 0600) · values are never logged, never echoed, never returned by any route — settings screen shows last 4 characters only, test route calls the provider server-side','ok'],
+  ['','[   0.032266] [SEC] report path guard installed on /report/* download: basename + realpath + common-prefix check · verified against ..%2f..%2fversion.py which resolves outside the store and is rejected with 404, not 200','ok'],
+  ['','[   0.033901] [SEC] quota ledger: BEGIN IMMEDIATE transaction, no fail-open on lock contention, NULL user_id rejected outright — SQLite permits duplicate NULLs in a PRIMARY KEY, which silently defeated the daily cap before','ok'],
+  ['','[   0.035547] [SEC] tunnel origin allowlist armed · CSRF guard active on all state-changing routes (POST/PUT/DELETE) · update download and swap restricted to admin role — any logged-in user could otherwise restart the server','ok'],
+  ['','[   0.037182] rooting via central auth endpoint iaw-auth.tenkojun.workers.dev (Cloudflare Workers + D1, free tier) · handshake verifies account status=approved before issuing a browser session; offline local accounts removed in v2.10','ok'],
   ['','',''],
-  ['','[   0.041006] [PCI configuration begin] — enumerating virtual data buses for market feed adapters','dim'],
-  ['','[   0.042873] [DATA] runtime paths resolved -> .data/  (writable, 13 entries, 52.4 MiB incl. cloudflared binary)','ok'],
-  ['','[   0.044318] [DATA] stdout/stderr reconfigured to UTF-8 errors=replace — cp949 console would kill analysis on emoji','ok'],
-  ['','[   0.046755] [DATA] provider yahoo      : consolidated OHLCV, no key required, ~15m delay          READY','ok'],
-  ['','[   0.048190] [DATA] provider stooq      : daily fallback, no key required                          READY','ok'],
-  ['','[   0.049636] [DATA] provider finnhub    : realtime quote + fundamentals (60 req/min)               probing','dim'],
-  ['','[   0.051071] [DATA] provider alphavtg   : technical indicators (5 req/min, 25 req/day)             probing','dim'],
-  ['','[   0.052507] [DATA] provider fmp        : financial statements + SEC filings (250 req/day)         probing','dim'],
-  ['','[   0.053942] [DATA] provider alpaca     : SIP consolidated bars when end < now-15m                 probing','dim'],
-  ['','[   0.055388] [DATA] integrity harness: gap scan, OHLC sanity (h>=max(o,c), l<=min(o,c)), duplicate-day, zero-volume','ok'],
-  ['','[   0.056823] [DATA] calendar tables loaded: NYSE + KRX holidays 1990-2035, allowance ~16 sessions/yr, long-gap max 2','ok'],
-  ['','[   0.058269] [DATA] adjusted-close reconciliation: split + dividend back-propagation, tolerance 1e-6 relative','ok'],
-  ['','[   0.059704] [DATA] fx normalization to USD base via FRED DEXKOUS/DEXUSEU daily fixings, forward-filled max 5d','ok'],
-  ['','[   0.061150] [FRED] macro series registered: DFII10 T10Y2Y T10YIE DTWEXBGS DCOILWTICO BAMLH0A0HYM2 VIXCLS +7 more','ok'],
-  ['','[   0.062585] [DATA] pickle cache mounted at .data/cache (pyarrow excluded, -81 MiB), ttl 900s, lru evict at 512 MiB','ok'],
-  ['','[   0.064031] [PCI configuration end, bridges 12 devices 16] — feed clock skew < 15m, within acceptance window','dim'],
+  ['','[   0.041006] [PCI configuration begin] — enumerating virtual data buses for market feed adapters, probing capability registers and negotiating rate limits before any analysis job is admitted to the scheduler queue','dim'],
+  ['','[   0.042873] [DATA] runtime paths resolved -> .data/ (writable, 13 entries, 52.4 MiB including cloudflared binary) · falls back to %LOCALAPPDATA%/plutus when the app directory is read-only, e.g. installed under Program Files','ok'],
+  ['','[   0.044318] [DATA] stdout/stderr reconfigured to UTF-8 errors=replace — a cp949 console raises UnicodeEncodeError on a single emoji and killed entire analysis jobs before this was forced; frozen builds always log to .data/logs','ok'],
+  ['','[   0.046755] [DATA] provider yahoo     consolidated OHLCV, daily + 1m/5m/15m intraday, no key required, ~15 min delay, volume is exchange-consolidated not IEX-only (verified AAPL 40M/day vs 1M if single-venue)        READY','ok'],
+  ['','[   0.048190] [DATA] provider stooq     end-of-day OHLCV fallback, no key required, covers KR/US/EU tickers, used when yahoo returns an empty frame or fails integrity — never used to overwrite a good yahoo series      READY','ok'],
+  ['','[   0.049636] [DATA] provider finnhub   realtime quote, company news, basic fundamentals · 60 req/min on free tier, non-commercial license — redistribution of this data to third parties requires a paid plan          probing','dim'],
+  ['','[   0.051071] [DATA] provider alphavtg  technical indicators and fundamentals · 5 req/min and 25 req/day on free tier, which is a hard daily wall rather than a throttle — used only for gap-filling, never in hot paths   probing','dim'],
+  ['','[   0.052507] [DATA] provider fmp       financial statements, SEC filings, valuation ratios · 250 req/day, statements are restatement-adjusted so they are current-value and unsafe for point-in-time backtests           probing','dim'],
+  ['','[   0.053942] [DATA] provider alpaca    SIP consolidated bars are available on the free Basic tier when end < now-15m; only the realtime stream is IEX-limited (~2.5% of volume). Recent-window SIP returns 42210000       probing','dim'],
+  ['','[   0.055388] [DATA] integrity harness: gap scan, OHLC sanity (high>=max(open,close), low<=min(open,close)), duplicate sessions, zero-volume runs · holiday allowance ~16 sessions/yr scaled by span, long-gap ceiling 2 events','ok'],
+  ['','[   0.056823] [DATA] calendar tables loaded: NYSE + KRX holidays 1990-2035 including half-days and unscheduled closures · session boundaries 09:30-16:00 ET and 09:00-15:30 KST, DST transitions resolved from the tz database','ok'],
+  ['','[   0.058269] [DATA] adjusted-close reconciliation: split and dividend back-propagation with 1e-6 relative tolerance · a mismatch downgrades the series to unadjusted and records a warning rather than silently using bad prices','ok'],
+  ['','[   0.059704] [DATA] fx normalization to USD base via FRED DEXKOUS / DEXUSEU daily fixings, forward-filled at most 5 sessions · beyond that the series is truncated instead of extrapolated, because stale fx looks like a trend','ok'],
+  ['','[   0.061150] [FRED] macro series registered: DFII10 T10Y2Y T10YIE DTWEXBGS DCOILWTICO BAMLH0A0HYM2 VIXCLS DGS10 DGS2 DEXKOUS DEXUSEU PCOPPUSDM GOLDAMGBD228NLBM SP500 · log-return and level variables are tagged and never mixed','ok'],
+  ['','[   0.062585] [DATA] pickle cache mounted at .data/cache (pyarrow excluded from the build, -81 MiB) · ttl 900 s, LRU eviction at 512 MiB, keys include ticker + interval + span so a widened window never reads a narrower cache','ok'],
+  ['','[   0.064031] [PCI configuration end, bridges 12 devices 16] — feed clock skew measured at 11.4 min, within the 15 min acceptance window; scheduler admits analysis jobs from this point onward','dim'],
   ['','',''],
-  ['','[   0.070448] loading analysis modules from engine/jiqtx/ (33 modules, 15,601 LOC, all scipy-native — no arch/statsmodels)','ok'],
-  ['','[   0.072883]   statcore   PSR / DSR / PBO · Purged K-Fold CV with embargo · CPCV · Murphy decomposition · ACI conformal','ok'],
-  ['','[   0.074318]   micro      EDGE effective spread · Amihud illiquidity · square-root market impact · capacity ceiling','ok'],
-  ['','[   0.075764]   vol        GJR-GARCH(1,1,1)-t maximum likelihood · HAR-RV (daily/weekly/monthly) · realized kernels','ok'],
-  ['','[   0.077199]   regime     statistical jump model, switching penalty lambda=5 — fewer spurious flips than plain HMM','ok'],
-  ['','[   0.078645]   simulate   filtered historical simulation + generalized Pareto tail + drift posterior (student-t prior)','ok'],
-  ['','[   0.080080]   taxonomy   19 asset classes x 9 equity archetypes, metadata + statistical fingerprint, 3-stage cascade','ok'],
-  ['','[   0.081526]   factors    long-short spread reconstruction (IWM-SPY, IWD-IWF, QUAL-SPY, MTUM-SPY) — no long-only proxies','ok'],
-  ['','[   0.082961]   equity     Kalman time-varying beta, state-space with random-walk transition, downside beta companion','ok'],
-  ['','[   0.084407]   ml         triple-barrier labeling · model tournament · abstention gate (disables output, not degrades)','ok'],
-  ['','[   0.085842]   options    risk-neutral density via Breeden-Litzenberger, butterfly smoothing, 25-delta risk reversal','ok'],
-  ['','[   0.087288]   risk       VaR/ES with Kupiec POF + Christoffersen independence · partial-beta stress · CDaR · Ulcer','ok'],
-  ['','[   0.088723]   horizons   short 63d / mid 252d / long 1260d — computed separately, disagreement surfaced not averaged','ok'],
-  ['','[   0.090169]   macro      14 variables, |t| < 2 collapses to neutral, log-return and level vars kept dimensionally apart','ok'],
-  ['','[   0.091604]   thesis     driver scenarios · falsification criteria defined ex-ante · barrier-hit probabilities','ok'],
-  ['','[   0.093050]   trade      entry/stop/target ladder · min-variance hedge ratio · drawdown-constrained Kelly sizing','ok'],
-  ['','[   0.094485]   agents     hard gates G1-G8 + 14-member expert panel, deterministic rules (same input -> same opinion)','ok'],
-  ['','[   0.095931]   ledger     forecast store -> scoring -> agent reweighting feedback loop, Brier + log-loss tracked','ok'],
-  ['','[   0.097366]   portfolio  risk contribution decomposition · factor netting · walk-forward with Hansen MCS selection','ok'],
-  ['','[   0.098812]   glossary   66 terms bound to fixed-layer tooltip engine (body-level, escapes overflow:hidden ancestors)','ok'],
-  ['','[   0.100247]   charts     21 inline SVG renderers, string-built — no matplotlib, no PIL, zero drawing dependencies','ok'],
-  ['','[   0.101693]   simple     beginner research renderer: same Analysis, question-led sections, felt-magnitude conversion','ok'],
-  ['','[   0.103128]   updater    GitHub Releases watcher, staged swap preserving .data/, rollback if new build fails to boot','ok'],
-  ['','[   0.104574] 33 modules linked, 0 unresolved symbols, 0 circular imports, cold import 1.84s (lazy PEP-562 on engine/)','ok'],
+  ['','[   0.070448] loading analysis modules from engine/jiqtx/ — 33 modules, 15,601 LOC, entirely scipy-native · arch / statsmodels / hmmlearn / torch / xgboost are neither installed nor imported; the maximum-likelihood fits are ours','ok'],
+  ['','[   0.072883]   statcore   PSR · DSR · PBO · Purged K-Fold CV with embargo · CPCV · Murphy decomposition (reliability/resolution/uncertainty) · ACI conformal intervals — measured coverage 89.9% against a 90% target on t(3) tails','ok'],
+  ['','[   0.074318]   micro      EDGE effective-spread estimator · Amihud illiquidity · square-root market impact · capacity ceiling — Corwin-Schultz and Roll inflate low-spread names by 60-70 bp, so EDGE is the admitted estimator','ok'],
+  ['','[   0.075764]   vol        GJR-GARCH(1,1,1)-t by maximum likelihood · HAR-RV over daily/weekly/monthly realized components · recovery of alpha 0.050 gamma 0.060 beta 0.880 from synthetic truth measured at 0.067/0.087/0.844','ok'],
+  ['','[   0.077199]   regime     statistical jump model with switching penalty lambda=5 · far fewer spurious flips than a plain HMM, which reclassifies on single-session noise and then reports a regime change that never happened','ok'],
+  ['','[   0.078645]   simulate   filtered historical simulation + generalized Pareto tail + drift posterior under a student-t prior · standardized residuals are resampled and rescaled to today\'s conditional volatility, not raw returns','ok'],
+  ['','[   0.080080]   taxonomy   19 asset classes x 9 equity archetypes via metadata plus statistical fingerprint, 3-stage cascade · a gold ETF and a software name never share a factor prior, a stress axis, or an expected R2 band','ok'],
+  ['','[   0.081526]   factors    long-short spread reconstruction (IWM-SPY, IWD-IWF, QUAL-SPY, MTUM-SPY) — long-only proxies are collinear with the market at rho=1.000 and silently destroy every downstream beta estimate','ok'],
+  ['','[   0.082961]   equity     Kalman time-varying beta in state-space form with random-walk transition, plus a downside-beta companion · a static beta hides the asymmetry that matters exactly when the hedge is needed','ok'],
+  ['','[   0.084407]   ml         triple-barrier labeling · model tournament · abstention gate that disables output rather than degrading it — an OOS accuracy of 50% is the absence of signal, not a weak signal worth a lower score','ok'],
+  ['','[   0.085842]   options    risk-neutral density via Breeden-Litzenberger with butterfly smoothing · 25-delta risk reversal and IV-RV spread · snapshot only, no history, so nothing here is backtestable and it is labeled as such','ok'],
+  ['','[   0.087288]   risk       VaR/ES with Kupiec POF and Christoffersen independence tests · partial-beta stress (summing univariate betas double-counts and produced -63.7% where the correct joint figure was -25.5%) · CDaR · Ulcer','ok'],
+  ['','[   0.088723]   horizons   short 63d / mid 252d / long 1260d computed separately · never averaged — a weighted blend of 55/72/74 into 67 erases \'a mid-term correction inside a long-term uptrend\', which was the whole finding','ok'],
+  ['','[   0.090169]   macro      14 variables, |t| < 2 collapses to neutral · log-return and level variables kept dimensionally apart, because mixing them once turned a -1.0% contribution into +75.4% before the units were fixed','ok'],
+  ['','[   0.091604]   thesis     driver scenarios · falsification criteria fixed ex-ante with threshold and current value · barrier-hit probabilities · a kill criterion invented after the fact refutes nothing and is not accepted','ok'],
+  ['','[   0.093050]   trade      entry / stop / target ladder with basis for each leg · minimum-variance hedge ratio from the multivariate factor regression · drawdown-constrained Kelly, because growth-optimal Kelly is unrunnable','ok'],
+  ['','[   0.094485]   agents     hard gates G1-G8 and a 14-member expert panel with cross-examination and an evidence hierarchy · deterministic rules throughout, so the same input yields the same opinion and the trail is auditable','ok'],
+  ['','[   0.095931]   ledger     forecast store -> scoring -> agent reweighting feedback loop · Brier score and log-loss tracked per agent so that persistent overconfidence is penalized in later aggregations rather than forgotten','ok'],
+  ['','[   0.097366]   portfolio  risk contribution decomposition · factor netting across holdings · walk-forward evaluation with Hansen Model Confidence Set selection instead of picking the single best backtest and reporting it','ok'],
+  ['','[   0.098812]   glossary   66 terms bound to a fixed-layer tooltip engine mounted at body level · absolute positioning inside .term was clipped by details.sec{overflow:hidden} and .tw{overflow-x:auto} on every single section','ok'],
+  ['','[   0.100247]   charts     21 inline SVG renderers, built as strings — no matplotlib, no PIL, no drawing dependency of any kind · the report opens with the network unplugged because it makes zero external requests','ok'],
+  ['','[   0.101693]   simple     beginner research renderer: the same Analysis object, question-led sections, and felt-magnitude conversion so that \'annualized vol 30.8%\' becomes \'about 20,000 won a day on a million won position\'','ok'],
+  ['','[   0.103128]   updater    GitHub Releases watcher with staged swap that preserves .data/ · rollback if the new build fails to start within 6 s · the swap script must be written with a BOM or PowerShell 5.1 misreads it as cp949','ok'],
+  ['','[   0.104574] 33 modules linked · 0 unresolved symbols · 0 circular imports · cold import 1.84 s with PEP-562 lazy attributes on engine/ so that a light path like `from engine.paths import DATA_DIR` does not drag in scikit-learn','ok'],
   ['','',''],
-  ['','[   0.110991] [GATE] G1 data integrity      missing>2% | OHLC violation | duplicate sessions   -> HALT (abort analysis)','ok'],
-  ['','[   0.112437] [GATE] G2 tradability         spread over cap | ADV < $1M | no-trade days > 35%  -> SIZE_ZERO','ok'],
-  ['','[   0.113872] [GATE] G3 factor fit          R2 below 35% of asset-class band                    -> block alpha claim','ok'],
-  ['','[   0.115318] [GATE] G4 ml overfit/calib    PBO>=50% | DSR<90% | gap>15% | resolution<=1e-4      -> DISABLE_MODULE','ok'],
-  ['','[   0.116753] [GATE] G7 stress limit        worst-case loss exceeds 35% of notional             -> SIZE_ZERO','ok'],
-  ['','[   0.118199] [GATE] G8 class confidence    asset-class verdict uncertain                       -> minimum size only','ok'],
-  ['','[   0.119634] gate matrix armed; abstention path verified end-to-end — a failed gate removes output, never scales it','ok'],
+  ['','[   0.110991] [GATE] G1 data integrity     missing > 2% | OHLC violation | duplicate sessions                      -> HALT, abort the entire analysis rather than annotate around bad input','ok'],
+  ['','[   0.112437] [GATE] G2 tradability        spread above class cap | ADV < $1M | no-trade days > 35%                -> SIZE_ZERO, the idea may be right and still be unexecutable','ok'],
+  ['','[   0.113872] [GATE] G3 factor fit         R2 below 35% of the asset-class band                                    -> block alpha claims, delta panel and hedge become uninterpretable','ok'],
+  ['','[   0.115318] [GATE] G4 ml overfit/calib   PBO >= 50% | DSR < 90% | in-sample gap > 15% | resolution <= 1e-4       -> DISABLE_MODULE, direction probability is not emitted at all','ok'],
+  ['','[   0.116753] [GATE] G7 stress limit       worst-case scenario loss exceeds 35% of notional                        -> SIZE_ZERO regardless of expected value or conviction','ok'],
+  ['','[   0.118199] [GATE] G8 class confidence   asset-class verdict uncertain below threshold                           -> minimum size only, since every prior downstream is class-conditional','ok'],
+  ['','[   0.119634] gate matrix armed; abstention path verified end to end — a failed gate removes the output entirely and never rescales it into a smaller number that still looks like a recommendation','ok'],
   ['','',''],
-  ['','[   0.125051] [FLOW] intraday capital-flow scanner armed: universe 87 symbols (megacap + sector ETF + broad ETF)','ok'],
-  ['','[   0.126497] [FLOW] RVOL baseline: same-clock cumulative volume, 20-session median (mean would let one earnings day skew)','ok'],
-  ['','[   0.127932] [FLOW] direction proxies: up/down volume split + Chaikin money flow — bar-shape inference, not real prints','ok'],
-  ['','[   0.129378] [FLOW] rotation baseline: previous session sliced to identical minute-of-day, never full-day comparison','ok'],
-  ['','[   0.130813] [FLOW] sector map: 11 GICS sectors + index/commodity ETF bucket, cache ttl 180s, feed delayed ~15m','wn'],
-  ['','[   0.132259] [FLOW] NOTE: US participant breakdown (institutional/foreign/retail) is not publicly available — proxy only','wn'],
+  ['','[   0.125051] [FLOW] intraday capital-flow scanner armed · universe 87 symbols (megacap + 11 sector ETFs + broad index/commodity ETFs), expandable to the full tradable list when an Alpaca key is present in the key store','ok'],
+  ['','[   0.126497] [FLOW] RVOL baseline: same-clock cumulative volume against a 20-session median · the mean lets a single earnings day dominate and then reports every subsequent session as unusually quiet for a month afterwards','ok'],
+  ['','[   0.127932] [FLOW] direction proxies: up/down volume split and Chaikin money flow · both are bar-shape inference, not actual prints — when they disagree the row is marked rather than resolved into a confident direction','ok'],
+  ['','[   0.129378] [FLOW] rotation baseline: the previous session sliced to the identical minute-of-day · comparing a 10:00 partial against a full prior session always reports a decline and is the same trap RVOL already avoids','ok'],
+  ['','[   0.130813] [FLOW] sector map: 11 GICS sectors plus an index/commodity ETF bucket · cache ttl 180 s against a feed delayed roughly 15 min, so a shorter ttl would only add load without adding freshness','wn'],
+  ['','[   0.132259] [FLOW] NOTE: a US participant breakdown (institutional / foreign / retail) is not publicly available at session granularity — 13F is quarterly and lags 45 days, so what is shown here is explicitly a proxy','wn'],
   ['','',''],
-  ['','[   0.138676] [REPORT] section registry: 37 sections, each self-declaring applies() — absent data removes the section','ok'],
-  ['','[   0.140111] [REPORT] renderers: 21 inline SVG chart types, palette injected at render time, zero external requests','ok'],
-  ['','[   0.141557] [REPORT] themes compiled: dark / light / sepia / high-contrast — 39 hex literals mapped to CSS variables','ok'],
-  ['','[   0.142992] [REPORT] tooltip layer: single position:fixed node at body level, viewport-clamped, arrow re-anchored','ok'],
-  ['','[   0.144438] [VIEWER] in-app iframe viewer + vault (list/open/download/delete), path-traversal guarded, zoom 60-200%','ok'],
-  ['','[   0.145873] [QUOTA] tier matrix compiled: free(3/day) / premium(unlimited) / platinum(all features incl. tunnel)','ok'],
-  ['','[   0.147319] [AUDIO] synth bank: 13 voices, FM operators + convolution reverb (1.1s IR), zero audio files on disk','ok'],
+  ['','[   0.138676] [REPORT] section registry: 37 sections, each declaring its own applies() · absent data removes the section instead of rendering an empty table, so a report\'s shape tells you what was actually knowable','ok'],
+  ['','[   0.140111] [REPORT] renderers: 21 inline SVG chart types with the palette injected at render time · zero external requests means the file opens years later, offline, with no CDN and no font server to depend on','ok'],
+  ['','[   0.141557] [REPORT] themes compiled: dark / light / sepia / high-contrast · 39 hex literals mapped to CSS variables mechanically, dark values left identical so the default output is byte-for-byte what it always was','ok'],
+  ['','[   0.142992] [REPORT] tooltip layer: a single position:fixed node at body level, viewport-clamped with the arrow re-anchored · the text-node walker resets lastIndex, without which every other node was skipped entirely','ok'],
+  ['','[   0.144438] [VIEWER] in-app iframe viewer plus a vault (list / open / download / delete), path-traversal guarded, font scaling 60-200% · reports open inside the app instead of throwing the user into a system browser','ok'],
+  ['','[   0.145873] [QUOTA] tier matrix compiled: free 3 reports/day · premium unlimited · platinum all features including tunnel and queue priority · every decision is server-side, the client only renders what it is told','ok'],
+  ['','[   0.147319] [AUDIO] synth bank: 13 voices built from FM operators and a 1.1 s convolution reverb · zero audio files on disk, so there is nothing to license, nothing to ship, and the timbre follows the active theme','ok'],
   ['','',''],
-  ['','[   0.153736] [POLICY] no single composite score is produced — direction / risk budget / model confidence stay separate','wn'],
-  ['','[   0.155171] [POLICY] failed validation disables a module\'s output entirely; it is never converted into a lower score','wn'],
-  ['','[   0.156617] [POLICY] horizons are reported side by side and never averaged — disagreement between them is the signal','wn'],
-  ['','[   0.158052] [POLICY] macro betas with |t| < 2 are reported as neutral; no narrative is constructed from noise','wn'],
-  ['','[   0.159498] [POLICY] log-return variables and level variables are never mixed in one contribution calculation','wn'],
-  ['','[   0.160933] [POLICY] survivorship bias is acknowledged and NOT corrected — stock-selection claims stay unverifiable','wn'],
-  ['','[   0.162379] [POLICY] fundamentals are current-value, not point-in-time — usable for diagnosis, not for backtesting','wn'],
+  ['','[   0.153736] [POLICY] no single composite score is produced — direction, risk budget, and model confidence remain three separate axes, because collapsing them into one number destroys exactly the information you need','wn'],
+  ['','[   0.155171] [POLICY] a module that fails validation has its output disabled entirely; it is never converted into a lower score, because a discounted number still reads as a recommendation to whoever sees it last','wn'],
+  ['','[   0.156617] [POLICY] horizons are reported side by side and never averaged — the disagreement between them is the signal, and a blended figure describes no holding period that anyone could actually trade','wn'],
+  ['','[   0.158052] [POLICY] macro betas with |t| < 2 are reported as neutral and excluded from the contribution chart; no narrative is constructed from a coefficient that is statistically indistinguishable from zero','wn'],
+  ['','[   0.159498] [POLICY] log-return variables and level variables are never mixed inside one contribution calculation, since a units error there moves the result by orders of magnitude while still looking plausible','wn'],
+  ['','[   0.160933] [POLICY] survivorship bias is acknowledged and deliberately NOT corrected — the data source has no delisted names, so stock-selection claims stay unverifiable in principle and are labeled that way','wn'],
+  ['','[   0.162379] [POLICY] fundamentals are current-value rather than point-in-time, which makes them usable for present diagnosis and unusable for time-series backtesting; the report says so where it uses them','wn'],
   ['','',''],
-  ['','[   0.168796] cloudflared binary present at .data/bin (52.4 MiB), named-tunnel config absent, supervisor standing by','ok'],
-  ['','[   0.170231] central auth reachable, D1 latency 41ms p50 / 96ms p99, session store per-browser cookie (not per-PC)','ok'],
-  ['','[   0.171677] network status: link up, mtu 1500, dns 1.1.1.1 8.8.8.8, egress via wlan0, ipv6 disabled on adapter','ok'],
-  ['','[   0.173112] update channel: github.com/tenkojun/i_always_win releases/latest — staged swap preserves .data/ intact','ok'],
-  ['','[   0.174558] interface handoff to renderer: pywebview + Edge WebView2 runtime 121.0.2277.128, console suppressed','ok'],
-  ['','[   0.175993] Boot Complete.  33 modules · 37 sections · 66 glossary terms · 125 routes · 0 external report requests.','ok'],
+  ['','[   0.168796] cloudflared binary present at .data/bin (52.4 MiB), named-tunnel configuration absent, supervisor standing by · the supervisor restarts a dead tunnel and keeps the hostname stable across reconnects','ok'],
+  ['','[   0.170231] central auth reachable · D1 latency 41 ms p50 / 96 ms p99 · session store is a per-browser cookie rather than a per-PC record, so identity and browser login stay independent as designed','ok'],
+  ['','[   0.171677] network status: link up, mtu 1500, dns 1.1.1.1 and 8.8.8.8, egress via wlan0, ipv6 disabled on adapter · no inbound port is opened; external access is outbound-only through the tunnel when enabled','ok'],
+  ['','[   0.173112] update channel: github.com/tenkojun/i_always_win releases/latest · the staged swap replaces Plutus.exe and _internal/ only, and .data/ is never named in the script so settings and keys survive by construction','ok'],
+  ['','[   0.174558] interface handoff to renderer: pywebview over Edge WebView2 runtime 121.0.2277.128, console suppressed, single window, devtools disabled in release · theme is applied before first paint to avoid a flash','ok'],
+  ['','[   0.175993] Boot Complete.  33 modules · 37 report sections · 66 glossary terms · 125 routes · 21 SVG renderers · 0 external requests · 0 audio files · 0 unresolved imports.  Ready.','ok'],
 ];
+
 
 let _bootDone=false;
 let _bootGuard=null;
@@ -3963,15 +4057,15 @@ function _bootBlip(){
 // 구획 경계마다 다 세우면 늘어진다(8군데 = 5.2초). 흐름이 크게
 // 바뀌는 다섯 곳에만 건다.
 const _BOOT_PAUSE = {
-  2:   501,   // 헤더 직후
-  16:  401,   // 메모리·CPU
-  26:  301,   // 보안 정책
-  43:  301,   // 데이터 소스
-  68:  301,   // 엔진 모듈
-  76:  301,   // 게이트
-  83:  301,   // 수급 스캐너
-  91:  301,   // 보고서 엔진
-  99:  301,   // 정책
+  2: 501,   // 헤더 직후
+  16: 401,   // 메모리·CPU
+  26: 301,   // 보안 정책
+  43: 301,   // 데이터 소스
+  68: 301,   // 엔진 모듈
+  76: 301,   // 게이트
+  83: 301,   // 수급 스캐너
+  91: 301,   // 보고서 엔진
+  99: 301,   // 정책
 };
 function _bootDelay(i, n){
   if(i <= 1) return 0;                 // 헤더 두 줄은 즉시
@@ -8112,6 +8206,64 @@ async function autoSetupLLM(){
   }
 }
 
+/* ---------- 바로가기 만들기 ----------
+   Plutus 는 portable 배포라 설치 프로그램이 없다. 설치 프로그램이 해 줄
+   일(바탕화면 바로가기 · 시작 메뉴 등록)을 아무도 안 하므로, 첫 실행 때
+   한 번 물어본다. **윈도우 검색에 뜨려면 시작 메뉴 등록이 필요하다** —
+   바탕화면 바로가기만으로는 색인되지 않는다. */
+async function checkShortcuts(manual){
+  try{
+    const r = await (await fetch('/api/shortcuts/status')).json();
+    if(!r.ok || !r.supported){
+      if(manual) alert('Windows 에서만 지원합니다.');
+      return;
+    }
+    if(!manual){
+      if(r.asked) return;              // 이미 한 번 물어봤다
+      if(r.desktop && r.start_menu) return;
+      if(!r.frozen) return;            // 소스 실행 중엔 의미 없다
+    }
+    $('#sc-desktop').checked = !r.desktop;
+    $('#sc-start').checked   = !r.start_menu;
+    $('#sc-msg').style.display = 'none';
+    $('#sc-go').disabled = false;
+    $('#sc-modal').classList.add('on');
+  }catch(e){ if(manual) alert('확인 실패: ' + e); }
+}
+
+async function scCreate(){
+  const d = $('#sc-desktop').checked, m = $('#sc-start').checked;
+  if(!d && !m){ scDismiss(); return; }
+  $('#sc-go').disabled = true;
+  $('#sc-msg').style.display = '';
+  $('#sc-msg-text').textContent = '만드는 중…';
+  try{
+    const r = await (await fetch('/api/shortcuts/create', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({desktop:d, start_menu:m})})).json();
+    if(r.ok){
+      const ko = {desktop:'바탕화면', start_menu:'시작 메뉴'};
+      $('#sc-msg-text').textContent =
+        (r.created||[]).map(k=>ko[k]||k).join(' · ') + ' 완료. '
+        + (r.note||'');
+      playSfx('granted');
+      setTimeout(()=>$('#sc-modal').classList.remove('on'), 2200);
+    }else{
+      $('#sc-msg-text').textContent = '실패: ' + (r.error||'');
+      $('#sc-go').disabled = false;
+      playSfx('denied');
+    }
+  }catch(e){
+    $('#sc-msg-text').textContent = '실패: ' + e;
+    $('#sc-go').disabled = false;
+  }
+}
+
+async function scDismiss(){
+  $('#sc-modal').classList.remove('on');
+  try{ await fetch('/api/shortcuts/dismiss', {method:'POST'}); }catch(e){}
+}
+
 /* ---------- 자동 업데이트 ----------
    GitHub Releases 를 보고 새 버전이 있으면 물어본다.
    **설정은 건드리지 않는다** — 교체 대상은 프로그램 파일뿐이고
@@ -10450,11 +10602,21 @@ async function doLogin(){
       $('#login-switch').textContent='가입 신청';
       $('#login-nickname-row').style.display='none';
     }else{
-      $('#login-mask').classList.remove('on');
       $('#login-username').value='';
       $('#login-password').value='';
       if($('#login-nickname'))$('#login-nickname').value='';
-      await postLoginInit();
+      // **환영 화면을 먼저 올리고 그다음 로그인 마스크를 걷는다.**
+      // 예전엔 마스크부터 걷고 postLoginInit() 안에서 await 로 네트워크를
+      // 기다린 뒤 환영창을 띄웠다. 그 대기 시간 동안 앱 화면(차트)이
+      // 그대로 노출됐다가 덮였다 — 사용자가 본 "뒤에 창이 보였다가
+      // 환영이 뜸" 이 이것이다. 이름은 이미 응답에 들어 있으므로
+      // 네트워크를 기다릴 이유가 없다.
+      const who = (d.user && (d.user.nickname || d.user.username))
+                  || (_authUser && (_authUser.nickname || _authUser.username))
+                  || u;
+      showWelcomeScreen(who, true);
+      $('#login-mask').classList.remove('on');
+      await postLoginInit(true);   // 환영창은 이미 띄웠다
     }
   }catch(e){
     _setLoginMsg('네트워크 오류: '+e);
@@ -10518,15 +10680,16 @@ function renderQuotaBadge(){
   el.classList.toggle('empty', q.remaining<=0);
 }
 
-async function postLoginInit(){
+async function postLoginInit(alreadyGreeted){
   await checkAuth();
   // 메인 페이지 데이터 갱신
   loadOverview();
   // C12: 실시간 SSE 연결
   startRealtimeStream();
-  // B4+B5: 환영 화면 표시 (인사 + 일일 명언 + 3 카드)
-  // 로그인 직후엔 항상 표시 (강제 force=true)
-  if(_authUser){showWelcomeScreen(_authUser.nickname||_authUser.username,true);}
+  // 환영 화면 — 호출부가 먼저 띄웠으면 건너뛴다(두 번 뜨면 안 된다).
+  if(!alreadyGreeted && _authUser){
+    showWelcomeScreen(_authUser.nickname||_authUser.username,true);
+  }
 }
 
 /* ---------- C12: 실시간 SSE 클라이언트 ---------- */
@@ -11075,7 +11238,8 @@ async function start(){
   _loadNotifyPref();
   refreshQuota();
   // 부팅 직후 바로 물어보면 성가시다 — 화면이 자리 잡은 뒤 조용히 확인
-  setTimeout(()=>checkUpdate(false), 6000);
+  setTimeout(()=>checkShortcuts(false), 3500);
+  setTimeout(()=>checkUpdate(false), 9000);
   setInterval(loadOverview,20000);
   // 슬롯에 올라간 위젯만 주기적 갱신
   // T2/T3 템플릿은 슬롯이 A~D 라 A·B 만 보면 C·D 위젯이 영영 안 돈다

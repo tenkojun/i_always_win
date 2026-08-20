@@ -41,7 +41,7 @@ hiddenimports = [
     # ── 앱 ──────────────────────────────────────────────────
     'version',
     'webapp', 'webapp.server',
-    'engine', 'engine.paths', 'engine.console',
+    'engine', 'engine.paths', 'engine.console', 'engine.shortcuts',
 
     # ── 정밀 분석 엔진 (동적 임포트가 많아 전부 명시) ───────
     'engine.jiqtx',
