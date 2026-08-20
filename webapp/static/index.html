@@ -5582,7 +5582,7 @@ async function loadAnalysisHistory(ticker){
       el.innerHTML='';return;
     }
     const rows=items.slice(0,10).map(it=>{
-      const when=new Date(it.ts+'Z').toLocaleString('ko-KR',
+      const when=utcDate(it.ts).toLocaleString('ko-KR',
         {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
       const sigCol=
         (it.signal||'').toString().toLowerCase().includes('buy')?'var(--up)':
@@ -5792,7 +5792,7 @@ async function openAnalyzeHistory(){
       return;
     }
     body.innerHTML=items.map(it=>{
-      const when=new Date(it.ts+'Z').toLocaleString('ko-KR',
+      const when=utcDate(it.ts).toLocaleString('ko-KR',
         {year:'2-digit',month:'numeric',day:'numeric',
          hour:'2-digit',minute:'2-digit'});
       const sig=(it.signal||'').toString();
@@ -9602,7 +9602,7 @@ async function loadBreaking(){
       items.forEach(it=>{
         if(it.age_min==null && it.saved_at){
           try{
-            const t=new Date(it.saved_at+'Z').getTime();
+            const t=utcDate(it.saved_at).getTime();
             it.age_min=Math.max(0,(Date.now()-t)/60000);
           }catch(e){it.age_min=0;}
         }
@@ -10013,7 +10013,7 @@ async function loadCommunity(){
       const isAd=p.role==='admin';
       const isPin=!!p.pinned;
       const when=p.created_at?
-        new Date(p.created_at+'Z').toLocaleDateString('ko-KR',
+        utcDate(p.created_at).toLocaleDateString('ko-KR',
           {month:'numeric',day:'numeric'}):'';
       const author=p.nickname||p.username;
       return `<div class="cm-row ${isPin?'pinned':''}"
@@ -10078,7 +10078,7 @@ function _renderPostDetail(p, comments){
   const isPin=!!p.pinned;
   const author=p.nickname||p.username;
   const when=p.created_at?
-    new Date(p.created_at+'Z').toLocaleString('ko-KR'):'';
+    utcDate(p.created_at).toLocaleString('ko-KR'):'';
   const isOwner=_authUser&&_authUser.id===p.user_id;
   const isMeAdmin=_authUser&&_authUser.role==='admin';
   const canDelete=isOwner||isMeAdmin;
@@ -10086,7 +10086,7 @@ function _renderPostDetail(p, comments){
   const cmHtml=comments.map(c=>{
     const cAuth=c.nickname||c.username;
     const cWhen=c.created_at?
-      new Date(c.created_at+'Z').toLocaleString('ko-KR',
+      utcDate(c.created_at).toLocaleString('ko-KR',
         {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
     const cIsAd=c.role==='admin';
     const canDelC=(_authUser&&_authUser.id===c.user_id)||isMeAdmin;
@@ -11010,7 +11010,7 @@ async function refreshChatList(){
 function renderChatSide(){
   const html=_chatList.map(c=>{
     const on=c.id===_curChatId?'on':'';
-    const when=c.updated_at?new Date(c.updated_at+'Z').toLocaleDateString(
+    const when=c.updated_at?utcDate(c.updated_at).toLocaleDateString(
       'ko-KR',{month:'numeric',day:'numeric'}):'';
     return `<div class="item ${on}" onclick="openChat('${c.id}')">
       <span class="del" onclick="event.stopPropagation();deleteChat('${c.id}')">✕</span>
@@ -11147,6 +11147,30 @@ function closeAdmin(){
   태그가 그걸 보는 사람의 브라우저에서 실행된다. 관리자 화면이 특히
   위험하다 — 승인 대기 목록은 관리자가 반드시 열기 때문이다.
 */
+/*
+  서버 시각 문자열 → Date.
+
+  시각이 두 곳에서 온다.
+    중앙 Worker : new Date().toISOString()  →  2026-08-20T12:42:39.364Z
+    로컬 Python : isoformat(" ","seconds")  →  2026-08-20 12:42:39
+
+  앞의 것은 이미 UTC 표시가 붙어 있고 뒤의 것은 없다. 그런데 코드가
+  양쪽에 무조건 'Z' 를 붙이고 있었다 — Worker 값은 'ZZ' 가 되어
+  **Invalid Date** 로 떨어졌다(관리자 화면의 "가입 Invalid Date").
+
+  그래서 이미 타임존이 있으면 그대로 두고, 없을 때만 UTC 로 본다.
+
+  실패해도 **항상 Date 를 돌려준다**(잘못된 값이면 Invalid Date). 호출부가
+  바로 .toLocaleString() / .getTime() 을 부르고 있어서, null 을 돌려주면
+  거기서 예외가 난다 — 날짜 하나 때문에 화면이 통째로 안 그려지면 안 된다.
+*/
+function utcDate(s){
+  if(!s) return new Date(NaN);
+  let t = String(s).trim().replace(' ', 'T');
+  if(!/(Z|[+-]\d{2}:?\d{2})$/.test(t)) t += 'Z';
+  return new Date(t);
+}
+
 function esc(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -11248,9 +11272,9 @@ async function refreshAdmin(){
 
     const usersHtml=users.map(u=>{
       const created=u.created_at?
-        new Date(u.created_at+'Z').toLocaleDateString('ko-KR'):'';
+        utcDate(u.created_at).toLocaleDateString('ko-KR'):'';
       const lastLogin=u.last_login_at?
-        new Date(u.last_login_at+'Z').toLocaleString('ko-KR',
+        utcDate(u.last_login_at).toLocaleString('ko-KR',
           {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
         :'미로그인';
       const isMe=_authUser && u.id===_authUser.id;

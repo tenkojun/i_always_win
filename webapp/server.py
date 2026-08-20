@@ -1152,6 +1152,9 @@ def api_admin_stats():
         "login_count": u.get("login_count", 0) or 0,
         "claude_used": u.get("claude_used", 0) or 0,
         "claude_quota_date": u.get("claude_quota_date", ""),
+        # 화이트리스트라 여기 없는 필드는 화면까지 못 간다. 등급을 빠뜨려서
+        # 관리자 패널의 등급 표시가 늘 '무료' 로 보였다.
+        "tier": u.get("tier") or "free",
     } for u in users]
     return jsonify({
         "summary": {
