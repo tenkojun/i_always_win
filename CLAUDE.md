@@ -5,7 +5,7 @@
 - 개발자: Tenko jun - 정준화
 - 저장소: https://github.com/tenkojun/i_always_win *(이름은 Plutus 로 바꿨지만
   저장소·인증 Worker 주소는 배포된 자원이라 그대로 둔다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.2.1)
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.1)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
 - 라이선스: **MIT** — 외부 저작물 0개 (사운드는 전부 Web Audio 합성)
