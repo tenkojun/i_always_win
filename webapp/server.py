@@ -156,13 +156,20 @@ def api_auth_remote_logout():
     return jsonify(logout())
 
 
+# 아래 세 라우트는 **저장된 소유자 토큰을 그대로 실어** 중앙 서버로 넘긴다.
+# 중앙은 requireAdmin 을 제대로 검사하지만, 검사 대상이 "호출한 사람"이
+# 아니라 "이 PC 의 주인"이다. 그래서 로컬에 인증이 없으면, 서버가
+# 0.0.0.0 에 붙어 있는 한 **같은 와이파이의 누구나** 주인의 관리자 권한을
+# 빌려 쓸 수 있었다(터널을 켜면 인터넷 전체). 여기서 호출자를 먼저 막는다.
 @app.route("/api/auth/remote/admin/users")
+@require_admin
 def api_auth_remote_admin_users():
     from engine.auth_remote import admin_users
     return jsonify(admin_users())
 
 
 @app.route("/api/auth/remote/admin/approve", methods=["POST"])
+@require_admin
 def api_auth_remote_admin_approve():
     from engine.auth_remote import admin_approve
     data = request.get_json(force=True, silent=True) or {}
@@ -170,6 +177,7 @@ def api_auth_remote_admin_approve():
 
 
 @app.route("/api/auth/remote/admin/reject", methods=["POST"])
+@require_admin
 def api_auth_remote_admin_reject():
     from engine.auth_remote import admin_reject
     data = request.get_json(force=True, silent=True) or {}
@@ -323,7 +331,15 @@ def static_files(fn):
 
 
 @app.route("/report/<path:fn>")
+@require_auth
 def report_files(fn):
+    """
+    생성된 보고서 서빙.
+
+    인증이 없으면 서버가 0.0.0.0 에 붙어 있는 동안 **같은 와이파이의
+    누구나** 파일명만 알면 남의 분석 보고서를 받아 간다.
+    (경로 탈출 자체는 send_from_directory 가 막아 준다.)
+    """
     return send_from_directory(_REPORTS, fn)
 
 
