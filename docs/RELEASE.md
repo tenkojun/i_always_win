@@ -5,6 +5,35 @@
 
 ---
 
+## 한 줄로 하기
+
+```bash
+python tools/release.py --build
+```
+
+이 도구가 순서대로 한다.
+
+1. `CHANGELOG.md` 에 현재 버전 절이 있는지 확인 — 없으면 **중단**
+2. 커밋되지 않은 변경이 있으면 **중단**
+3. 빌드 (`--build` 일 때)
+4. `dist/Plutus/.data` **삭제** — 키·계정 DB가 공개 자산에 섞이지 않게
+5. zip 포장
+6. **업데이터 검증 로직에 통과시켜 본다** — 올린 뒤에 형식 문제를
+   발견하면 사용자가 받아 가는 중에 고쳐야 한다
+7. 태그 푸시 → `gh release create ... --latest`
+
+발행 전에 확인만:
+
+```bash
+python tools/release.py --build --dry-run
+```
+
+이미 있는 태그면 중복 발행을 막는다.
+
+---
+
+## 손으로 할 때
+
 ## 1. 버전 올리기
 
 `version.py` 의 `__version__` 하나만 고친다. 나머지(창 제목·설정 화면·
@@ -110,3 +139,23 @@ Plutus-win-x64.zip
 ```bash
 git pull
 ```
+
+
+---
+
+## 과거 버전 소급 발행
+
+```bash
+python tools/backfill_releases.py --dry-run   # 확인
+python tools/backfill_releases.py             # 발행
+```
+
+`version.py` 가 바뀐 커밋을 전부 찾아 태그를 만들고 CHANGELOG 절을
+노트로 붙인다. 이미 있는 릴리스는 건너뛴다.
+
+**바이너리는 붙이지 않는다.** 과거 EXE 를 만들려면 커밋마다 체크아웃해
+다시 빌드해야 하는데 26개면 두 시간이 넘고, 자동 업데이트는 최신
+릴리스만 본다. GitHub 이 자동으로 붙여 주는 소스 아카이브로 충분하다.
+특정 버전이 꼭 필요하면 그때 골라 빌드해 올리면 된다.
+
+모든 소급 릴리스는 `--latest=false` 로 만든다.
