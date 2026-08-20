@@ -56,3 +56,6 @@ _*.py
 
 # 진단 도구 산출물
 plutus-진단.txt
+
+# Inno Setup 이 받아 두는 마이크로소프트 재배포 파일 (빌드 시 자동 다운로드)
+installer/vendor/

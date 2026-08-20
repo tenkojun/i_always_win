@@ -5,9 +5,10 @@
 - 개발자: Tenko jun - 정준화
 - 저장소: https://github.com/tenkojun/plutus *(v3.4.2 에서 `i_always_win`
   에서 리네임. 옛 주소는 GitHub 가 리다이렉트한다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.2)
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.3)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
+- 설치본: 같은 명령이 `dist\Plutus-Setup-x64.exe` 도 굽는다 (Inno Setup)
 - 라이선스: **MIT** — 외부 저작물 0개 (사운드는 전부 Web Audio 합성)
 
 ## 기술 스택
@@ -35,7 +36,11 @@ e/
 │   ├── release.py           # 빌드 → 포장 → 검증 → 태그 → 발행 (한 줄)
 │   ├── backfill_releases.py # 과거 버전 소급 발행
 │   ├── make_icons.py        # 로고 1개 → 마크·파비콘·ico
-│   └── make_version_info.py # 윈도우 버전 리소스
+│   ├── make_version_info.py # 윈도우 버전 리소스
+│   └── diagnose.ps1         # 진단 (릴리스에 `진단.ps1` 로 동봉)
+├── installer/
+│   ├── plutus.iss       # Inno Setup — 설치 프로그램
+│   └── vendor/          # WebView2 부트스트래퍼 (gitignore, 빌드 시 자동 수신)
 ├── webapp/
 │   ├── server.py        # Flask API
 │   └── static/
@@ -95,6 +100,21 @@ e/
   Windows PowerShell 5.1 이 cp949 로 읽어 한글이 깨지고 **파싱 자체가 실패**한다
   — 로그도 안 남아 원인을 찾기 어렵다 (v3.1.1 에서 실제로 그랬다)
 - 소급 발행은 `--latest=false` 필수. 안 주면 옛 버전이 Latest 가 된다
+- 릴리스 자산 2개 — `Plutus-Setup-x64.exe`(설치본) · `Plutus-win-x64.zip`(portable)
+
+## 설치 프로그램 (installer/plutus.iss)
+- **`%LOCALAPPDATA%\Programs\Plutus` 에 깐다. Program Files 가 아니다.**
+  Plutus 는 실행 파일 옆 `.data\` 에 쓰는데 Program Files 는 관리자만
+  쓸 수 있다 — 거기 깔면 앱이 자기 데이터를 못 쓴다. `PrivilegesRequired=lowest`
+  라 **UAC 가 아예 안 뜬다** (PC방·회사 PC 에서 중요)
+- WebView2 는 레지스트리 3곳(64/32비트 시스템 · 사용자)을 다 보고 없을
+  때만 무인 설치. 설치 후 재확인해서 실패했으면 **말해 준다**
+- 시작 메뉴 등록이 윈도우 검색의 조건이다. 바탕화면만으로는 색인 안 됨
+- 제거 시 `.data\`(키·계정·보고서)를 **물어보고** 지운다. 무인 제거에서는
+  남기는 쪽으로 답한다
+- 부트스트래퍼는 커밋하지 않는다("외부 저작물 0개"). 빌드 때 받고
+  **Authenticode 서명 검증** — Microsoft 아니면 빌드 중단
+- 코드 서명 없음 → SmartScreen 경고. `추가 정보` → `실행`
 
 ## 이름
 제품명은 **Plutus**(그리스 신화 부의 신)다. 저장소는 v3.4.2 에서

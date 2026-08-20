@@ -41,7 +41,14 @@ GH_CANDIDATES = [
     "gh",
 ]
 ZIP = os.path.join("dist", "Plutus-win-x64.zip")
+SETUP = os.path.join("dist", "Plutus-Setup-x64.exe")
+ISS = os.path.join("installer", "plutus.iss")
 APP = os.path.join("dist", "Plutus")
+ISCC_CANDIDATES = [
+    os.path.expandvars(r"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"),
+    r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+    r"C:\Program Files\Inno Setup 6\ISCC.exe",
+]
 
 
 def _gh() -> str:
@@ -111,6 +118,68 @@ def package() -> None:
     print(f"  {ZIP}  {os.path.getsize(ZIP):,} bytes")
 
 
+VENDOR = os.path.join("installer", "vendor")
+WV2_BOOTSTRAPPER = os.path.join(VENDOR, "MicrosoftEdgeWebview2Setup.exe")
+WV2_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+
+
+def fetch_webview2() -> bool:
+    """
+    WebView2 Evergreen 부트스트래퍼를 받아 둔다.
+
+    **저장소에 커밋하지 않는다.** Plutus 는 "외부 저작물 0개" 를 유지하고
+    있고, 마이크로소프트 재배포 파일을 넣으면 그게 깨진다. 대신 빌드할 때
+    공식 permalink 에서 받고 **Authenticode 서명을 확인**한다.
+    """
+    if os.path.exists(WV2_BOOTSTRAPPER):
+        return True
+    os.makedirs(VENDOR, exist_ok=True)
+    print("WebView2 부트스트래퍼 받는 중…")
+    try:
+        sh("powershell", "-NoProfile", "-Command",
+           f"Invoke-WebRequest '{WV2_URL}' -OutFile '{WV2_BOOTSTRAPPER}' "
+           f"-UseBasicParsing")
+    except Exception as e:
+        print(f"  [건너뜀] 다운로드 실패: {e}")
+        return False
+    # 서명을 확인하지 않고 남의 실행 파일을 설치본에 넣지 않는다
+    st = sh("powershell", "-NoProfile", "-Command",
+            f"$s = Get-AuthenticodeSignature '{WV2_BOOTSTRAPPER}'; "
+            f"$s.Status.ToString() + '|' + $s.SignerCertificate.Subject",
+            check=False)
+    if not st.startswith("Valid") or "Microsoft Corporation" not in st:
+        os.remove(WV2_BOOTSTRAPPER)
+        raise SystemExit(f"[!] 부트스트래퍼 서명 검증 실패: {st.strip()}")
+    size = os.path.getsize(WV2_BOOTSTRAPPER)
+    print(f"  서명 확인 (Microsoft Corporation) · {size:,} bytes")
+    return True
+
+
+def installer(ver: str) -> bool:
+    """
+    설치 프로그램을 굽는다. Inno Setup 이 없으면 **건너뛴다** —
+    설치본이 없다고 릴리스를 막을 이유는 없다. zip 만으로도 쓸 수 있다.
+    """
+    iscc = next((c for c in ISCC_CANDIDATES if os.path.exists(c)), None)
+    if not iscc:
+        print("  [건너뜀] Inno Setup 이 없습니다 "
+              "(winget install JRSoftware.InnoSetup)")
+        return False
+    if not os.path.exists(ISS):
+        print(f"  [건너뜀] {ISS} 가 없습니다")
+        return False
+    if not fetch_webview2():
+        return False
+    if os.path.exists(SETUP):
+        os.remove(SETUP)
+    print("설치 프로그램 굽는 중…")
+    sh(iscc, f"/DMyVersion={ver}", ISS)
+    if not os.path.exists(SETUP):
+        raise SystemExit("[!] 설치 프로그램이 만들어지지 않았습니다.")
+    print(f"  {SETUP}  {os.path.getsize(SETUP):,} bytes")
+    return True
+
+
 def verify() -> None:
     """업데이터가 실제로 받아들이는 형태인지 확인한다."""
     sys.path.insert(0, os.getcwd())
@@ -155,6 +224,7 @@ def main() -> int:
         build()
     package()
     verify()
+    has_setup = installer(ver)
 
     if dry:
         print("\n[DRY RUN] 여기까지. 실제 발행은 --dry-run 없이.")
@@ -164,7 +234,8 @@ def main() -> int:
     sh("git", "push", "origin", tag)
     nf = os.path.join("dist", "_notes.md")
     io.open(nf, "w", encoding="utf-8").write(note)
-    sh(gh, "release", "create", tag, ZIP,
+    assets = [SETUP, ZIP] if has_setup else [ZIP]
+    sh(gh, "release", "create", tag, *assets,
        "--title", tag, "--notes-file", nf, "--latest", "--verify-tag")
     os.remove(nf)
     print(f"\n발행 완료 → https://github.com/tenkojun/plutus/releases/tag/{tag}")
