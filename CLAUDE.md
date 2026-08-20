@@ -5,7 +5,7 @@
 - 개발자: Tenko jun - 정준화
 - 저장소: https://github.com/tenkojun/plutus *(v3.4.2 에서 `i_always_win`
   에서 리네임. 옛 주소는 GitHub 가 리다이렉트한다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.3)
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.4)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
 - 설치본: 같은 명령이 `dist\Plutus-Setup-x64.exe` 도 굽는다 (Inno Setup)
@@ -44,8 +44,10 @@ e/
 ├── webapp/
 │   ├── server.py        # Flask API
 │   └── static/
-│       ├── index.html   # 메인 UI 단일 파일
-│       └── plutus.png   # 로고 원본 (make_icons 가 읽기만 한다)
+│       ├── index.html            # 메인 UI 단일 파일
+│       ├── plutus.png            # 로고 원본 (make_icons 가 읽기만 한다)
+│       ├── plutus_mark.png       # 마크 — 흰 잉크 (어두운 배경용)
+│       └── plutus_mark_light.png # 마크 — 어두운 잉크 (밝은 배경용)
 └── engine/
     ├── paths.py         # 런타임 경로 단일 결정 (.data/)
     ├── console.py       # stdout/stderr UTF-8 강제
@@ -140,6 +142,16 @@ URL 을 따라 고쳤다). 옛 주소는 GitHub 가 웹·API 모두 리다이렉
   서구 관례 색을 폴백으로 달면 변수가 빠지는 순간 의미가 뒤집힌다
 - 보고서 툴팁은 `position:fixed` 레이어 하나를 body 직속으로 둔다.
   `.term` 안에 absolute 로 넣으면 `overflow:hidden` 조상에서 잘린다
+- **마크(`plutus_mark.png`)는 흰 잉크 + 알파다. 밝은 배경에서 사라진다.**
+  부팅 화면이 `var(--bg)` 를 따르게 되면서 white 테마에서 실제로 안 보였다.
+  `<html>` 의 `light-bg` 클래스가 `invert(1)` 을 건다 —
+  **테마 이름이 아니라 `--bg` 의 실측 밝기**로 판정한다(`refreshLightBg()`).
+  custom 테마는 사용자가 `--bg` 를 아무 색으로나 정할 수 있어서, 이름
+  목록을 박아 두면 그쪽으로 샌다
+- 애니메이션이 `filter` 를 애니메이트하면 정적 `filter` 규칙을 **덮어쓴다.**
+  그래서 `logoFocus` 의 밝은 배경용 쌍둥이 `logoFocusLight` 를 따로 둔다
+- README 의 로고는 `<picture>` + `prefers-color-scheme` 으로 GitHub 의
+  라이트/다크 테마에 각각 대응한다
 
 ## 보조 문서 (필요 시 로드)
 | 주제 | 파일 | 로드 조건 |

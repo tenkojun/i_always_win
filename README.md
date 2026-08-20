@@ -2,7 +2,16 @@
 
 <br>
 
-<img src="webapp/static/plutus_mark.png" alt="Plutus" width="220">
+<!--
+  마크는 흰 잉크에 알파로만 형태를 만든다. GitHub 라이트 테마(흰 배경)
+  에서는 통째로 사라진다. <picture> 로 배경에 맞는 잉크를 고른다 —
+  GitHub 은 README 에서 prefers-color-scheme 미디어 쿼리를 지원한다.
+-->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="webapp/static/plutus_mark.png">
+  <source media="(prefers-color-scheme: light)" srcset="webapp/static/plutus_mark_light.png">
+  <img src="webapp/static/plutus_mark_light.png" alt="Plutus" width="220">
+</picture>
 
 <br><br>
 
@@ -19,7 +28,7 @@
 
 <br>
 
-![version](https://img.shields.io/badge/version-3.4.3-c9a227?style=for-the-badge&labelColor=000000)
+![version](https://img.shields.io/badge/version-3.4.4-c9a227?style=for-the-badge&labelColor=000000)
 ![python](https://img.shields.io/badge/python-3.12-c9a227?style=for-the-badge&labelColor=000000)
 ![engine](https://img.shields.io/badge/engine-33_modules_·_15.6k_LOC-c9a227?style=for-the-badge&labelColor=000000)
 ![license](https://img.shields.io/badge/license-MIT-c9a227?style=for-the-badge&labelColor=000000)
