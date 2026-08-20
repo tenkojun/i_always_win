@@ -97,6 +97,12 @@ def package() -> None:
     if os.path.exists(stray):
         shutil.rmtree(stray, ignore_errors=True)
         print("  .data 제거 (키·계정 보호)")
+    # 진단 도구를 exe 옆에 같이 넣는다. 받는 PC 에는 Python 이 없으니
+    # PowerShell 판만 넣는다 — 문제 생겼을 때 이게 유일한 손전등이다.
+    src = os.path.join("tools", "diagnose.ps1")
+    if os.path.exists(src):
+        shutil.copy2(src, os.path.join(APP, "진단.ps1"))
+        print("  진단.ps1 동봉")
     if os.path.exists(ZIP):
         os.remove(ZIP)
     print("포장 중…")
