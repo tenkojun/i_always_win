@@ -10,7 +10,7 @@ from .client import (
     me, me_with_token,
     load_session, clear_session,
     change_password, sessions,
-    admin_users, admin_approve, admin_reject,
+    admin_users, admin_approve, admin_reject, admin_set_tier,
     register_pc, pc_status, pc_unregister,
     RemoteAuthError,
 )
@@ -21,7 +21,7 @@ __all__ = [
     "logout_token", "me", "me_with_token",
     "load_session", "clear_session",
     "change_password", "sessions",
-    "admin_users", "admin_approve", "admin_reject",
+    "admin_users", "admin_approve", "admin_reject", "admin_set_tier",
     "register_pc", "pc_status", "pc_unregister",
     "RemoteAuthError",
 ]

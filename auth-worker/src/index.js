@@ -250,10 +250,14 @@ async function maybeSweep(env) {
 
 async function getSession(env, token) {
   if (!token) return null;
+  // 등급은 user_tier 에 있고, 행이 없으면 free 다 — LEFT JOIN + COALESCE.
+  // 세션 조회에 얹어 두면 /me 한 번으로 등급까지 따라온다.
   const r = await env.DB.prepare(
     `SELECT s.token, s.user_id, s.expires_at, s.device_label,
-     u.username, u.nickname, u.status, u.role
+     u.username, u.nickname, u.status, u.role,
+     COALESCE(t.tier, 'free') AS tier
      FROM sessions s JOIN users u ON u.id = s.user_id
+     LEFT JOIN user_tier t ON t.user_id = u.id
      WHERE s.token = ?`
   ).bind(token).first();
   if (!r) return null;
@@ -343,8 +347,10 @@ async function handleLogin(req, env) {
       locked_minutes: gate.minutes }, { status: 429 }, env, req);
 
   const u = await env.DB.prepare(
-    `SELECT id, username, nickname, password_hash, salt, status, role
-     FROM users WHERE username = ? COLLATE NOCASE`
+    `SELECT u.id, u.username, u.nickname, u.password_hash, u.salt,
+            u.status, u.role, COALESCE(t.tier, 'free') AS tier
+     FROM users u LEFT JOIN user_tier t ON t.user_id = u.id
+     WHERE u.username = ? COLLATE NOCASE`
   ).bind(username).first();
 
   // 사용자 존재 여부를 응답으로 흘리지 않는다.
@@ -377,7 +383,7 @@ async function handleLogin(req, env) {
     ok: true, token,
     expires_in_days: SESSION_DAYS,
     user: { id: u.id, username: u.username, nickname: u.nickname,
-            role: u.role, status: u.status },
+            role: u.role, status: u.status, tier: u.tier || 'free' },
   }, {}, env, req);
 }
 
@@ -405,7 +411,7 @@ async function handleMe(req, env) {
   return json({
     authenticated: true,
     user: { id: s.user_id, username: s.username, nickname: s.nickname,
-            role: s.role, status: s.status },
+            role: s.role, status: s.status, tier: s.tier || 'free' },
   }, {}, env, req);
 }
 
@@ -456,11 +462,58 @@ async function handleAdminUsers(req, env) {
   const s = await requireAdmin(req, env);
   if (!s) return json({ error: 'admin only' }, { status: 403 }, env, req);
   const rows = await env.DB.prepare(
-    `SELECT id, username, nickname, status, role, created_at,
-     approved_at, last_login_at, login_count, claude_used, claude_quota_date
-     FROM users ORDER BY created_at DESC LIMIT 500`
+    `SELECT u.id, u.username, u.nickname, u.status, u.role, u.created_at,
+     u.approved_at, u.last_login_at, u.login_count, u.claude_used,
+     u.claude_quota_date, COALESCE(t.tier, 'free') AS tier
+     FROM users u LEFT JOIN user_tier t ON t.user_id = u.id
+     ORDER BY u.created_at DESC LIMIT 500`
   ).all();
   return json({ users: rows.results || [] }, {}, env, req);
+}
+
+// ── 회원 등급 ──────────────────────────────────────────────────
+// 등급의 유일한 진실. 전에는 각 PC 의 .data/auth.db 에 있었는데, 그러면
+// 다른 PC 에서 로그인할 때 등급이 사라지고, 그 파일을 직접 고치면 누구나
+// 플래티넘이 됐다. 서버가 모르는 값이라 막을 수가 없었다.
+const TIERS = ['free', 'premium', 'platinum'];
+
+async function handleAdminSetTier(req, env) {
+  const s = await requireAdmin(req, env);
+  if (!s) return json({ error: 'admin only' }, { status: 403 }, env, req);
+
+  const body = await req.json().catch(() => ({}));
+  const userId = parseInt(body.user_id, 10);
+  const tier = String(body.tier || '').toLowerCase();
+
+  if (!userId) return json({ ok: false, error: 'user_id 필요' },
+                           { status: 400 }, env, req);
+  if (!TIERS.includes(tier))
+    return json({ ok: false, error: `등급은 ${TIERS.join(' / ')} 중 하나` },
+                { status: 400 }, env, req);
+
+  // 있는 사용자인지 확인한다 — 없는 id 로 등급 행만 남기지 않는다
+  const u = await env.DB.prepare('SELECT id, username FROM users WHERE id=?')
+    .bind(userId).first();
+  if (!u) return json({ ok: false, error: '없는 사용자' },
+                      { status: 404 }, env, req);
+
+  if (tier === 'free') {
+    // free 는 "행 없음"이 기본값이다. 행을 지워 기본으로 되돌린다.
+    await env.DB.prepare('DELETE FROM user_tier WHERE user_id=?')
+      .bind(userId).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO user_tier (user_id, tier, updated_at, updated_by)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         tier=excluded.tier, updated_at=excluded.updated_at,
+         updated_by=excluded.updated_by`
+    ).bind(userId, tier, nowIso(), s.user_id).run();
+  }
+
+  // 되돌리기 어려운 변경이라 기록을 남긴다
+  await audit(env, s.user_id, 'set_tier', u.username, tier);
+  return json({ ok: true, user_id: userId, tier }, {}, env, req);
 }
 
 async function handleAdminApprove(req, env) {
@@ -608,6 +661,7 @@ export default {
       if (p === '/admin/users')            return handleAdminUsers(req, env);
       if (p === '/admin/approve' && POST)  return handleAdminApprove(req, env);
       if (p === '/admin/reject' && POST)   return handleAdminReject(req, env);
+      if (p === '/admin/set_tier' && POST) return handleAdminSetTier(req, env);
 
       if (p === '/pc/register' && POST)    return handleRegisterPC(req, env);
       if (p === '/pc/status')              return handlePCStatus(req, env);

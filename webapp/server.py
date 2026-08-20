@@ -2538,16 +2538,50 @@ def api_quota_set_tier():
     """
     등급 변경. **관리자만** — 본인이 스스로 프리미엄으로 올릴 수 있으면
     한도가 있으나 마나다.
+
+    v4.0.0 부터 **중앙 서버에 쓴다.** 전에는 이 PC 의 `.data/auth.db` 에만
+    썼는데, 그러면 다른 PC 에서 로그인할 때 등급이 사라지고 그 파일을 직접
+    고치면 누구나 플래티넘이 됐다. 이제 중앙이 정하고 여기는 캐시만 맞춘다.
     """
-    from engine.auth.quota import set_tier, quota_status
+    from engine.auth.quota import set_tier, quota_status, TIERS
     if (g.user or {}).get("role") != "admin":
         return jsonify({"ok": False, "error": "관리자만 변경할 수 있습니다."}), 403
     d = request.get_json(force=True, silent=True) or {}
-    uid = d.get("user_id") or g.user["id"]
-    r = set_tier(int(uid), (d.get("tier") or "free"))
+    uid = int(d.get("user_id") or g.user["id"])
+    tier = (d.get("tier") or "free").lower()
+    if tier not in TIERS:
+        return jsonify({"ok": False, "error": "알 수 없는 등급"}), 400
+
+    from engine import auth_remote
+    try:
+        r = auth_remote.admin_set_tier(uid, tier)
+    except Exception as e:
+        return jsonify({"ok": False,
+                        "error": f"중앙 서버에 닿지 못했습니다: {e}"}), 502
     if not r.get("ok"):
+        # 중앙이 거절했으면 로컬도 건드리지 않는다 — 둘이 어긋나면 안 된다
         return jsonify(r), 400
-    return jsonify({"ok": True, **quota_status(int(uid), "report")})
+
+    set_tier(uid, tier)          # 캐시 반영
+    _invalidate_user_cache()     # 다음 요청이 새 등급을 보게 한다
+    return jsonify({"ok": True, "tier": tier,
+                    **quota_status(uid, "report")})
+
+
+def _invalidate_user_cache() -> None:
+    """
+    미들웨어의 신원 캐시를 비운다.
+
+    `/me` 결과를 짧게 캐시하는데, 등급도 그 안에 실려 온다. 비우지 않으면
+    등급을 바꾸고도 캐시가 만료될 때까지 옛 등급으로 보인다 — 관리자가
+    "안 먹혔나?" 하고 다시 누르게 된다.
+    """
+    try:
+        from engine.auth import middleware
+        with middleware._LOCK:
+            middleware._VERIFIED.clear()
+    except Exception:
+        pass
 
 
 @app.route("/api/jiqtx/analyze/<job_id>")

@@ -115,6 +115,43 @@ def _today() -> str:
 
 
 def get_tier(user_id: int) -> str:
+    """
+    회원 등급. **중앙 서버가 정한 값이 우선이다.**
+
+    v4.0.0 이전에는 이 함수가 로컬 `.data/auth.db` 만 봤다. 그래서
+      - 다른 PC 에서 로그인하면 등급이 사라졌고,
+      - 그 파일을 직접 고치면 누구나 플래티넘이 됐다.
+    서버가 모르는 값이라 막을 방법이 없었다 — 한도가 통째로 우회됐다.
+
+    지금은 로그인 세션에 실려 온 등급(`g.user["tier"]`)을 쓴다. 그 값은
+    중앙 D1 의 `user_tier` 에서 오고 관리자만 바꿀 수 있다. 로컬 표는
+    **중앙에 못 닿을 때만 쓰는 캐시**로 남긴다 — 마지막으로 확인된 등급을
+    기억해 두는 용도이지, 등급을 정하는 곳이 아니다.
+    """
+    central = _tier_from_session(user_id)
+    if central is not None:
+        _cache_tier(user_id, central)     # 오프라인 대비로 적어 둔다
+        return central
+    return _cached_tier(user_id)
+
+
+def _tier_from_session(user_id: int) -> str | None:
+    """현재 요청의 로그인 사용자라면 중앙이 준 등급을 돌려준다."""
+    try:
+        from flask import g, has_request_context
+        if not has_request_context():
+            return None
+        u = getattr(g, "user", None) or {}
+        # 다른 사람의 등급을 묻는 중이면 세션 값을 쓰면 안 된다
+        if not u or int(u.get("id") or 0) != int(user_id):
+            return None
+        t = (u.get("tier") or "").lower()
+        return t if t in TIERS else "free"
+    except Exception:
+        return None
+
+
+def _cached_tier(user_id: int) -> str:
     try:
         with _conn() as c:
             _ensure(c)
@@ -126,7 +163,32 @@ def get_tier(user_id: int) -> str:
         return "free"
 
 
+def _cache_tier(user_id: int, tier: str) -> None:
+    """중앙 값을 로컬에 반영. 실패해도 조용히 넘어간다(캐시일 뿐이다)."""
+    try:
+        if _cached_tier(user_id) == tier:
+            return                        # 쓸데없는 쓰기를 하지 않는다
+        with _conn() as c:
+            _ensure(c)
+            c.execute("""INSERT INTO user_tier(user_id,tier,updated)
+                         VALUES(?,?,?)
+                         ON CONFLICT(user_id) DO UPDATE
+                         SET tier=excluded.tier, updated=excluded.updated""",
+                      (user_id, tier,
+                       dt.datetime.now().isoformat(" ", "seconds")))
+    except Exception:
+        pass
+
+
 def set_tier(user_id: int, tier: str) -> Dict[str, Any]:
+    """
+    로컬 캐시에만 쓴다. **등급을 정하는 함수가 아니다.**
+
+    등급 변경의 진짜 입구는 중앙 서버의 `/admin/set_tier` 이고,
+    `webapp/server.py` 의 `/api/quota/tier` 가 그쪽을 부른다. 여기는
+    그 결과를 반영해 두는 용도다 — 이 함수만 불러서는 다음 로그인 때
+    중앙 값으로 덮인다.
+    """
     tier = (tier or "free").lower()
     if tier not in TIERS:
         return {"ok": False, "error": "알 수 없는 등급"}

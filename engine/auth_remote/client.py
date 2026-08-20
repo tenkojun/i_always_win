@@ -208,6 +208,20 @@ def admin_approve(user_id: int) -> Dict[str, Any]:
     return r.json()
 
 
+def admin_set_tier(user_id: int, tier: str) -> Dict[str, Any]:
+    """
+    회원 등급 변경. **중앙 서버가 판정한다.**
+
+    등급은 v4.0.0 부터 중앙 D1 에만 있다. 로컬 `.data/auth.db` 에 두던
+    시절에는 (1) 다른 PC 로 옮기면 등급이 사라지고 (2) 그 파일을 직접
+    고치면 누구나 플래티넘이 됐다. 서버가 모르는 값이라 막을 수 없었다.
+    """
+    r = requests.post(_url("/admin/set_tier"),
+                      json={"user_id": int(user_id), "tier": tier},
+                      headers=_headers(), timeout=10)
+    return r.json()
+
+
 def admin_reject(user_id: int) -> Dict[str, Any]:
     r = requests.post(_url("/admin/reject"),
                       json={"user_id": user_id},

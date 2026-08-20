@@ -804,10 +804,16 @@
   .admin-box .head .ti{font-family:var(--mono);font-size:14px;color:var(--cyan);
     letter-spacing:2px;font-weight:700;flex:1}
   .admin-box .body{overflow:auto;padding:0}
-  .admin-row{display:grid;grid-template-columns:1fr auto auto auto auto;
+  .admin-row{display:grid;grid-template-columns:1fr auto auto auto auto auto;
     gap:10px;align-items:center;padding:11px 18px;
     border-bottom:1px solid var(--line);font-size:13px}
   .admin-row .un{font-weight:600;color:var(--cyan)}
+  .admin-row .tier-sel{font-family:var(--mono);font-size:10.5px;
+    background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:3px;padding:3px 5px;cursor:pointer}
+  .admin-row .tier-sel:disabled{opacity:.5;cursor:wait}
+  .admin-row .tier-sel:focus-visible{outline:2px solid var(--cyan);
+    outline-offset:1px}
   .admin-row .when{font-family:var(--mono);font-size:10px;color:var(--txt-mute)}
   .admin-row .badge{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;
     padding:2px 7px;border-radius:2px}
@@ -11133,6 +11139,54 @@ function closeAdmin(){
   $('#admin-mask').classList.remove('on');
 }
 
+/*
+  HTML 이스케이프.
+
+  서버에서 온 문자열을 innerHTML 로 그릴 때는 **반드시** 이걸 거친다.
+  닉네임처럼 사용자가 직접 정하는 값이 그대로 들어가면, 가입할 때 넣은
+  태그가 그걸 보는 사람의 브라우저에서 실행된다. 관리자 화면이 특히
+  위험하다 — 승인 대기 목록은 관리자가 반드시 열기 때문이다.
+*/
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+const TIERS=['free','premium','platinum'];
+const TIER_KO={free:'무료',premium:'프리미엄',platinum:'플래티넘'};
+
+/*
+  등급 변경 — 중앙 서버에 쓴다.
+
+  등급은 v4.0.0 부터 중앙 D1 에만 있다. 어느 PC 에서 로그인해도 같은
+  등급이 따라오고, 로컬 파일을 고쳐서 올릴 수 없다.
+*/
+async function adminSetTier(uid, tier, el){
+  const prev = el ? el.getAttribute('data-prev') || '' : '';
+  if(el) el.disabled = true;
+  try{
+    const r = await (await fetch('/api/quota/tier',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user_id:uid, tier})
+    })).json();
+    if(!r.ok){
+      // 실패했으면 고른 값을 되돌린다 — 바뀐 것처럼 보이면 안 된다
+      if(el && prev) el.value = prev;
+      alert('등급 변경 실패: ' + (r.error || '알 수 없는 오류'));
+      return;
+    }
+    if(el) el.setAttribute('data-prev', tier);
+    await refreshAdmin();
+    if(typeof refreshQuota==='function') refreshQuota();
+  }catch(e){
+    if(el && prev) el.value = prev;
+    alert('등급 변경 실패: ' + e);
+  }finally{
+    if(el) el.disabled = false;
+  }
+}
+
 async function refreshAdmin(){
   try{
     // 서버가 브라우저 쿠키로 신원을 확인한 뒤 중앙 서버에 물어본다
@@ -11210,11 +11264,19 @@ async function refreshAdmin(){
       if(u.role!=='admin'){
         actions.push(`<button onclick="adminResetQuota(${u.id})">쿼터 리셋</button>`);
       }
+      // 닉네임은 사용자가 정한 문자열이다. esc() 없이 innerHTML 에 넣으면
+      // 가입할 때 넣은 태그가 **관리자 브라우저에서** 실행된다. 승인 대기
+      // 목록은 관리자가 반드시 여는 화면이라 노출이 확실하다.
       const nickStr=(u.nickname && u.nickname!==u.username)
-        ?`<span style="color:var(--amber);font-size:11px;margin-left:5px">"${u.nickname}"</span>`:'';
+        ?`<span style="color:var(--amber);font-size:11px;margin-left:5px">"${esc(u.nickname)}"</span>`:'';
+      const tier=TIERS.includes(u.tier)?u.tier:'free';
+      const tierSel=`<select class="tier-sel" data-uid="${u.id}" data-prev="${tier}"
+          onchange="adminSetTier(${u.id}, this.value, this)">
+        ${TIERS.map(t=>`<option value="${t}"${t===tier?' selected':''}>${TIER_KO[t]}</option>`).join('')}
+      </select>`;
       return `<div class="admin-row">
         <div>
-          <span class="un">${u.username}</span>${nickStr}
+          <span class="un">${esc(u.username)}</span>${nickStr}
           ${u.role==='admin'?'<span class="badge admin">ADMIN</span>':''}
           <div class="when">
             가입 ${created} · 로그인 ${u.login_count||0}회 (마지막: ${lastLogin})
@@ -11222,6 +11284,7 @@ async function refreshAdmin(){
           </div>
         </div>
         <span class="badge ${u.status}">${u.status}</span>
+        ${tierSel}
         ${actions.join('')}
       </div>`;
     }).join('') || '<div class="hint" style="padding:30px;text-align:center">'+
