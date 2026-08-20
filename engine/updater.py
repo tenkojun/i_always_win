@@ -297,11 +297,15 @@ def apply_staged() -> Dict[str, Any]:
 
     UPDATE_DIR.mkdir(parents=True, exist_ok=True)
     ps = UPDATE_DIR / "apply.ps1"
-    ps.write_text(
-        _PS_TEMPLATE.format(APP=str(APP_ROOT), NEW=str(root),
-                            PID=os.getpid(),
-                            LOG=str(UPDATE_DIR / "apply.log")),
-        encoding="utf-8")
+    script = _PS_TEMPLATE.format(APP=str(APP_ROOT), NEW=str(root),
+                                 PID=os.getpid(),
+                                 LOG=str(UPDATE_DIR / "apply.log"))
+    # **BOM 이 있어야 한다.** Windows PowerShell 5.1 은 BOM 없는 .ps1 을
+    # 시스템 코드페이지(한국어 윈도우면 cp949)로 읽는다. UTF-8 로 저장한
+    # 한글 문자열이 깨지면서 따옴표가 닫히지 않아 **파서 오류**가 나고,
+    # 스크립트가 통째로 실행되지 않는다 — 로그조차 남지 않아 원인을
+    # 찾기 어렵다. 실제로 그렇게 실패했다.
+    ps.write_text(script, encoding="utf-8-sig")
 
     flags = 0
     if hasattr(subprocess, "CREATE_NO_WINDOW"):

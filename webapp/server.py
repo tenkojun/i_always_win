@@ -2291,10 +2291,23 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
 
         a = jiqtx.analyze(ticker, cfg=cfg)
 
-        base = "%s_precision.html" % ticker.replace("/", "_").replace(".", "_")
+        safe_tk = ticker.replace("/", "_").replace(".", "_")
+        base = "%s_precision.html" % safe_tk
         path = os.path.join(_REPORTS, base)
         jiqtx.save_html(a, path, theme=_report_theme())
         report_url = "/report/" + base
+
+        # 같은 분석으로 **간단 리서치**도 함께 만든다. 다시 계산하지 않고
+        # 보여 주는 방식만 바꾸는 것이라 비용이 거의 없다.
+        simple_url = ""
+        try:
+            from engine.jiqtx.simple_report import save_simple
+            sbase = "%s_simple.html" % safe_tk
+            save_simple(a, os.path.join(_REPORTS, sbase),
+                        theme=_report_theme(), full_report_url=report_url)
+            simple_url = "/report/" + sbase
+        except Exception as e:
+            print("[simple_report] 생성 실패:", e)
 
         # 영구 이력용 타임스탬프 사본
         archive_url = ""
@@ -2315,6 +2328,7 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
             "asof": getattr(a, "asof", ""),
             "elapsed": round(time.time() - t0, 1),
             "report_url": report_url,
+            "simple_url": simple_url,
             "archive_url": archive_url,
             **summary,
         }
@@ -2329,6 +2343,7 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
                 "grade": summary.get("grade"),
                 "verdict": summary.get("grade"),
                 "report_url": report_url,
+                "simple_url": simple_url,
                 "meta_verdict": {
                     "signal": summary.get("grade"),
                     "headline": "; ".join(summary.get("rationale", [])[:2]),

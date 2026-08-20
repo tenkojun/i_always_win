@@ -58,6 +58,7 @@ hiddenimports = [
     # v2.13~2.14 신규 — 용어사전 · 다지평 · 거시보드 · 보고서 테마
     'engine.jiqtx.glossary', 'engine.jiqtx.horizons',
     'engine.jiqtx.macro_board', 'engine.jiqtx.report_theme',
+    'engine.jiqtx.simple_report',
 
     # ── 앱 지원 모듈 ────────────────────────────────────────
     # v2.15.0 에서 구엔진(analysis/institutional/risk/factor/volatility/
