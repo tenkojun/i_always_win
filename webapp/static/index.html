@@ -5772,10 +5772,10 @@ async function vaultDelete(file){
 }
 
 /* ---------- 분석 이력 팝업 (상단 📜 칩) ---------- */
-function _histEsc(s){
-  return String(s==null?'':s).replace(/[&<>"]/g,
-    c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-}
+/* esc() 의 옛 이름. 예전 구현은 작은따옴표를 빼먹어서, 값이
+   href='...' 같은 홑따옴표 속성에 들어가면 빠져나갈 수 있었다.
+   호출부 40곳을 건드리지 않고 구현만 정식 것으로 넘긴다. */
+function _histEsc(s){ return esc(s); }
 
 async function openAnalyzeHistory(){
   let el=$('#hist-popup');
@@ -6012,8 +6012,10 @@ async function loadNews(){
       if(tr){
         const el = document.querySelector(`.ni-title[data-idx="${i}"]`);
         if(el){
-          el.innerHTML = `${tr} <span style="color:var(--txt-mute);
-            font-size:9.5px;margin-left:4px">[${(n.title||'').slice(0,40)}…]</span>`;
+          // 뉴스 제목은 외부 피드에서 온다 — 번역 결과도 마찬가지다.
+          // 이스케이프 없이 innerHTML 에 넣으면 피드가 곧 주입 경로가 된다.
+          el.innerHTML = `${esc(tr)} <span style="color:var(--txt-mute);
+            font-size:9.5px;margin-left:4px">[${esc((n.title||'').slice(0,40))}…]</span>`;
         }
       }
     });
@@ -7192,7 +7194,7 @@ async function caRegisterPc(){
       body:JSON.stringify({public_url:url, pc_label:''}),
     })).json();
     if(!r.ok){
-      out.innerHTML=`<span style="color:var(--down)">실패: ${r.error||''}</span>`;
+      out.innerHTML=`<span style="color:var(--down)">실패: ${esc(r.error||'')}</span>`;
       return;
     }
     out.innerHTML='<span style="color:var(--cyan)">✓ 등록 완료 — 이제 /go/&lt;username&gt; 사용 가능</span>';
@@ -10065,12 +10067,9 @@ async function loadCommunity(){
   }
 }
 
-function _escHtml(s){
-  if(!s)return '';
-  return String(s).replace(/[&<>"']/g, c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
+/* esc() 의 옛 이름 (게시판 쪽). 구현은 하나만 둔다 — 셋으로 나뉘어
+   있으면 그중 하나만 약해도 그 경로로 샌다(실제로 _histEsc 가 그랬다). */
+function _escHtml(s){ return esc(s); }
 
 function closeCommunityModal(){
   const m=$('#cm-modal');
@@ -10261,17 +10260,38 @@ function loadYoutube(){
   if([...sel.options].some(o=>o.value===last)){sel.value=last;}
   ytChangeChannel(sel.value,false);
 }
-function ytChangeChannel(vid,save=true){
-  const host=$('#yt-host');
-  if(!host||!vid)return;
-  // iframe — autoplay+mute (브라우저 autoplay 정책 우회)
-  const url=`https://www.youtube.com/embed/${vid}`+
-    `?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0`;
-  host.innerHTML=`<iframe src="${url}" frameborder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-    allowfullscreen
-    style="width:100%;height:100%;border:0;background:#000"></iframe>`;
-  if(save){localStorage.setItem(_YT_KEY,vid);}
+/*
+  유튜브 임베드.
+
+  전에는 문자열로 `<iframe src="${url}">` 를 조립해 innerHTML 에 넣었다.
+  vid 에 따옴표가 들어가면 속성 밖으로 빠져나갈 수 있는 모양이다. 값이
+  본인 설정에서만 오니 남을 공격하진 못하지만, 그런 형태를 남겨 둘 이유가
+  없다 — createElement 로 만들고 src 를 **프로퍼티로** 대입한다.
+  프로퍼티 대입에는 HTML 파싱이 없어서 탈출 자체가 성립하지 않는다.
+
+  거기에 더해 영상 ID 형식을 먼저 검사한다. 유튜브 ID 는 영문/숫자/-/_
+  11자다. 형식이 다르면 아예 만들지 않는다.
+*/
+const _YT_ID_RE = /^[A-Za-z0-9_-]{6,32}$/;
+
+function ytChangeChannel(vid, save = true){
+  const host = $('#yt-host');
+  if(!host || !vid) return;
+  if(!_YT_ID_RE.test(String(vid))){
+    host.textContent = '영상 ID 형식이 올바르지 않습니다.';
+    return;
+  }
+  const f = document.createElement('iframe');
+  // autoplay+mute — 브라우저 autoplay 정책 우회
+  f.src = 'https://www.youtube.com/embed/' + encodeURIComponent(vid)
+        + '?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0';
+  f.setAttribute('frameborder', '0');
+  f.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; '
+    + 'encrypted-media; gyroscope; picture-in-picture; web-share');
+  f.setAttribute('allowfullscreen', '');
+  f.style.cssText = 'width:100%;height:100%;border:0;background:#000';
+  host.replaceChildren(f);
+  if(save){ localStorage.setItem(_YT_KEY, vid); }
 }
 
 /* ---------- MACRO MAP (B1 — TradingView 풍 sector treemap) ---------- */
@@ -10655,7 +10675,7 @@ let _loginMode='login';    // 'login' | 'register'
 function _setLoginMsg(text, kind='err'){
   const el=$('#login-msg');
   if(!text){el.innerHTML='';return;}
-  el.innerHTML=`<div class="msg ${kind}">${text}</div>`;
+  el.innerHTML=`<div class="msg ${kind}">${esc(text)}</div>`;
 }
 
 function toggleLoginMode(){
