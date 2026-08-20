@@ -11,6 +11,47 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+/* 저장된 테마를 **가장 먼저** 적용한다.
+   예전에는 이 처리가 스크립트 아래쪽(_initAppearance)에 있었는데, 부팅
+   시퀀스가 그보다 훨씬 위에서 돌기 때문에 **부팅 화면이 테마를 못 봤다.**
+   무슨 테마를 골라 뒀든 부팅 로그는 늘 기본 시안색으로 흘렀다.
+   여기서 data-theme 을 붙여 두면 이후 모든 렌더가 그 팔레트를 쓴다. */
+(function(){
+  try{
+    // 키 이름은 아래 _APP_PREF_KEY / _saveCustomTheme 와 반드시 같아야
+    // 한다. 틀리면 조용히 아무 일도 안 일어난다(예외도 안 난다).
+    const p = JSON.parse(localStorage.getItem('iaw.appearance.v1')||'null');
+    const t = p && p.theme;
+    const ok = ['cyber','dark','white','edex','snow','sakura','autumn',
+                'ocean','custom'];
+    if(t && t !== 'cyber' && ok.indexOf(t) >= 0){
+      document.documentElement.setAttribute('data-theme', t);
+    }
+    if(p && p.fontSize){
+      document.documentElement.classList.add('fsize-'+p.fontSize);
+    }
+    // custom 은 색 변수 자체가 저장돼 있다 — :root[data-theme=custom] 에
+    // 얹는다. 나중에 applyCustomThemeVars() 가 같은 style 태그를 다시
+    // 채우므로 id 를 맞춰 둔다.
+    if(t === 'custom'){
+      const cv = JSON.parse(localStorage.getItem('iaw.theme.custom')||'null');
+      if(cv && typeof cv === 'object'){
+        let rules = '';
+        for(const k in cv){
+          if(k.slice(0,2) === '--') rules += '  '+k+': '+cv[k]+';\n';
+        }
+        if(rules){
+          const el = document.createElement('style');
+          el.id = 'custom-theme-style';
+          el.textContent = ':root[data-theme="custom"]{\n'+rules+'}';
+          document.head.appendChild(el);
+        }
+      }
+    }
+  }catch(e){}   // 테마 하나 때문에 앱이 안 뜨면 안 된다
+})();
+</script>
 <style>
   /* 기본 테마: cyber (네온 시안 - 원본) */
   :root{
@@ -162,7 +203,7 @@
       radial-gradient(ellipse at 50% 0%,rgba(61,240,255,.06),transparent 60%);
   }
   /* boot overlay — 미니멀 여우 (사용자 사진 참고) */
-  #boot{position:fixed;inset:0;z-index:10000;background:#000;
+  #boot{position:fixed;inset:0;z-index:10000;background:var(--bg);
     display:flex;align-items:center;justify-content:center;
     flex-direction:column;font-family:var(--mono);color:var(--txt);
     overflow:hidden;transition:opacity .6s}
@@ -240,7 +281,8 @@
   #boot-term{position:absolute;inset:0;z-index:3;
     display:block;padding:22px 28px 40px;overflow:hidden;
     font-family:var(--mono);font-size:11.5px;line-height:1.42;
-    color:#8ff5d8;text-shadow:0 0 7px rgba(61,240,255,.3);
+    /* 하드코딩하면 사용자가 고른 테마를 무시한다 — 전부 변수로. */
+    color:var(--txt);text-shadow:var(--glow);
     -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 88%,transparent 100%);
     mask-image:linear-gradient(180deg,#000 0%,#000 88%,transparent 100%)}
   #boot.logo #boot-term,#boot.snap #boot-term{opacity:0;
@@ -249,8 +291,8 @@
     animation:blIn .1s ease-out backwards;
     overflow:hidden;text-overflow:ellipsis}
   #boot-term .bl .ok{color:var(--cyan);text-shadow:0 0 10px var(--cyan)}
-  #boot-term .bl .wn{color:#ffd166}
-  #boot-term .bl .dim{color:#4a5c66}
+  #boot-term .bl .wn{color:var(--amber)}
+  #boot-term .bl .dim{color:var(--txt-mute)}
   #boot-term .cur{display:inline-block;width:8px;height:13px;
     background:var(--cyan);vertical-align:-2px;margin-left:3px;
     animation:blCur .7s steps(1) infinite;box-shadow:0 0 10px var(--cyan)}
@@ -264,7 +306,7 @@
   #boot.snap .snapfx{animation:snapFlash .3s ease-out}
   @keyframes snapFlash{
     0%{opacity:0;background:transparent}
-    12%{opacity:1;background:rgba(61,240,255,.30)}
+    12%{opacity:1;background:var(--hover)}
     30%{opacity:.6;background:rgba(255,255,255,.06)}
     100%{opacity:0;background:transparent}}
   #boot .snapline{position:absolute;left:0;right:0;height:2px;z-index:5;
@@ -3802,6 +3844,9 @@ let _BOOT_LINES=[
   ['','physical memory map initialized','ok'],
   ['','[MEM] reserving 512M for simulation heap','ok'],
   ['','[MEM] page tables mapped, NX enabled','ok'],
+  ['','[MEM] slab allocator: 64 pools, quantum 8B','ok'],
+  ['','[MEM] hugepage support: 2M pages available','ok'],
+  ['','[MEM] zeroing 512M arena ... done','ok'],
   ['','CPU: enumerating logical processors','ok'],
   ['','CPU0: vector unit online (float64)','ok'],
   ['','CPU1: vector unit online (float64)','ok'],
@@ -3810,6 +3855,10 @@ let _BOOT_LINES=[
   ['','BLAS backend bound, threads=auto','ok'],
   ['','SIMD path: AVX2 enabled','ok'],
   ['','float64 denormal flush: on','ok'],
+  ['','FPU: 80-bit extended precision disabled','ok'],
+  ['','RNG: PCG64 seeded from os.urandom(32)','ok'],
+  ['','thread pool: 12 workers, affinity auto','ok'],
+  ['','[SCHED] nice=0, io class best-effort','ok'],
   ['','',''],
   ['','[SEC] loading security policy','ok'],
   ['','[SEC] session isolation: per-browser token','ok'],
@@ -3817,6 +3866,11 @@ let _BOOT_LINES=[
   ['','[SEC] PBKDF2-SHA256 rounds capped at 100000','ok'],
   ['','[SEC] cookie flags: HttpOnly SameSite=Lax','ok'],
   ['','[SEC] tunnel origin allowlist armed','ok'],
+  ['','[SEC] session token: 32B urandom, HttpOnly','ok'],
+  ['','[SEC] CSRF: SameSite=Lax on state-changing routes','ok'],
+  ['','[SEC] report path traversal guard installed','ok'],
+  ['','[SEC] key store: env > .data/keys.json, never logged','ok'],
+  ['','[SEC] quota ledger: BEGIN IMMEDIATE, no fail-open','ok'],
   ['','rooting via central auth endpoint','ok'],
   ['','[PCI configuration begin]','dim'],
   ['','runtime paths resolved -> .data/','ok'],
@@ -3834,6 +3888,11 @@ let _BOOT_LINES=[
   ['','cache: pickle store mounted at .data/cache','ok'],
   ['','calendar: NYSE + KRX holiday tables loaded','ok'],
   ['','ohlcv contract: lowercase cols + DatetimeIndex','ok'],
+  ['','[DATA] integrity: gap scan, OHLC sanity, dup days','ok'],
+  ['','[DATA] holiday allowance ~16d/yr, long-gap limit 2','ok'],
+  ['','[DATA] adjusted close reconciliation: split/div','ok'],
+  ['','[DATA] fx normalization to USD base','ok'],
+  ['','[FRED] macro series: 14 registered','ok'],
   ['','',''],
   ['','loading analysis modules','ok'],
   ['','  statcore  PSR/DSR · Purged CV · CPCV/PBO','ok'],
@@ -3851,9 +3910,21 @@ let _BOOT_LINES=[
   ['','  macro     14 vars, |t|<2 -> neutral','ok'],
   ['','  thesis    scenarios · falsifiers','ok'],
   ['','  agents    hard gates · 14-member panel','ok'],
+  ['','  glossary  66 terms bound to tooltip layer','ok'],
+  ['','  charts    21 inline svg renderers','ok'],
+  ['','  simple    beginner research renderer','ok'],
+  ['','  updater   github releases watcher','ok'],
   ['','  ledger    forecast store -> scoring -> reweight','ok'],
   ['','  portfolio risk contribution · factor netting','ok'],
   ['','32 modules linked, 0 unresolved','ok'],
+  ['','',''],
+  ['','[GATE] G1 data integrity      -> HALT on fail','ok'],
+  ['','[GATE] G2 tradability         -> SIZE_ZERO','ok'],
+  ['','[GATE] G3 factor fit          -> block alpha claim','ok'],
+  ['','[GATE] G4 ml overfit/calib    -> DISABLE_MODULE','ok'],
+  ['','[GATE] G7 stress limit        -> SIZE_ZERO','ok'],
+  ['','[GATE] G8 class confidence    -> min size','ok'],
+  ['','gate matrix armed, abstention path verified','ok'],
   ['','',''],
   ['','[FLOW] intraday scanner armed','ok'],
   ['','[FLOW] RVOL baseline: same-clock median, 20d','ok'],
@@ -3861,6 +3932,8 @@ let _BOOT_LINES=[
   ['','[FLOW] note: US participant breakdown unavailable','wn'],
   ['','[FLOW] KR investor-type feed: pending','wn'],
   ['','[FLOW] cache ttl 180s, delayed feed 15m','ok'],
+  ['','[FLOW] sector map: 11 GICS + index/commodity ETF','ok'],
+  ['','[FLOW] rotation baseline: prev session, same clock','ok'],
   ['','',''],
   ['','report engine: 37 sections registered','ok'],
   ['','report engine: 21 inline svg renderers','ok'],
@@ -3869,6 +3942,9 @@ let _BOOT_LINES=[
   ['','glossary: 66 terms bound to tooltip layer','ok'],
   ['','viewer: in-app iframe, zoom + vault','ok'],
   ['','quota: free 3/day · premium unlimited','ok'],
+  ['','tier matrix: free / premium / platinum','ok'],
+  ['','themes: dark · light · sepia · high-contrast','ok'],
+  ['','[AUDIO] synth bank: 13 voices, fm + convolution','ok'],
   ['','',''],
   ['','[POLICY] no single composite score','wn'],
   ['','[POLICY] direction / risk budget / confidence kept apart','wn'],
@@ -3876,8 +3952,15 @@ let _BOOT_LINES=[
   ['','[POLICY] absent data removes the section','wn'],
   ['','[POLICY] horizons are never averaged','wn'],
   ['','[POLICY] |t| < 2 -> neutral, no narrative','wn'],
+  ['','[POLICY] horizons reported separately, never averaged','wn'],
+  ['','[POLICY] log-return and level vars never mixed','wn'],
+  ['','[POLICY] survivorship bias acknowledged, not corrected','wn'],
+  ['','[POLICY] fundamentals are not point-in-time','wn'],
   ['','',''],
   ['','tunnel supervisor standing by','ok'],
+  ['','cloudflared: binary present, tunnel idle','ok'],
+  ['','central auth: reachable','ok'],
+  ['','session store: per-browser cookie, not per-PC','ok'],
   ['','network status: link up','ok'],
   ['','interface handoff to renderer','ok'],
   ['','Boot Complete.','ok'],
@@ -3898,17 +3981,19 @@ function _bootBlip(){
 // 구획 경계마다 다 세우면 늘어진다(8군데 = 5.2초). 흐름이 크게
 // 바뀌는 다섯 곳에만 건다.
 const _BOOT_PAUSE = {
-  2:  501,   // 헤더 직후 — 한 박자 쉬고 본격 시작
-  14: 401,   // 메모리·CPU 블록 끝
-  38: 301,   // 데이터 소스 프로빙 끝
-  58: 301,   // 엔진 모듈 적재 끝
-  73: 301,   // 보고서 엔진 블록 끝
+  2:   501,   // 헤더 직후 — 한 박자 쉬고 본격 시작
+  21:  401,   // 메모리·CPU 블록 끝
+  38:  301,   // 보안 정책 블록 끝
+  55:  301,   // 데이터 소스 프로빙 끝
+  79:  301,   // 엔진 모듈 적재 끝
+  96:  301,   // 게이트 매트릭스 끝
+  118: 301,   // 정책 블록 끝
 };
 function _bootDelay(i, n){
   if(i <= 1) return 0;                 // 헤더 두 줄은 즉시
   if(_BOOT_PAUSE[i] != null) return _BOOT_PAUSE[i];
   if(i >= n - 2) return 301;           // 마지막 두 줄은 여운
-  return 26;                           // 기본 흐름
+  return 22;                           // 기본 흐름
 }
 
 function _bootSkip(){
