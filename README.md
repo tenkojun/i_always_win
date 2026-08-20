@@ -21,7 +21,7 @@
 
 ![version](https://img.shields.io/badge/version-3.3.0-c9a227?style=for-the-badge&labelColor=000000)
 ![python](https://img.shields.io/badge/python-3.12-c9a227?style=for-the-badge&labelColor=000000)
-![engine](https://img.shields.io/badge/engine-32_modules_·_15k_LOC-c9a227?style=for-the-badge&labelColor=000000)
+![engine](https://img.shields.io/badge/engine-33_modules_·_15.6k_LOC-c9a227?style=for-the-badge&labelColor=000000)
 ![license](https://img.shields.io/badge/license-MIT-c9a227?style=for-the-badge&labelColor=000000)
 
 <br>
@@ -79,7 +79,7 @@ python run_desktop.py          # → http://127.0.0.1:8765
 EXE 빌드:
 
 ```bash
-pyinstaller app.spec --noconfirm   # → dist/Plutus/Plutus.exe (193MB)
+python tools/release.py --build    # → dist/Plutus/ (194MB) + 릴리스 발행
 ```
 
 ---
@@ -105,7 +105,7 @@ pyinstaller app.spec --noconfirm   # → dist/Plutus/Plutus.exe (193MB)
 ## 라이선스 — MIT
 
 **외부 저작물이 들어 있지 않다.** 부팅 화면의 효과음은 전부 Web Audio
-실시간 합성이라 오디오 파일이 0개이고, 부팅 로그 85줄과 줄별 지연
+실시간 합성이라 오디오 파일이 0개이고, 부팅 로그 126줄과 줄별 지연
 타이밍도 이 프로젝트가 직접 작성했다.
 
 덕분에 소스 공개 의무 없이 EXE 단독 배포·상용 이용이 모두 가능하다.
@@ -186,7 +186,7 @@ flowchart TD
 R² 밴드도 자산군마다 다르다 — 귀금속 10~55%, 국채 55~98%.
 같은 밴드를 모든 자산에 들이대면 국채는 늘 "설명력 과다", 금은 늘 "붕괴"로 읽힌다.
 
-**자산군 19종** · **주식 아키타입 9종** · **보고서 섹션 레지스트리 35개**
+**자산군 19종** · **주식 아키타입 9종** · **보고서 섹션 레지스트리 37개**
 
 ```
 귀금속        실질금리 β는 반드시 시변. 금-TIPS R²는 2005–2021 약 84%에서
