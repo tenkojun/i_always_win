@@ -3,9 +3,9 @@
 ## 프로젝트
 - 목표: BlackRock Aladdin 동급+ 퀀트 분석 플랫폼
 - 개발자: Tenko jun - 정준화
-- 저장소: https://github.com/tenkojun/i_always_win *(이름은 Plutus 로 바꿨지만
-  저장소·인증 Worker 주소는 배포된 자원이라 그대로 둔다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.1)
+- 저장소: https://github.com/tenkojun/plutus *(v3.4.2 에서 `i_always_win`
+  에서 리네임. 옛 주소는 GitHub 가 리다이렉트한다. 아래 "이름" 참조)*
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 3.4.2)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
 - 라이선스: **MIT** — 외부 저작물 0개 (사운드는 전부 Web Audio 합성)
@@ -97,12 +97,20 @@ e/
 - 소급 발행은 `--latest=false` 필수. 안 주면 옛 버전이 Latest 가 된다
 
 ## 이름
-제품명은 **Plutus**(그리스 신화 부의 신)다. 아래 둘은 **배포된 자원의
-주소**라 제품명을 바꿔도 그대로 둔다 — 바꾸면 로그인이 끊기고 원격
-저장소가 사라진다. 옮기려면 Cloudflare/GitHub 에서 먼저 리네임할 것.
+제품명은 **Plutus**(그리스 신화 부의 신)다. 저장소는 v3.4.2 에서
+`i_always_win` → `plutus` 로 리네임했다(GitHub 에서 먼저 바꾸고 코드의
+URL 을 따라 고쳤다). 옛 주소는 GitHub 가 웹·API 모두 리다이렉트하므로
+구버전 앱의 업데이트 확인도 계속 동작한다.
 
-    https://iaw-auth.tenkojun.workers.dev   중앙 인증 Worker
-    github.com/tenkojun/i_always_win        저장소
+아직 남은 옛 이름 둘은 **배포된 자원의 식별자**라 그대로 둔다.
+바꾸면 각각 로그인이 끊기고, 기존 사용자 설정이 고아가 된다.
+
+    https://iaw-auth.tenkojun.workers.dev   중앙 인증 Worker (URL)
+    %LOCALAPPDATA%\i_always_win             폴백 데이터 폴더 (engine/paths.py)
+
+앞의 것은 Cloudflare 에서 먼저 리네임해야 옮길 수 있고, 뒤의 것은 옮기려면
+**마이그레이션 코드가 먼저** 있어야 한다 — 이름만 바꾸면 기존 PC 의 키·
+계정 DB 를 앱이 못 찾는다.
 
 ## UI 주의
 - 앱 테마는 `data-theme` 속성 + CSS 변수. **저장된 테마를 `<head>` 최상단

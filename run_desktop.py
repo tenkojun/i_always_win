@@ -189,6 +189,107 @@ def _icon_path() -> str | None:
     return None
 
 
+# ─────────────────────────────────────────────────────────────
+#  WebView2 런타임 — 창이 안 뜨는 1순위 원인
+# ─────────────────────────────────────────────────────────────
+#  pywebview 는 윈도우에서 Edge WebView2 위에 화면을 그린다. 이 런타임이
+#  없으면 창이 비거나 열리자마자 닫힌다. 그런데 EXE 는 console=False 라
+#  오류 메시지가 어디에도 안 보인다 — 사용자 눈에는 "그냥 안 켜짐" 이다.
+#  (실제로 새 PC 에서 이 증상이 났다. v3.4.2 에서 잡았다.)
+#
+#  윈도우 11 과 최근 윈도우 10 에는 기본 탑재지만, 정리된 이미지나 LTSC,
+#  Edge 를 제거한 PC 에는 없다.
+WEBVIEW2_GUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+WEBVIEW2_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
+
+
+def webview2_version() -> str | None:
+    """설치돼 있으면 버전 문자열, 없으면 None. 윈도우가 아니면 None."""
+    if os.name != "nt":
+        return None
+    try:
+        import winreg
+    except Exception:
+        return None
+    spots = (
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\EdgeUpdate\Clients"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\EdgeUpdate\Clients"),
+    )
+    for hive, base in spots:
+        try:
+            with winreg.OpenKey(hive, base + "\\" + WEBVIEW2_GUID) as k:
+                pv, _ = winreg.QueryValueEx(k, "pv")
+                if pv and pv != "0.0.0.0":
+                    return str(pv)
+        except OSError:
+            continue
+        except Exception:
+            continue
+    return None
+
+
+def _msgbox(text: str, title: str, flags: int) -> int:
+    """
+    네이티브 대화상자. 콘솔이 없어도 보인다 — 이게 요점이다.
+    띄우지 못하면 0 을 돌려주고 호출한 쪽이 알아서 진행한다.
+    """
+    if os.name != "nt":
+        return 0
+    try:
+        import ctypes
+        return int(ctypes.windll.user32.MessageBoxW(None, text, title, flags))
+    except Exception:
+        return 0
+
+
+def warn_missing_webview2(url: str) -> None:
+    """
+    런타임이 없다고 알리고 설치 페이지를 열어 준다. 그리고 **지금 당장은
+    브라우저로 쓸 수 있게** 한다 — Plutus 는 어차피 로컬 웹앱이라
+    브라우저에서도 기능이 전부 돈다. 설치를 강요할 이유가 없다.
+    """
+    MB_YESNO, MB_ICONWARNING, MB_SETFOREGROUND = 0x4, 0x30, 0x10000
+    IDYES = 6
+    nl = "\n"
+    msg = (
+        f"{APP_NAME} 를 창으로 띄우려면 Microsoft Edge WebView2 런타임이 "
+        f"필요한데, 이 PC 에는 설치돼 있지 않습니다.{nl}{nl}"
+        f"지금은 기본 브라우저로 열어 드립니다. 모든 기능이 그대로 동작합니다.{nl}{nl}"
+        f"다음부터 앱 창으로 쓰시려면 런타임을 설치하세요.{nl}"
+        f"(무료 · 마이크로소프트 공식 · 'Evergreen 부트스트래퍼'){nl}{nl}"
+        "설치 페이지를 지금 여시겠습니까?"
+    )
+    # 여기는 "이미 뭔가 잘못된" 경로다. 로그 리다이렉트가 실패한 상태일
+    # 수도 있으니 print 가 절대 예외를 내지 않게 ASCII 만 쓴다
+    # (em-dash 하나로 cp949 콘솔에서 UnicodeEncodeError 가 난다).
+    print("[!] WebView2 runtime not found - falling back to browser.",
+          flush=True)
+    if _msgbox(msg, f"{APP_NAME} — WebView2 런타임 필요",
+               MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND) == IDYES:
+        try:
+            webbrowser.open(WEBVIEW2_URL)
+        except Exception:
+            pass
+    _browser_mode(url)
+
+
+def _browser_mode(url: str) -> None:
+    """창 대신 브라우저로 띄우고 서버를 살려 둔다."""
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+    print(f"\n브라우저에서 열었습니다: {url}", flush=True)
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        print("\n종료합니다.")
+    _shutdown()
+
+
 def main() -> None:
     _setup_logging()
 
@@ -212,6 +313,16 @@ def main() -> None:
         else:
             print("주의: 서버 응답이 늦습니다. 그래도 창을 엽니다.", flush=True)
 
+    # 창을 만들기 **전에** 런타임부터 본다. pywebview 는 런타임이 없으면
+    # 창을 띄우다 실패하는데, console=False 라 그 오류가 아무 데도 안 보인다.
+    # 미리 확인하면 사용자에게 왜 그런지 말해 줄 수 있다.
+    if os.name == "nt":
+        wv2 = webview2_version()
+        print(f"WebView2 런타임: {wv2 or '없음'}", flush=True)
+        if not wv2:
+            warn_missing_webview2(url)
+            return
+
     try:
         import webview  # type: ignore
         window = webview.create_window(
@@ -233,14 +344,24 @@ def main() -> None:
         _shutdown()
     except ImportError:
         # pywebview 가 없으면 기본 브라우저로 연다
-        webbrowser.open(url)
-        print("\n브라우저에서 열었습니다. 종료하려면 Ctrl+C.", flush=True)
-        try:
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            print("\n종료합니다.")
-            _shutdown()
+        _browser_mode(url)
+    except Exception as e:
+        # 런타임 점검을 통과하고도 창이 안 뜨는 경우가 남는다(그래픽 드라이버,
+        # 손상된 WebView2, 정책으로 막힌 사용자 데이터 폴더 등). 여기서
+        # 조용히 죽으면 사용자는 이유를 영영 모른다 — 말해 주고 브라우저로.
+        import traceback
+        print("[!] 앱 창 생성 실패:", flush=True)
+        traceback.print_exc()
+        MB_OK, MB_ICONERROR, MB_SETFOREGROUND = 0x0, 0x10, 0x10000
+        nl = "\n"
+        _msgbox(
+            f"앱 창을 여는 데 실패했습니다.{nl}{nl}"
+            f"{type(e).__name__}: {e}{nl}{nl}"
+            f"기본 브라우저로 열어 드립니다. 기능은 전부 그대로입니다.{nl}"
+            f"자세한 내용은 .data/logs/app.log 에 남습니다.",
+            f"{APP_NAME} — 창을 열 수 없음",
+            MB_OK | MB_ICONERROR | MB_SETFOREGROUND)
+        _browser_mode(url)
 
 
 if __name__ == "__main__":

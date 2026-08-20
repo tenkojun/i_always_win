@@ -167,7 +167,7 @@ def main() -> int:
     sh(gh, "release", "create", tag, ZIP,
        "--title", tag, "--notes-file", nf, "--latest", "--verify-tag")
     os.remove(nf)
-    print(f"\n발행 완료 → https://github.com/tenkojun/i_always_win/releases/tag/{tag}")
+    print(f"\n발행 완료 → https://github.com/tenkojun/plutus/releases/tag/{tag}")
     return 0
 
 

@@ -7,14 +7,14 @@ Plutus — 버전 단일 소스(single source of truth).
 """
 from __future__ import annotations
 
-__version__ = "3.4.1"
+__version__ = "3.4.2"
 
 APP_NAME = "Plutus"
 APP_SLUG = "plutus"
 APP_TAGLINE = "기관급 퀀트 분석 터미널"
 APP_SUBTITLE = "Research & Analytics"
 DEVELOPER = "Tenko jun - 정준화"
-REPO_URL = "https://github.com/tenkojun/i_always_win"
+REPO_URL = "https://github.com/tenkojun/plutus"
 
 # ── 배포된 인프라 식별자 — 이름을 바꿔도 그대로 둔다 ──────────
 # 아래 둘은 **이미 배포돼 돌아가는 자원의 주소**다. 제품명을 Plutus 로

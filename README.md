@@ -19,7 +19,7 @@
 
 <br>
 
-![version](https://img.shields.io/badge/version-3.4.1-c9a227?style=for-the-badge&labelColor=000000)
+![version](https://img.shields.io/badge/version-3.4.2-c9a227?style=for-the-badge&labelColor=000000)
 ![python](https://img.shields.io/badge/python-3.12-c9a227?style=for-the-badge&labelColor=000000)
 ![engine](https://img.shields.io/badge/engine-33_modules_·_15.6k_LOC-c9a227?style=for-the-badge&labelColor=000000)
 ![license](https://img.shields.io/badge/license-MIT-c9a227?style=for-the-badge&labelColor=000000)
@@ -70,8 +70,8 @@
 ## 30초 시작
 
 ```bash
-git clone https://github.com/tenkojun/i_always_win.git
-cd i_always_win
+git clone https://github.com/tenkojun/plutus.git
+cd plutus
 pip install -r requirements.txt
 python run_desktop.py          # → http://127.0.0.1:8765
 ```
