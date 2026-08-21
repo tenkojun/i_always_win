@@ -53,6 +53,9 @@ ADMIN_ONLY = {
     "/api/quota/tier",
 }
 
+# LAN 노출 토글도 로그인해야만 만질 수 있어야 한다
+SENSITIVE = {"/api/network/lan", "/api/datasources/key", "/api/llm/auto_setup"}
+
 
 def _routes():
     """(경로, 데코레이터들, 함수명) 목록."""
@@ -114,6 +117,21 @@ def test_no_new_unprotected_routes():
         "추가하고, 아니면 데코레이터를 붙일 것:\n  " + "\n  ".join(bad))
 
 
+def test_sensitive_routes_are_locked():
+    """
+    특히 위험한 것들은 개별로도 확인한다.
+
+    /api/datasources/key 는 인증 없이 API 키를 덮어썼고,
+    /api/llm/auto_setup 은 인증 없이 Ollama 설치를 트리거했다
+    (다운로드 + 실행). /api/network/lan 은 노출 범위를 바꾼다.
+    이 셋은 목록 검사에 묻히면 안 돼서 이름을 박아 둔다.
+    """
+    found = {p: d for p, d, _ in _routes()}
+    for path in SENSITIVE:
+        assert path in found, f"{path} 라우트가 사라졌다"
+        assert "require_auth" in found[path] or "require_admin" in found[path],             f"{path} 가 다시 무인증으로 열렸다"
+
+
 def test_public_list_has_no_stale_entries():
     """PUBLIC_OK 에 이미 없어진 라우트가 남아 목록을 무의미하게 만들지 않게."""
     paths = {p for p, _, _ in _routes()}
@@ -155,3 +173,48 @@ def test_worker_password_iterations_within_platform_limit():
     m = re.search(r'PBKDF2_ITERATIONS\s*=\s*(\d+)', js)
     assert m, "PBKDF2_ITERATIONS 를 못 찾았다"
     assert int(m.group(1)) <= 100000, "10만 회를 넘으면 배포본에서 죽는다"
+
+
+# ── 네트워크 노출 ────────────────────────────────────────────
+LAUNCHER = (ROOT / "run_desktop.py").read_text(encoding="utf-8")
+
+
+def test_binds_localhost_by_default():
+    """
+    기본은 127.0.0.1 이어야 한다.
+
+    전에는 늘 0.0.0.0 이라, 앱을 켜는 것만으로 같은 망의 모든 기기에
+    열렸다. 카페·PC방·회사 망에서는 의도한 적 없는 노출이다.
+    Jupyter·TensorBoard 도 같은 이유로 기본이 localhost 다.
+    """
+    assert "def lan_allowed()" in LAUNCHER, "LAN 스위치가 사라졌다"
+    assert '"0.0.0.0" if lan_allowed() else "127.0.0.1"' in LAUNCHER,         "무조건 0.0.0.0 에 붙는 상태로 되돌아갔다"
+
+
+def test_no_external_script_sources():
+    """
+    화면이 외부에서 스크립트를 끌어오지 않는가.
+
+    CDN 이 오염되면 임의의 JS 가 이 앱의 출처로 실행된다 — 세션이 붙은
+    요청을 마음대로 보낼 수 있다. jsdelivr 은 파일을 동적으로 재압축해서
+    SRI 로도 못 막는다(그쪽 파일 주석의 경고).
+    """
+    html = (ROOT / "webapp" / "static" / "index.html").read_text(encoding="utf-8")
+    ext = re.findall(r'<script[^>]+src="(https?://[^"]+)"', html)
+    assert not ext, f"외부 스크립트가 다시 들어왔다: {ext}"
+    for f in ("lightweight-charts-4.1.3.js", "qrcode-generator-1.4.4.js"):
+        assert (ROOT / "webapp" / "static" / "vendor" / f).exists(),             f"들여온 라이브러리가 없다: {f}"
+
+
+def test_security_headers_are_set():
+    """CSP·nosniff·frame-ancestors 등이 응답에 붙는가."""
+    assert "@app.after_request" in SERVER
+    for h in ("Content-Security-Policy", "X-Content-Type-Options",
+              "X-Frame-Options", "Referrer-Policy", "Permissions-Policy"):
+        assert h in SERVER, f"{h} 헤더가 사라졌다"
+    # CSP 가 실질적인가 — 아무 출처나 허용하면 없는 것과 같다
+    assert "object-src 'none'" in SERVER
+    assert "base-uri 'self'" in SERVER
+    assert "frame-ancestors 'self'" in SERVER
+    assert "*" not in re.search(r'_CSP = "; "\.join\(\[(.*?)\]\)',
+                                SERVER, re.S).group(1).replace("*/", "")

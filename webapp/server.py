@@ -248,6 +248,47 @@ def _cleanup_tunnel():
 def _before():
     attach_user()
 
+
+# ── 보안 헤더 ────────────────────────────────────────────────
+# CDN 스크립트를 로컬로 들여온 뒤부터 CSP 를 실질적으로 걸 수 있게 됐다.
+# 전에는 unpkg / jsdelivr 를 허용해야 해서 script-src 가 사실상 무의미했다.
+#
+# 인라인은 아직 허용해야 한다 — UI 가 11,000줄 단일 HTML 이고 JS 와
+# style="" 751곳이 전부 인라인이다. nonce 로 바꾸려면 UI 를 통째로 다시
+# 짜야 하므로, 지금은 **출처를 좁히는 것**까지만 한다. 그것만으로도
+# 외부에서 스크립트를 끌어오는 경로는 막힌다.
+_CSP = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    # 유튜브 위젯만 iframe 을 쓴다
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+    "object-src 'none'",           # 플러그인 실행 경로를 없앤다
+    "base-uri 'self'",             # <base> 주입으로 상대경로를 훔치지 못하게
+    "form-action 'self'",
+    "frame-ancestors 'self'",      # 남의 페이지에 끼워 넣지 못하게 (클릭재킹)
+])
+
+
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault("Content-Security-Policy", _CSP)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    # 이 앱은 위치·카메라·마이크를 쓰지 않는다. 명시적으로 끈다.
+    resp.headers.setdefault(
+        "Permissions-Policy",
+        "geolocation=(), microphone=(), camera=(), payment=(), usb=()")
+    # 인증이 걸린 응답은 중간 캐시에 남으면 안 된다
+    if resp.headers.get("Cache-Control") is None and \
+            request.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
+
 # ── 한국어 종목 별칭(검색 편의) ───────────────────────────────────
 TICKER_ALIASES: Dict[str, str] = {
     "삼성전자": "005930.KS", "samsung": "005930.KS",
@@ -2548,6 +2589,58 @@ def api_update_apply():
 
 
 # ── 회원 등급 · 보고서 한도 ────────────────────────────────
+# ── LAN 접속 허용 (폰으로 보기) ──────────────────────────────
+@app.route("/api/network/lan")
+@require_auth
+def api_lan_status():
+    """
+    같은 와이파이의 다른 기기에서 접속하게 할 것인가.
+
+    **기본은 꺼져 있다.** 전에는 늘 0.0.0.0 에 붙어서, 앱을 켜는 것만으로
+    같은 망의 모든 기기에 열렸다. 카페·PC방·회사 망에서는 의도한 적 없는
+    노출이다.
+    """
+    from engine.paths import DATA_DIR
+    return jsonify({"ok": True,
+                    "enabled": (DATA_DIR / "allow_lan").exists(),
+                    "url": _lan_url(),
+                    "note": "변경은 앱을 다시 켜야 적용됩니다."})
+
+
+def _lan_url() -> str:
+    """폰에서 칠 주소. 못 알아내면 빈 문자열."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))          # 패킷은 안 나간다 — 경로만 본다
+        ip = s.getsockname()[0]
+        s.close()
+        port = int(os.environ.get("IAW_PORT", 8765))
+        return f"http://{ip}:{port}"
+    except Exception:
+        return ""
+
+
+@app.route("/api/network/lan", methods=["POST"])
+@require_auth
+def api_lan_set():
+    from engine.paths import DATA_DIR
+    d = request.get_json(force=True, silent=True) or {}
+    want = bool(d.get("enabled"))
+    f = DATA_DIR / "allow_lan"
+    try:
+        if want:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            f.write_text("1", encoding="utf-8")
+        elif f.exists():
+            f.unlink()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    # 이미 떠 있는 서버의 바인딩 주소는 못 바꾼다 — 재시작해야 한다
+    return jsonify({"ok": True, "enabled": want, "url": _lan_url(),
+                    "restart_required": True})
+
+
 @app.route("/api/quota")
 @require_auth
 def api_quota():

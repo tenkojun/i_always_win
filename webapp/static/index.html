@@ -9,8 +9,20 @@
 <title>Plutus · 기관급 퀀트 분석 터미널</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<!--
+  차트/QR 라이브러리는 **로컬에서** 불러온다.
+
+  전에는 unpkg / jsdelivr 에서 직접 받았다. 그러면
+    - CDN 이나 경로가 오염되면 임의의 JS 가 **이 앱의 출처로** 실행된다.
+      세션이 붙은 요청을 마음대로 보낼 수 있다.
+    - 인터넷이 없으면 차트가 통째로 안 뜬다.
+    - jsdelivr 은 파일을 동적으로 재압축해서 SRI 조차 걸 수 없다
+      (그쪽 파일 주석에 직접 그렇게 쓰여 있다).
+  들여오니 셋 다 사라진다. 합쳐서 182KB 뿐이다.
+  출처와 라이선스는 THIRD-PARTY.md 참조.
+-->
+<script src="/static/vendor/lightweight-charts-4.1.3.js"></script>
+<script src="/static/vendor/qrcode-generator-1.4.4.js"></script>
 <script>
 /* 저장된 테마를 **가장 먼저** 적용한다.
    예전에는 이 처리가 스크립트 아래쪽(_initAppearance)에 있었는데, 부팅
@@ -2894,6 +2906,35 @@
                   line-height:1.5">
                   GitHub 릴리스를 확인합니다. 설정·키·계정은 유지됩니다.</span>
               </div>
+            </div>
+
+            <!--
+              같은 와이파이 노출. 기본은 꺼짐 — 앱을 켜는 것만으로 같은
+              망의 모든 기기에 열리면 안 된다. 폰으로 보는 기능은 그대로
+              있고, 여기서 켠다.
+            -->
+            <div class="set-section">
+              <div class="hd">폰으로 보기 (같은 와이파이)</div>
+              <div style="display:flex;align-items:center;gap:10px;
+                margin-top:8px">
+                <label style="display:flex;align-items:center;gap:7px;
+                  cursor:pointer;font-size:12px;color:var(--txt-dim)">
+                  <input type="checkbox" id="lan-toggle"
+                    onchange="setLanAccess(this.checked, this)">
+                  같은 와이파이의 다른 기기에서 접속 허용
+                </label>
+                <span id="lan-state" style="font-family:var(--mono);
+                  font-size:10.5px;color:var(--txt-mute)"></span>
+              </div>
+              <div style="font-size:10.5px;color:var(--txt-mute);
+                line-height:1.6;margin-top:7px">
+                꺼져 있으면 이 PC 에서만 열립니다. 켜면 같은 공유기에 붙은
+                기기가 접속할 수 있습니다 —
+                <b style="color:var(--amber)">카페·PC방·회사 망에서는 끄고
+                쓰세요.</b> 변경은 앱을 다시 켜야 적용됩니다.
+              </div>
+              <div id="lan-url" style="font-family:var(--mono);font-size:11px;
+                color:var(--cyan);margin-top:6px"></div>
             </div>
             <div class="set-section">
               <div class="hd">개발자</div>
@@ -6469,7 +6510,7 @@ function switchSetCat(cat){
   else if(cat==='cloud'){refreshCloudStatus();refreshCfNamed();}
   else if(cat==='centralauth')refreshCentralAuth();
   else if(cat==='kis')refreshKisPane();
-  else if(cat==='info')refreshInfoPane();
+  else if(cat==='info'){refreshInfoPane();loadLanState();}
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -11233,6 +11274,54 @@ const TIER_KO={free:'무료',premium:'프리미엄',platinum:'플래티넘'};
   등급은 v4.0.0 부터 중앙 D1 에만 있다. 어느 PC 에서 로그인해도 같은
   등급이 따라오고, 로컬 파일을 고쳐서 올릴 수 없다.
 */
+/* ---------- 같은 와이파이 노출 (기본 꺼짐) ---------- */
+let _lanUrl = '';        // 서버가 알려 주는 폰용 주소
+
+async function loadLanState(){
+  const box = $('#lan-toggle');
+  if(!box) return;
+  try{
+    const r = await (await fetch('/api/network/lan')).json();
+    if(!r.ok) return;
+    _lanUrl = r.url || '';
+    box.checked = !!r.enabled;
+    _renderLanState(r.enabled, false);
+  }catch(e){ /* 설정 한 줄 때문에 화면이 안 뜨면 안 된다 */ }
+}
+
+function _renderLanState(on, pending){
+  const st = $('#lan-state'), url = $('#lan-url');
+  if(st){
+    st.textContent = pending ? '재시작 후 적용됩니다'
+                             : (on ? '켜짐' : '꺼짐 — 이 PC 에서만');
+    st.style.color = pending ? 'var(--amber)'
+                             : (on ? 'var(--cyan)' : 'var(--txt-mute)');
+  }
+  if(url) url.textContent = (on && _lanUrl) ? _lanUrl : '';
+}
+
+async function setLanAccess(enabled, el){
+  if(el) el.disabled = true;
+  try{
+    const r = await (await fetch('/api/network/lan', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({enabled: !!enabled})
+    })).json();
+    if(!r.ok){
+      if(el) el.checked = !enabled;      // 실패했으면 되돌린다
+      alert('변경 실패: ' + (r.error || '알 수 없는 오류'));
+      return;
+    }
+    _lanUrl = r.url || _lanUrl;
+    _renderLanState(r.enabled, true);
+  }catch(e){
+    if(el) el.checked = !enabled;
+    alert('변경 실패: ' + e);
+  }finally{
+    if(el) el.disabled = false;
+  }
+}
+
 async function adminSetTier(uid, tier, el){
   const prev = el ? el.getAttribute('data-prev') || '' : '';
   if(el) el.disabled = true;

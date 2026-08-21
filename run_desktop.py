@@ -109,11 +109,37 @@ def _lan_ip() -> str:
         return "127.0.0.1"
 
 
+LAN_FLAG = "allow_lan"          # .data/ 안의 이 파일이 있으면 LAN 허용
+
+
+def lan_allowed() -> bool:
+    """
+    같은 와이파이의 다른 기기에서 접속하게 할 것인가.
+
+    **기본은 아니다.** 전에는 늘 0.0.0.0 에 붙었다. 앱을 켜는 것만으로
+    같은 네트워크의 모든 기기에 열렸다는 뜻이다 — 카페·PC방·회사 망에서는
+    의도한 적 없는 노출이다. 라우트마다 인증을 걸었지만, 애초에 닿지 못하게
+    하는 편이 한 겹 더 안전하다(Jupyter·TensorBoard 도 같은 이유로 기본이
+    localhost 다).
+
+    폰으로 보는 기능은 그대로 있다. 설정에서 켜면 된다.
+    """
+    if os.environ.get("PLUTUS_ALLOW_LAN", "").strip() in ("1", "true", "yes"):
+        return True
+    try:
+        from engine.paths import DATA_DIR
+        return (DATA_DIR / LAN_FLAG).exists()
+    except Exception:
+        return False
+
+
 def _port_free(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            s.bind(("0.0.0.0", port))
+            # 실제로 붙을 주소로 확인해야 한다. 0.0.0.0 으로 물어보면
+            # 127.0.0.1 만 점유한 프로세스를 못 본다.
+            s.bind(("0.0.0.0" if lan_allowed() else "127.0.0.1", port))
             return True
         except OSError:
             return False
@@ -173,7 +199,8 @@ def _wait_for_server(url: str, timeout: float = 40.0) -> bool:
 def _serve(port: int) -> None:
     try:
         from webapp.server import app
-        app.run(host="0.0.0.0", port=port, threaded=True,
+        host = "0.0.0.0" if lan_allowed() else "127.0.0.1"
+        app.run(host=host, port=port, threaded=True,
                 use_reloader=False)
     except Exception:
         import traceback
@@ -334,7 +361,10 @@ def main() -> None:
     print("=" * 60)
     print(f"  {APP_NAME}  v{__version__}")
     print(f"  PC  :  {url}")
-    print(f"  폰  :  http://{ip}:{port}   (같은 와이파이)")
+    if lan_allowed():
+        print(f"  폰  :  http://{ip}:{port}   (같은 와이파이)")
+    else:
+        print("  폰  :  꺼짐 — 설정 → 시스템에서 켤 수 있습니다")
     print("=" * 60)
 
     if reuse:
