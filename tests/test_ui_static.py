@@ -49,6 +49,22 @@ def _body_range():
     return s, e
 
 
+def _lum(h):
+    h = h.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    n = int(h[:6], 16)
+    f = [((v / 255) / 12.92 if v / 255 <= 0.03928
+          else ((v / 255 + 0.055) / 1.055) ** 2.4)
+         for v in ((n >> 16) & 255, (n >> 8) & 255, n & 255)]
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]
+
+
+def _ratio(a, b):
+    la, lb = _lum(a), _lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
 # ── 구문 ─────────────────────────────────────────────────────
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node 없음")
 def test_inline_javascript_parses():
@@ -209,3 +225,46 @@ def test_iframe_src_is_not_string_concatenated():
     """
     assert not re.search(r'innerHTML\s*=\s*[`\'"]<iframe[^`\'"]*src="\$\{', SRC), \
         "iframe 을 다시 문자열로 조립하고 있다"
+
+
+@pytest.mark.parametrize("theme", THEMES)
+def test_body_text_meets_contrast_minimum(theme):
+    """
+    글자가 판 위에서 읽히는가 (WCAG AA 4.5).
+
+    --txt-mute 는 8개 테마 전부 미달이었다(2.10~3.14). "흐리게" 가
+    "안 보이게" 를 뜻하면 안 된다.
+    """
+    body = _theme_blocks()[theme]
+
+    def val(name):
+        m = re.search(rf'{re.escape(name)}\s*:\s*(#[0-9a-fA-F]{{3,8}})', body)
+        return m.group(1) if m else None
+
+    panel = val("--panel")
+    assert panel, f"{theme}: --panel 이 없다"
+    for v in ("--txt", "--txt-dim", "--txt-mute"):
+        c = val(v)
+        assert c, f"{theme}: {v} 가 없다"
+        cr = _ratio(c, panel)
+        assert cr >= 4.5, f"{theme}: {v} {c} on {panel} 명암비 {cr:.2f}"
+
+
+@pytest.mark.parametrize("theme", THEMES)
+def test_emphasis_hierarchy_is_preserved(theme):
+    """
+    txt > dim > mute 순으로 눈에 띄어야 한다.
+
+    대비만 맞추려고 둘 다 4.5 로 올렸더니 mute 가 dim 보다 밝아져서
+    정보 위계가 뒤집힌 적이 있다. 읽히기는 하지만 디자인이 죽는다.
+    """
+    body = _theme_blocks()[theme]
+
+    def val(name):
+        m = re.search(rf'{re.escape(name)}\s*:\s*(#[0-9a-fA-F]{{3,8}})', body)
+        return m.group(1) if m else None
+
+    panel = val("--panel")
+    r = {v: _ratio(val(v), panel) for v in ("--txt", "--txt-dim", "--txt-mute")}
+    assert r["--txt"] > r["--txt-dim"] > r["--txt-mute"], (
+        f"{theme}: 강조 단계가 무너졌다 {r}")

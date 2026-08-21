@@ -273,6 +273,37 @@ _CSP = "; ".join([
 ])
 
 
+@app.errorhandler(Exception)
+def _unhandled(e):
+    """
+    라우트에서 새어 나온 예외를 잡아 **기록하고** 깔끔하게 돌려준다.
+
+    이게 없으면 Flask 가 기본 500 HTML 을 뱉는데,
+      - 화면은 JSON 을 기대하고 있어서 "알 수 없는 오류" 로만 보이고
+      - 서버 쪽엔 어디서 터졌는지 아무 흔적이 안 남는다.
+    콘솔이 없는 EXE 에서는 이게 유일한 단서라 반드시 남겨야 한다.
+
+    HTTP 예외(404/401 등)는 의도된 응답이므로 그대로 통과시킨다.
+    """
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e
+
+    import traceback
+    who = (getattr(g, "user", None) or {}).get("username") or "-"
+    print(f"[!] 처리되지 않은 예외  {request.method} {request.path}  "
+          f"user={who}", flush=True)
+    traceback.print_exc()
+
+    # 예외 메시지를 그대로 내보내지 않는다 — 경로·쿼리·키가 섞여 나온다.
+    return jsonify({
+        "ok": False,
+        "error": "서버 내부 오류가 발생했습니다.",
+        "detail": type(e).__name__,
+        "hint": ".data/logs/app.log 에 자세한 기록이 남았습니다.",
+    }), 500
+
+
 @app.after_request
 def _security_headers(resp):
     resp.headers.setdefault("Content-Security-Policy", _CSP)

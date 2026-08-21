@@ -59,6 +59,66 @@ def _console_alive() -> bool:
     return True
 
 
+LOG_MAX_BYTES = 5 * 1024 * 1024      # 5MB 를 넘으면 넘긴다
+LOG_KEEP = 3                          # app.log.1 ~ .3 까지 보관
+
+
+def _rotate_log(path) -> None:
+    """
+    로그가 무한히 커지지 않게 한다.
+
+    전에는 "a" 로만 열어서 앱을 켤 때마다 계속 이어 붙였다. 매 요청이
+    한 줄씩 남으므로 오래 쓰는 설치본에서는 결국 디스크를 먹는다.
+    파일 하나만 지우면 되지만, 사용자가 그걸 알 리 없다.
+
+    회전이 실패해도 조용히 넘어간다 — 로그 정리 때문에 앱이 안 켜지면
+    본말이 전도된다.
+    """
+    try:
+        if not path.exists() or path.stat().st_size < LOG_MAX_BYTES:
+            return
+        oldest = path.with_suffix(path.suffix + f".{LOG_KEEP}")
+        if oldest.exists():
+            oldest.unlink()
+        for i in range(LOG_KEEP - 1, 0, -1):
+            src = path.with_suffix(path.suffix + f".{i}")
+            if src.exists():
+                src.replace(path.with_suffix(path.suffix + f".{i+1}"))
+        path.replace(path.with_suffix(path.suffix + ".1"))
+    except Exception:
+        pass
+
+
+def _install_crash_logging() -> None:
+    """
+    아무도 안 잡은 예외를 로그로 남긴다.
+
+    콘솔이 없는 EXE 에서는 이걸 안 하면 배경 스레드가 죽어도 **아무
+    흔적이 남지 않는다.** 앱은 살아 있는데 기능 하나가 조용히 멈춘
+    상태가 되고, 사용자는 "가끔 안 된다" 고만 말할 수 있다.
+    """
+    import traceback
+
+    def hook(exc_type, exc, tb):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc, tb)
+            return
+        print("[!] 처리되지 않은 예외 (메인)", flush=True)
+        traceback.print_exception(exc_type, exc, tb)
+
+    sys.excepthook = hook
+
+    if hasattr(threading, "excepthook"):
+        def thook(args):
+            if issubclass(args.exc_type, SystemExit):
+                return
+            name = getattr(args.thread, "name", "?")
+            print(f"[!] 처리되지 않은 예외 (스레드 {name})", flush=True)
+            traceback.print_exception(args.exc_type, args.exc_value,
+                                      args.exc_traceback)
+        threading.excepthook = thook
+
+
 def _setup_logging() -> None:
     """
     출력이 갈 곳이 없으면 로그 파일로 돌린다.
@@ -80,6 +140,7 @@ def _setup_logging() -> None:
         from engine.paths import DATA_DIR
         log_dir = DATA_DIR / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
+        _rotate_log(log_dir / "app.log")
         f = open(log_dir / "app.log", "a", encoding="utf-8", buffering=1)
         sys.stdout = f
         sys.stderr = f
@@ -353,6 +414,7 @@ def _browser_mode(url: str) -> None:
 
 def main() -> None:
     _setup_logging()
+    _install_crash_logging()
 
     port, reuse = _pick_port()
     url = f"http://127.0.0.1:{port}"

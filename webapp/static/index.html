@@ -97,9 +97,9 @@
   :root{
     --bg:#05070a; --panel:#0a0f16; --panel2:#0d141e;
     --line:#16202e; --grid:rgba(61,240,255,.05);
-    --cyan:#3df0ff; --cyan-dim:#1c6f7a; --amber:#ffb44c;
+    --cyan:#3df0ff; --cyan-dim:#228895; --amber:#ffb44c;
     --up:#ff5a52; --down:#4d9cff;            /* 한국식: 상승=빨강 하락=파랑 */
-    --txt:#cfe6ec; --txt-dim:#5d7480; --txt-mute:#3a4a55;
+    --txt:#cfe6ec; --txt-dim:#90a4ae; --txt-mute:#648093;
     --hover:rgba(61,240,255,.08);            /* 호버 배경 — 테마별 자동 */
     --on-cyan:#04222a; --on-amber:#231400;            /* 강조색 위에 얹는 글자.
     --scrim:rgba(5,7,10,.94); --scrim-soft:rgba(5,7,10,.72);
@@ -119,11 +119,11 @@
   :root[data-theme="dark"]{
     --bg:#0a0a0c; --panel:#121316; --panel2:#16181c;
     --line:#22252a; --grid:rgba(180,180,180,.04);
-    --cyan:#8aa0b0; --cyan-dim:#4a5560; --amber:#d4a050;
+    --cyan:#8aa0b0; --cyan-dim:#708091; --amber:#d4a050;
     /* 상승=빨강(한국식). 정의를 빼면 :root(cyber)의 쨍한 색을 상속받아
        차분한 이 테마에서 상승/하락만 튄다. 다른 7개 테마처럼 명시한다. */
     --up:#e06a60; --down:#6f9fd8;
-    --txt:#d8dde2; --txt-dim:#7a8088; --txt-mute:#4a4f55;
+    --txt:#d8dde2; --txt-dim:#9fa3a9; --txt-mute:#777f89;
     --hover:rgba(138,160,176,.12);
     --on-cyan:#04222a; --on-amber:#231400;
     --scrim:rgba(10,10,12,.94); --scrim-soft:rgba(10,10,12,.72);
@@ -134,11 +134,11 @@
   :root[data-theme="white"]{
     --bg:#f5f7fa; --panel:#ffffff; --panel2:#f0f3f7;
     --line:#dde2e8; --grid:rgba(80,100,120,.06);
-    --cyan:#0078a8; --cyan-dim:#5a8fa8; --amber:#c98700;
-    --up:#d63333; --down:#2865c9;
-    --txt:#1c2330; --txt-dim:#5a6678; --txt-mute:#8893a0;
+    --cyan:#006a94; --cyan-dim:#3f6577; --amber:#835800;
+    --up:#bd2626; --down:#265fbe;
+    --txt:#1c2330; --txt-dim:#4c5666; --txt-mute:#57616d;
     --hover:rgba(0,120,168,.10);
-    --on-cyan:#ffffff; --on-amber:#231400;
+    --on-cyan:#ffffff; --on-amber:#ffffff;
     --scrim:rgba(226,231,238,.94); --scrim-soft:rgba(226,231,238,.74);
     --glow:0 0 8px rgba(0,120,168,.2);
     --scan-opacity:0;
@@ -147,9 +147,9 @@
   :root[data-theme="edex"]{
     --bg:#000000; --panel:#020805; --panel2:#031208;
     --line:#0c2515; --grid:rgba(0,255,140,.06);
-    --cyan:#00ff8c; --cyan-dim:#0a7a4a; --amber:#ffd400;
+    --cyan:#00ff8c; --cyan-dim:#0b8a54; --amber:#ffd400;
     --up:#ff5a52; --down:#4d9cff;
-    --txt:#9affc8; --txt-dim:#4a8060; --txt-mute:#2a5040;
+    --txt:#9affc8; --txt-dim:#6ba984; --txt-mute:#45846a;
     --hover:rgba(0,255,140,.10);
     --on-cyan:#04222a; --on-amber:#231400;
     --scrim:rgba(0,0,0,.94); --scrim-soft:rgba(0,0,0,.74);
@@ -160,9 +160,9 @@
   :root[data-theme="snow"]{
     --bg:#0a1828; --panel:#13243a; --panel2:#1a2f4a;
     --line:#2e4060; --grid:rgba(180,210,255,.06);
-    --cyan:#7ec8ff; --cyan-dim:#456a90; --amber:#ffcd8a;
+    --cyan:#7ec8ff; --cyan-dim:#688fb7; --amber:#ffcd8a;
     --up:#ff8888; --down:#7eb0ff;
-    --txt:#e2eef8; --txt-dim:#88a4c0; --txt-mute:#5570a0;
+    --txt:#e2eef8; --txt-dim:#9eb4cb; --txt-mute:#758cb5;
     --hover:rgba(180,210,255,.10);
     --on-cyan:#04222a; --on-amber:#231400;
     --scrim:rgba(10,24,40,.94); --scrim-soft:rgba(10,24,40,.72);
@@ -173,9 +173,9 @@
   :root[data-theme="sakura"]{
     --bg:#1a0e1a; --panel:#251525; --panel2:#311e30;
     --line:#4a2e48; --grid:rgba(255,180,210,.06);
-    --cyan:#ff9fc8; --cyan-dim:#8a4868; --amber:#ffb480;
+    --cyan:#ff9fc8; --cyan-dim:#b46e90; --amber:#ffb480;
     --up:#ff7895; --down:#c89fdf;
-    --txt:#ffe0ec; --txt-dim:#c890a8; --txt-mute:#80506a;
+    --txt:#ffe0ec; --txt-dim:#cd9bb1; --txt-mute:#a87490;
     --hover:rgba(255,160,200,.12);
     --on-cyan:#04222a; --on-amber:#231400;
     --scrim:rgba(26,14,26,.94); --scrim-soft:rgba(26,14,26,.72);
@@ -186,9 +186,9 @@
   :root[data-theme="autumn"]{
     --bg:#1a0d05; --panel:#28150a; --panel2:#321a0d;
     --line:#5a3010; --grid:rgba(255,160,80,.05);
-    --cyan:#ff9550; --cyan-dim:#a05530; --amber:#ffd060;
+    --cyan:#ff9550; --cyan-dim:#c56b3e; --amber:#ffd060;
     --up:#ff5a30; --down:#80a8c0;
-    --txt:#ffd8b8; --txt-dim:#b08868; --txt-mute:#704830;
+    --txt:#ffd8b8; --txt-dim:#c2a28a; --txt-mute:#b3744e;
     --hover:rgba(255,160,80,.10);
     --on-cyan:#04222a; --on-amber:#231400;
     --scrim:rgba(26,13,5,.94); --scrim-soft:rgba(26,13,5,.72);
@@ -199,9 +199,9 @@
   :root[data-theme="ocean"]{
     --bg:#001a2a; --panel:#002238; --panel2:#002e4a;
     --line:#0a4870; --grid:rgba(80,200,255,.06);
-    --cyan:#48d8ff; --cyan-dim:#1a6890; --amber:#ffd478;
+    --cyan:#48d8ff; --cyan-dim:#2490c8; --amber:#ffd478;
     --up:#ff6868; --down:#48a8ff;
-    --txt:#c0e8ff; --txt-dim:#6088a8; --txt-mute:#385c78;
+    --txt:#c0e8ff; --txt-dim:#98b1c6; --txt-mute:#5c8db3;
     --hover:rgba(80,200,255,.10);
     --on-cyan:#04222a; --on-amber:#231400;
     --scrim:rgba(0,26,42,.94); --scrim-soft:rgba(0,26,42,.72);
