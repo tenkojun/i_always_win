@@ -5,7 +5,7 @@
 - 개발자: Tenko jun - 정준화
 - 저장소: https://github.com/tenkojun/plutus *(v3.4.2 에서 `i_always_win`
   에서 리네임. 옛 주소는 GitHub 가 리다이렉트한다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 4.6.0)
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 4.7.0)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
 - 설치본: 같은 명령이 `dist\Plutus-Setup-x64.exe` 도 굽는다 (Inno Setup)
