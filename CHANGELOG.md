@@ -5,6 +5,78 @@
 
 ---
 
+## [4.1.0] — 2026-08-21
+
+"전부 95점 넘게" 를 목표로 한 전면 강화. 배포된 버전에 있던 문제를
+실측으로 찾아 고쳤고, **다시 깨지면 잡히도록 테스트로 묶었다.**
+
+### 추가 — 테스트 84개와 CI
+테스트도 CI 도 0개였다. 그래서 고친 것이 다시 깨져도 알 방법이 없었다.
+
+- `tests/test_estimators.py` — 추정량이 합성 진실값을 복원하는가.
+  `_validate.py` 에 같은 시뮬레이션이 있었지만 **숫자를 출력만** 해서
+  회귀를 못 막았다. 판정 기준을 붙였다.
+  EDGE 스프레드(5bp→5.4bp) · GJR-GARCH 지속성 · Murphy 판별비(411배) ·
+  conformal 커버리지(팻테일·레짐전환 포함 89.9%) · 켈리의 추정오차 단조성
+- `tests/test_security.py` — 라우트 128개 인증 매트릭스, Worker 의
+  requireAdmin·등급 화이트리스트·PBKDF2 상한
+- `tests/test_ui_static.py` — 브라우저 없이 도는 UI 검사. 인라인 JS 구문,
+  테마 8종 변수 완전성, 명암비, 강조 위계, 이스케이프 단일성
+- `tests/test_reliability.py` — 로그 회전, 예외 훅, 500 응답 형식
+- `tests/test_regressions.py` — v3.4.2~v4.1.0 에서 잡은 버그 전부
+- `.github/workflows/ci.yml` — **네트워크를 타지 않는다.** 시세 API 가
+  죽어도 초록이어야 한다. Worker 문법과 마이그레이션 2회 적용도 본다
+
+### 보안
+- **무인증 라우트 16개.** 심각한 셋 — `/api/datasources/key` 는 인증 없이
+  API 키를 덮어썼고, `/api/llm/auto_setup` 은 인증 없이 Ollama 설치를
+  트리거했으며(다운로드+실행), `change_password` 는 소유자 토큰을 대리
+  전송했다
+- **기본 바인딩이 `0.0.0.0` 이었다.** 앱을 켜는 것만으로 같은 망의 모든
+  기기에 열렸다. 이제 기본 `127.0.0.1` 이고, 폰으로 보기는 설정에서 켠다.
+  Jupyter·TensorBoard 도 같은 이유로 기본이 localhost 다
+- **CDN 스크립트를 로컬로 들여왔다.** unpkg/jsdelivr 에서 실행 시점에
+  받아 왔는데, CDN 이 오염되면 임의의 JS 가 이 앱의 출처로 실행된다.
+  jsdelivr 은 파일을 동적으로 재압축해서 SRI 조차 못 건다(그쪽 파일
+  주석의 경고). 합쳐서 182KB — [THIRD-PARTY.md](THIRD-PARTY.md) 참조
+- **보안 헤더** — CSP · nosniff · frame-ancestors · Referrer-Policy ·
+  Permissions-Policy, `/api/` 응답에 no-store. CDN 을 없앤 뒤에야 CSP 가
+  실질적이 됐다
+
+### 신뢰성
+- **전역 예외 처리기가 없었다.** 라우트에서 예외가 새면 Flask 기본 500
+  HTML 이 나가고 서버엔 흔적이 안 남았다
+- **배경 스레드 예외가 사라졌다.** 앱은 살아 있는데 기능 하나만 조용히
+  멈춘 상태가 됐다. 사용자는 "가끔 안 된다" 고만 말할 수 있다
+- **`app.log` 가 무한히 커졌다.** 5MB 회전 · 3개 보관
+
+### 접근성 — 8개 테마 전부 WCAG AA
+`--txt-mute` 가 전 테마 미달이었다(2.10~3.14). 색상은 유지한 채 HSL 의
+L 만 옮겨 기준을 넘겼다 — 무작정 회색으로 바꾸면 테마의 성격이 죽는다.
+
+    대비 미달   11건 → 0건 · 전체 최저 4.58
+    강조 위계   txt 13~16 > dim ~7.3 > mute ~4.6
+
+`--cyan-dim` · `--amber` · `--cyan` · `--up` 도 글자색으로 쓰여서 함께
+올렸고, 그 결과 white 의 `--on-amber` 가 깨지는 것을 **테스트가 즉시
+잡아** 짝을 다시 맞췄다.
+
+### 고침 — 의존성 목록이 실제와 달랐다
+`requirements.txt` 가 `torch`·`xgboost`·`statsmodels`·`arch`·`hmmlearn`·
+`matplotlib` 을 요구했는데 **import 하는 파일이 0개**였고, 정작 실시간
+시세에 쓰는 `websockets` 는 빠져 있었다. `arch`/`hmmlearn` 은 윈도우에서
+컴파일러 없이 설치가 자주 깨져 README 의 "30초 시작" 이 첫 줄부터 막혔다.
+`tools/check_requirements.py` 가 양방향으로 검사하고 CI 가 매번 돌린다.
+
+### 고침 — dark 테마가 상승/하락 색을 정의하지 않았다
+`:root`(cyber)의 쨍한 색을 상속받아, 차분한 팔레트에서 상승/하락만 튀었다.
+테스트가 잡았다.
+
+> 측정할 때는 CSS `transition` 을 꺼야 한다. 켜 둔 채로 재면 전환 중간값을
+> 읽어서 멀쩡한 요소가 깨진 것처럼 보인다 — 이번에 두 번 속았다.
+
+---
+
 ## [4.0.0] — 2026-08-20
 
 전면 감사 후 일괄 수정. 실행 중인 앱과 소스를 실측해 모은 결함을 한 번에
