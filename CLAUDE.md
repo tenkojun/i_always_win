@@ -5,7 +5,7 @@
 - 개발자: Tenko jun - 정준화
 - 저장소: https://github.com/tenkojun/plutus *(v3.4.2 에서 `i_always_win`
   에서 리네임. 옛 주소는 GitHub 가 리다이렉트한다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 4.1.0)
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 4.2.0)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
 - 설치본: 같은 명령이 `dist\Plutus-Setup-x64.exe` 도 굽는다 (Inno Setup)
@@ -64,7 +64,10 @@ e/
 - 모든 UI/리포트 한글
 - **API 키는 코드/로그/커밋에 절대 기록 금지** — `keyconfig.py` 경유, 설정 화면 입력
 - 새 모듈은 무키 폴백 필수
-- OHLCV 소문자 컬럼 + DatetimeIndex 계약 유지
+- OHLCV 컬럼 규약이 **경로마다 다르다.** `engine/data/loader.py` 는 소문자로
+  내리고, `engine/jiqtx/` 내부는 대문자를 쓴다. `analyze()` 가 경계에서
+  정규화하므로(`_normalize_ohlcv`) 어느 쪽으로 넣어도 된다.
+  DatetimeIndex 는 필수
 - 런타임 산출물은 전부 `.data/` 아래 (앱 폴더 밖에 상태를 두지 않는다)
 - 기능 변경 후 `version.py` 올리고 CHANGELOG 쓰고 커밋·푸시
 
@@ -80,6 +83,10 @@ e/
 - 단/중/장 지평(`horizons.py`)도 합치지 않는다. 어긋나는 지점을 드러내는 게 목적
 - 거시 보드(`macro_board.py`)는 `|t| < 2` 면 중립. 유의하지 않은 베타로 서사 금지
 - 로그수익률 변수와 수준 변수를 섞지 말 것 (섞으면 기여도가 자릿수로 튄다)
+- **ES ≥ VaR 은 정의다.** ES 는 VaR 너머 손실의 평균이라 더 작을 수 없다.
+  GPD 공식은 우측 꼬리용이라 좌측(손실)으로 되돌릴 때 부호를 놓치기 쉽다 —
+  v4.1.0 까지 실제로 뒤집혀 있어 꼬리 손실을 3분의 1로 과소평가했다.
+  리스크 수치를 손대면 몬테카를로 진실값과 대조할 것 (`tests/test_pipeline_e2e.py`)
 - 용어집 66개 — 정의만 쓰지 말고 **왜 보는지 + 어떤 값이면 문제인지**
 
 ## 인증 · 등급

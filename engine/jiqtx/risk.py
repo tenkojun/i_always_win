@@ -68,13 +68,28 @@ def _gpd_var_es(z: np.ndarray, alpha: float, sigma_now: float,
         zq = float(np.quantile(z, alpha))
         tail = z[z <= zq]
         return float(-(mu + sigma_now * zq)), float(-(mu + sigma_now * tail.mean()))
+    # ── 좌측 꼬리 ES ────────────────────────────────────────
+    # McNeil-Frey 의 GPD ES 는 **우측** 꼬리 공식이다. 여기서는 손실
+    # 쪽(좌측)을 보므로 Y = -z 로 뒤집어 유도한 뒤 되돌려야 한다.
+    #
+    #   우측:  ES_Y = VaR_Y/(1-ξ) + (β - ξ·u_Y)/(1-ξ)
+    #   되돌림(u_Y = -u, zq = -VaR_Y):
+    #          es_z = zq/(1-ξ) - (β + ξ·u)/(1-ξ)
+    #
+    # 전에는 두 번째 항의 부호와 u 의 부호가 모두 뒤집힌 채로 더해져서
+    # **ES 가 VaR 보다 작게** 나왔다. 정의상 불가능한 값이다(ES 는 VaR
+    # 너머의 평균이므로 항상 더 크다). 몬테카를로 대조에서 t(4) 기준
+    # 진짜 ES 2.27 을 0.73 으로 냈다 — 꼬리 손실을 3분의 1로 과소평가한
+    # 셈이고, 리스크 시스템에서 가장 위험한 방향의 오류다.
     if abs(xi) < 1e-8:
         zq = u - beta * math.log(alpha / nu_)
         es_z = zq - beta
     else:
         zq = u - (beta / xi) * ((alpha / nu_) ** (-xi) - 1.0)
-        es_z = (zq - beta / xi * 1.0) if xi >= 1 else (zq / (1 - xi)
-                                                      + (beta - xi * u) / (1 - xi))
+        if xi >= 1:
+            # ξ≥1 이면 평균이 존재하지 않는다. 없는 값을 지어내지 않는다.
+            return float(-(mu + sigma_now * zq)), float("nan")
+        es_z = zq / (1 - xi) - (beta + xi * u) / (1 - xi)
     return float(-(mu + sigma_now * zq)), float(-(mu + sigma_now * es_z))
 
 

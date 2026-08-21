@@ -101,6 +101,38 @@ class Analysis:
     panel: Any = None
 
 
+# ── 컬럼 규약 ────────────────────────────────────────────────
+# 이 저장소에는 가격 데이터 경로가 둘이고 규약이 서로 다르다.
+#
+#   engine/data/loader.py  →  소문자 (open/high/low/close/volume)
+#   engine/jiqtx/data.py   →  대문자 (Open/High/Low/Close/Volume)
+#
+# 운영에서는 jiqtx 가 자기 수집 경로를 쓰므로 드러나지 않았다. 그런데
+# analyze() 는 df 주입을 공식적으로 지원하고(백테스트·오프라인 검증),
+# 그 경로로 소문자 프레임을 넣으면 무결성 검사에서 KeyError 로 죽었다.
+# CLAUDE.md 는 "소문자 계약" 이라고만 적혀 있어서 문서를 따르면 오히려
+# 깨졌다.
+#
+# 어느 쪽 규약이 옳은지 다투는 대신 **경계에서 받아 준다.** 내부는
+# 대문자로 통일한 채로 두고, 들어오는 것만 맞춰 준다.
+_OHLCV_CANON = {"open": "Open", "high": "High", "low": "Low",
+                "close": "Close", "volume": "Volume",
+                "adj close": "Adj Close", "adjclose": "Adj Close"}
+
+
+def _normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    """소문자/대문자 어느 쪽으로 와도 내부 규약(대문자)으로 맞춘다."""
+    if df is None or not hasattr(df, "columns"):
+        return df
+    ren = {}
+    for c in df.columns:
+        key = str(c).strip().lower()
+        canon = _OHLCV_CANON.get(key)
+        if canon and canon not in df.columns:
+            ren[c] = canon
+    return df.rename(columns=ren) if ren else df
+
+
 def analyze(ticker: str, df: Optional[pd.DataFrame] = None,
             meta: Optional[Dict] = None,
             macro: Optional[pd.DataFrame] = None,
@@ -131,7 +163,7 @@ def analyze(ticker: str, df: Optional[pd.DataFrame] = None,
     if df is None:
         df, meta = dta.load_prices(ticker, years=cfg.lookback_years)
     meta = meta or {}
-    df = df.sort_index()
+    df = _normalize_ohlcv(df).sort_index()
     integ = dta.check_integrity(ticker, df, GATES.max_missing_ratio)
     log(f"데이터 {integ.n_rows}행 · 무결성 {'통과' if integ.passed else '실패'}")
     tick("data")
