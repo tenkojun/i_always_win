@@ -76,17 +76,31 @@ def test_thread_exceptions_are_logged(capsys):
         "스레드 예외 훅이 설치되지 않았다"
 
 
+# 일부러 터지는 라우트는 **모듈을 읽을 때** 등록한다.
+# Flask 는 첫 요청 이후 라우트 추가를 거부한다. 테스트 함수 안에서 붙이면
+# 다른 테스트 파일이 먼저 클라이언트를 만든 경우 AssertionError 로 죽는다
+# — 앱이 아니라 테스트 순서 때문에 빨개지는 건 최악이다.
+def _register_boom():
+    from webapp.server import app
+    if "_test_boom" in app.view_functions:
+        return app
+
+    @app.route("/__test_boom__", endpoint="_test_boom")
+    def _boom():
+        raise RuntimeError("의도된 테스트 예외")
+
+    return app
+
+
+_APP = _register_boom()
+
+
 def test_flask_returns_json_on_unhandled_exception():
     """
     라우트에서 예외가 새면 Flask 기본 500 HTML 이 나간다. 화면은 JSON 을
     기대하고 있어서 "알 수 없는 오류" 로만 보이고, 서버엔 흔적이 안 남는다.
     """
-    from webapp.server import app
-
-    @app.route("/__test_boom__")
-    def _boom():
-        raise RuntimeError("의도된 테스트 예외")
-
+    app = _APP
     app.config["PROPAGATE_EXCEPTIONS"] = False
     with app.test_client() as c:
         r = c.get("/__test_boom__")
@@ -102,7 +116,6 @@ def test_flask_returns_json_on_unhandled_exception():
 
 def test_http_errors_pass_through_untouched():
     """404/401 은 의도된 응답이다. 500 으로 바꿔 버리면 안 된다."""
-    from webapp.server import app
-    with app.test_client() as c:
+    with _APP.test_client() as c:
         r = c.get("/__없는_경로__")
     assert r.status_code == 404
