@@ -382,3 +382,62 @@ def test_touch_never_exceeds_the_horizon(paths):
     t = np.arange(len(lab.touch_idx))
     valid = lab.touch_idx > 0
     assert (lab.touch_idx[valid] - t[valid]).max() <= 21, "지평을 넘어 관측했다"
+
+
+# ── 자산군별 연율화 ──────────────────────────────────────────
+def _synth_prices(freq, n, sig_ann, ann_true, seed=5):
+    """연율 sig_ann 이 되도록 일간 변동성을 역산해 만든다."""
+    rng = np.random.default_rng(seed)
+    sd = sig_ann / math.sqrt(ann_true)
+    r = rng.normal(0, sd, n)
+    px = 100 * np.exp(np.cumsum(r))
+    idx = (pd.date_range("2021-01-01", periods=n, freq="D") if freq == "D"
+           else pd.bdate_range("2021-01-01", periods=n))
+    intr = np.abs(rng.normal(0, sd * 0.5, n))
+    df = pd.DataFrame({"Open": px, "High": px * (1 + intr),
+                       "Low": px * (1 - intr), "Close": px,
+                       "Volume": np.full(n, 1e6)}, index=idx)
+    return df, r
+
+
+@pytest.mark.parametrize("label,freq,ann_expected,meta", [
+    ("암호자산", "D", 365, {"assetClass": "crypto",
+                          "quoteType": "CRYPTOCURRENCY"}),
+    ("주식",     "B", 252, {"assetClass": "equity"}),
+])
+def test_annualization_factor_matches_the_market_calendar(
+        label, freq, ann_expected, meta):
+    """
+    24/7 시장은 √365, 거래일 시장은 √252 여야 한다.
+
+    암호자산에 √252 를 쓰면 변동성을 **20% 과소평가**한다(실측 60% → 48.5%).
+    연율화 계수를 틀리는 것은 이 저장소에서 이미 두 번 난 버그 계열이다
+    (드리프트 SE · ES 부호).
+    """
+    from engine.jiqtx.taxonomy import classify
+    df, _ = _synth_prices(freq, 1400, 0.60, ann_expected)
+    spec = classify("TEST", df, meta, {}).spec
+    assert spec.ann_factor == ann_expected, (
+        f"{label}: 연율화 계수 {spec.ann_factor} (기대 {ann_expected})")
+
+
+@pytest.mark.parametrize("freq,ann_true", [("D", 365), ("B", 252)])
+def test_injected_volatility_is_recovered(freq, ann_true):
+    """넣은 연율 변동성 60% 를 GARCH 가 되찾는가."""
+    from engine.jiqtx.vol import vol_profile
+    _, r = _synth_prices(freq, 1400, 0.60, ann_true)
+    vp = vol_profile(r, ann=ann_true)
+    assert abs(vp.garch.ann_vol_longrun - 0.60) / 0.60 < 0.10, (
+        f"장기 변동성 {vp.garch.ann_vol_longrun:.1%} (넣은 값 60%)")
+
+
+def test_wrong_calendar_understates_volatility():
+    """
+    잘못된 계수를 쓰면 실제로 과소평가되는지 확인한다.
+    이 차이가 사라지면 위 테스트가 무의미해진다.
+    """
+    from engine.jiqtx.vol import vol_profile
+    _, r = _synth_prices("D", 1400, 0.60, 365)
+    right = vol_profile(r, ann=365).garch.ann_vol_longrun
+    wrong = vol_profile(r, ann=252).garch.ann_vol_longrun
+    assert wrong < right * 0.90, "잘못된 계수인데 차이가 안 난다"

@@ -53,6 +53,23 @@ def _writable(p: Path) -> bool:
 
 
 def _resolve_data_dir() -> Path:
+    # 명시적으로 지정하면 그걸 쓴다. **기본 동작은 바뀌지 않는다** —
+    # 변수를 안 주면 예전과 똑같이 앱 폴더 옆 .data 다.
+    #
+    # 왜 넣었나: 테스트가 실제 .data/auth.db 에 쓰고 있었다. conftest 가
+    # 환경변수를 세팅해 두고 격리됐다고 믿었는데 아무도 그 변수를 읽지
+    # 않았다. 지정할 방법 자체가 없으면 격리는 언제나 우회로가 된다.
+    # (데이터를 다른 드라이브에 두고 싶은 경우에도 쓸 수 있다.)
+    override = (os.environ.get("PLUTUS_DATA_DIR")
+                or os.environ.get("IAW_DATA_DIR") or "").strip()
+    if override:
+        p = Path(override).expanduser()
+        if _writable(p):
+            return p
+        # 지정했는데 못 쓰면 조용히 다른 곳에 쓰지 않는다 — 어디에
+        # 저장됐는지 모르는 상태가 제일 나쁘다.
+        print(f"[!] PLUTUS_DATA_DIR 에 쓸 수 없습니다: {p} — 기본 위치를 씁니다.")
+
     primary = _app_root() / ".data"
     if _writable(primary):
         return primary

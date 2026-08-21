@@ -5,7 +5,7 @@
 - 개발자: Tenko jun - 정준화
 - 저장소: https://github.com/tenkojun/plutus *(v3.4.2 에서 `i_always_win`
   에서 리네임. 옛 주소는 GitHub 가 리다이렉트한다. 아래 "이름" 참조)*
-- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 4.8.0)
+- 버전 단일 소스: `version.py` — **업데이트마다 올린다** (현재 5.0.0)
 - 실행: `python run_desktop.py` → http://127.0.0.1:8765
 - EXE: `python tools/release.py --build` → `dist\Plutus\` (약 194MB)
 - 설치본: 같은 명령이 `dist\Plutus-Setup-x64.exe` 도 굽는다 (Inno Setup)
@@ -68,7 +68,9 @@ e/
   내리고, `engine/jiqtx/` 내부는 대문자를 쓴다. `analyze()` 가 경계에서
   정규화하므로(`_normalize_ohlcv`) 어느 쪽으로 넣어도 된다.
   DatetimeIndex 는 필수
-- 런타임 산출물은 전부 `.data/` 아래 (앱 폴더 밖에 상태를 두지 않는다)
+- 런타임 산출물은 전부 `.data/` 아래 (앱 폴더 밖에 상태를 두지 않는다).
+  `PLUTUS_DATA_DIR` 로 옮길 수 있다 — 안 주면 기존 동작 그대로다.
+  테스트 격리가 이걸 쓴다(전에는 지정할 방법이 없어 실제 DB 를 건드렸다)
 - 기능 변경 후 `version.py` 올리고 CHANGELOG 쓰고 커밋·푸시
 
 ## 분석 엔진 계약 (engine/jiqtx)
