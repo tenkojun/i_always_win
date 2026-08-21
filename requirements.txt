@@ -22,6 +22,9 @@ websockets>=12.0        # KIS 실시간 시세 (webapp/server.py)
 
 # ─── 웹 · 데스크톱 ──────────────────────────────────────────
 flask>=3.0
+# Flask 가 함께 설치하지만 우리가 **직접** import 한다(HTTPException).
+# 직접 쓰는 것은 명시한다 — 남의 의존성에 얹혀 가면 그쪽이 바뀔 때 깨진다.
+werkzeug>=3.0
 pywebview>=4.4          # 윈도우에서는 Edge WebView2 런타임이 따로 필요하다
 psutil>=5.9
 
