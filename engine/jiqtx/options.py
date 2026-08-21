@@ -84,16 +84,46 @@ def bs_greeks(S, K, T, r, sigma, is_call=True, q=0.0) -> Dict[str, float]:
 
 
 def implied_vol(price, S, K, T, r, is_call=True, q=0.0) -> float:
-    if price <= 0 or T <= 0:
+    """
+    가격 → 내재변동성.
+
+    차익거래 하한을 제대로 쓴다
+    ---------------------------
+    전에는 `max(K-S,0) · e^(-rT)` 를 하한으로 썼는데, 그건 **할인되지 않은
+    내재가치를 통째로 할인한 값**이라 유러피언 옵션의 실제 하한이 아니다.
+
+        올바른 하한   콜:  S·e^(-qT) - K·e^(-rT)
+                      풋:  K·e^(-rT) - S·e^(-qT)
+
+    풋에서는 이 잘못된 하한이 **실제 BS 가격보다 높게** 나온다. 예를 들어
+    S=100, K=115, T=3, r=4%, q=1%, σ=10% 이면 BS 가격 9.62 인데 옛 하한은
+    13.17 이었다 — 멀쩡한 가격을 차익거래 위반으로 보고 NaN 을 냈다.
+
+    그 결과 **깊은 내가격 풋이 스마일에서 통째로 빠졌다.** 하필 그 구간이
+    스큐를 담고 있고 RND 의 좌측 꼬리가 거기서 나온다. 콜 쪽은 반대로
+    하한이 너무 낮아 차익거래를 위반하는 가격도 통과시켰다.
+    """
+    if not np.isfinite(price) or price <= 0 or T <= 0 or S <= 0 or K <= 0:
         return np.nan
-    intrinsic = max(S - K, 0) if is_call else max(K - S, 0)
-    if price < intrinsic * math.exp(-r * T) * 0.99:
+
+    fwd_s = S * math.exp(-q * T)
+    fwd_k = K * math.exp(-r * T)
+    lo_bound = max(fwd_s - fwd_k, 0.0) if is_call else max(fwd_k - fwd_s, 0.0)
+    hi_bound = fwd_s if is_call else fwd_k
+
+    # 호가 잡음을 감안해 아주 약간의 여유만 둔다
+    if price < lo_bound * 0.999 - 1e-12:
         return np.nan
+    if price > hi_bound * 1.001 + 1e-12:
+        return np.nan
+
     try:
         return float(optimize.brentq(
             lambda v: bs_price(S, K, T, r, v, is_call, q) - price,
             1e-4, 5.0, maxiter=100, xtol=1e-6))
     except Exception:
+        # 시간가치가 사실상 0 이면(깊은 내가격 · 만기 임박) vega≈0 이라
+        # IV 자체가 식별되지 않는다. 없는 값을 지어내지 않는다.
         return np.nan
 
 
