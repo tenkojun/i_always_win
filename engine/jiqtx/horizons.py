@@ -143,8 +143,19 @@ def _one(prices: pd.Series, code: str, label: str, days: int,
     ann_vol = sd * math.sqrt(ann)
     cum = float(win.iloc[-1] / win.iloc[0] - 1.0)
     mu_ann = float(np.mean(r)) * ann
-    # 드리프트 표준오차 = σ/√T. 짧은 지평일수록 커진다.
-    se_ann = sd * math.sqrt(ann) / math.sqrt(len(r))
+    # 드리프트 표준오차 = σ_ann / √T,  **T 는 연 단위**다.
+    #
+    # 전에는 `sd * √ann / √n` 이었다. 분자는 연율화(σ_ann)해 놓고 분모의
+    # T 는 **일 단위**를 그대로 써서, SE 가 √ann(=√252≈15.9)배 작게 나왔다.
+    # μ̂ 는 연율인데 SE 는 일간이었으니 단위가 섞인 것이다.
+    #
+    # 결과가 가볍지 않았다 — t 가 16배 부풀어 **모든 지평이 |t|≥2(유의)**
+    # 로 나왔다. 실측에서 단기는 진짜 t=0.36 인데 5.66 으로, 중기는
+    # -0.22 인데 -3.53 으로 나왔다. "유의하지 않은 값으로 서사를 만들지
+    # 않는다" 는 이 엔진의 전제를 정면으로 어기는 버그였다.
+    #
+    #   SE(μ̂_ann) = σ_ann / √(n/ann) = sd·√ann · √ann/√n = sd·ann/√n
+    se_ann = ann_vol / math.sqrt(len(r) / ann) if len(r) else float("nan")
     t = mu_ann / se_ann if se_ann > 0 else float("nan")
     sharpe = (mu_ann / ann_vol) if ann_vol > 0 else float("nan")
 

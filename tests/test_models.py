@@ -193,3 +193,123 @@ def test_drift_ci_belongs_to_the_raw_estimate():
     lo, hi = d.ci95
     assert lo == pytest.approx(d.mu_hat_ann - 1.96 * d.se_ann, abs=1e-9)
     assert hi == pytest.approx(d.mu_hat_ann + 1.96 * d.se_ann, abs=1e-9)
+
+
+# ── 시뮬레이션 ───────────────────────────────────────────────
+@pytest.fixture(scope="module")
+def sim_setup():
+    from engine.jiqtx.vol import fit_gjr_garch_t
+    rng = np.random.default_rng(21)
+    sig, mu, n = 0.22, 0.08, 1500
+    r = rng.normal((mu - 0.5 * sig**2) / 252, sig / math.sqrt(252), n)
+    prices = 100 * np.exp(np.cumsum(r))
+    return prices, r, fit_gjr_garch_t(r)
+
+
+def test_one_day_simulation_matches_garch_sigma(sim_setup):
+    """
+    1일 지평 시뮬레이션의 표준편차가 GARCH 현재 변동성과 맞아야 한다.
+    여기가 어긋나면 뒤의 VaR·시나리오·사이징이 전부 잘못된 척도 위에서 돈다.
+    """
+    from engine.jiqtx.simulate import simulate_fhs
+    prices, r, g = sim_setup
+    s = simulate_fhs(prices, r, g, horizon=1, n_sims=40000, seed=1)
+    lr = np.log(s.terminal / prices[-1])
+    ratio = lr.std() * math.sqrt(252) / g.ann_vol_current
+    assert 0.85 < ratio < 1.20, f"시뮬/GARCH 변동성 비 {ratio:.3f}"
+
+
+def test_simulation_scales_with_sqrt_time(sim_setup):
+    """지평이 252배면 표준편차는 √252 배 근처여야 한다."""
+    from engine.jiqtx.simulate import simulate_fhs
+    prices, r, g = sim_setup
+    s1 = simulate_fhs(prices, r, g, horizon=1, n_sims=30000, seed=1)
+    s252 = simulate_fhs(prices, r, g, horizon=252, n_sims=30000, seed=1)
+    a = np.log(s1.terminal / prices[-1]).std()
+    b = np.log(s252.terminal / prices[-1]).std()
+    assert 0.8 < b / (a * math.sqrt(252)) < 1.3, "√t 척도가 어긋난다"
+
+
+def test_simulation_cvar_exceeds_var(sim_setup):
+    """시뮬레이션 쪽 CVaR 도 VaR 보다 커야 한다 (ES 와 같은 이유)."""
+    from engine.jiqtx.simulate import simulate_fhs
+    prices, r, g = sim_setup
+    s = simulate_fhs(prices, r, g, horizon=252, n_sims=30000, seed=1)
+    assert s.cvar95_pct >= s.var95_pct,         f"CVaR {s.cvar95_pct:.4f} < VaR {s.var95_pct:.4f}"
+    assert s.q05 < s.median_price < s.q95, "분위수 순서가 뒤집혔다"
+    for k in ("prob_up", "prob_up_naive_gbm", "prob_dd_20"):
+        v = getattr(s, k)
+        assert 0.0 <= v <= 1.0, f"{k} = {v}"
+
+
+def test_simulation_is_reproducible(sim_setup):
+    """같은 시드면 같은 결과 — 감사 가능성의 전제다."""
+    from engine.jiqtx.simulate import simulate_fhs
+    prices, r, g = sim_setup
+    a = simulate_fhs(prices, r, g, horizon=252, n_sims=4000, seed=7)
+    b = simulate_fhs(prices, r, g, horizon=252, n_sims=4000, seed=7)
+    c = simulate_fhs(prices, r, g, horizon=252, n_sims=4000, seed=8)
+    assert np.array_equal(a.terminal, b.terminal), "같은 시드인데 결과가 다르다"
+    assert not np.array_equal(a.terminal, c.terminal), "시드가 안 먹는다"
+
+
+# ── 다지평 ───────────────────────────────────────────────────
+@pytest.fixture(scope="module")
+def horizon_panel():
+    from engine.jiqtx.horizons import analyze_horizons
+    rng = np.random.default_rng(31)
+    # 장기 상승 + 최근 1년 하락·고변동 — 지평 간 불일치를 일부러 만든다
+    r = np.concatenate([rng.normal(0.0007, 0.010, 1000),
+                        rng.normal(-0.0009, 0.016, 252)])
+    px = pd.Series(100 * np.exp(np.cumsum(r)),
+                   index=pd.bdate_range("2019-01-02", periods=len(r)))
+    return analyze_horizons(px)
+
+
+def test_drift_standard_error_is_annualized_consistently(horizon_panel):
+    """
+    μ̂ 를 연율화했으면 SE 도 연 단위 T 로 나눠야 한다.
+
+    전에는 `sd·√252/√n` 이라 분자만 연율이고 분모의 T 는 일 단위였다.
+    SE 가 √252≈15.9배 작게 나와 t 가 그만큼 부풀었고, **모든 지평이
+    유의하다**고 나왔다 — 단기 실제 t=0.36 을 5.66 으로 봤다.
+    """
+    for s in horizon_panel.stats:
+        # 수익률 개수는 가격 개수보다 하나 적다 — 표본 크기는 그쪽이다
+        n_ret = s.n_obs - 1
+        expect = s.ann_vol / math.sqrt(n_ret / 252)
+        assert s.drift_se == pytest.approx(expect, rel=1e-3), (
+            f"{s.label_ko}: SE {s.drift_se:.4f} vs 이론 {expect:.4f}")
+        # 내부 정합성은 정확히 맞아야 한다
+        assert s.drift_t == pytest.approx(s.drift_ann / s.drift_se, rel=1e-9)
+        # 옛 버그를 직접 배제한다: sd·√252/√n (분모가 일 단위) 이면
+        # 지금 값보다 √252 배 작다. 그 값과 같아지면 되돌아간 것이다.
+        buggy = s.ann_vol / math.sqrt(n_ret)
+        assert abs(s.drift_se - buggy) > buggy * 0.5, (
+            f"{s.label_ko}: SE 가 옛 버그 값({buggy:.4f})으로 되돌아갔다")
+
+
+def test_short_horizon_drift_is_not_significant(horizon_panel):
+    """
+    63일 표본으로 드리프트가 유의하다고 나오면 그건 계산이 틀린 것이다.
+    σ/√T 가 μ̂ 를 압도하는 게 정상이다.
+    """
+    short = [s for s in horizon_panel.stats if s.days <= 63]
+    assert short, "단기 지평이 없다"
+    assert not short[0].drift_meaningful, (
+        f"63일 표본에서 |t|={abs(short[0].drift_t):.2f} 로 유의 판정")
+
+
+def test_horizon_internal_consistency(horizon_panel):
+    for s in horizon_panel.stats:
+        assert 0.0 <= s.above_sma_ratio <= 1.0
+        assert s.ann_vol >= 0
+        assert s.drift_meaningful == (abs(s.drift_t) >= 2.0)
+
+
+def test_horizon_disagreement_is_surfaced(horizon_panel):
+    """
+    지평을 합치지 않고 **어긋나는 지점을 드러내는 것**이 목적이다.
+    상승 구간과 하락 구간을 붙여 넣었으니 불일치가 잡혀야 한다.
+    """
+    assert horizon_panel.disagreements, "명백한 불일치를 못 잡았다"
