@@ -57,7 +57,14 @@ from .statcore import (
 
 @dataclass
 class TripleBarrierLabels:
-    label: np.ndarray            # +1 / -1 / 0
+    # +1 / -1. 0 은 사실상 안 나온다 — 수직배리어(시간 만료)에 걸려도
+    # 0 으로 두지 않고 **비용 차감 후 수익률의 부호**로 라벨하기 때문이다.
+    # (López de Prado 가 제시한 두 변형 중 이진 쪽. 0 은 수익률이 정확히
+    #  0 일 때뿐이라 측도 0 이다.)
+    #
+    # 그래서 이 문제는 실질적으로 **이진 분류**다. 비용을 배리어와 수익률
+    # 양쪽에 넣으므로 "비용 빼면 손해였을 움직임" 이 -1 로 간다.
+    label: np.ndarray
     touch_idx: np.ndarray        # 배리어 도달 시점
     ret: np.ndarray              # 실현 수익
     uniqueness: np.ndarray       # 평균 유일성 가중치

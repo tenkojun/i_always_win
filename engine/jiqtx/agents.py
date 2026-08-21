@@ -274,7 +274,11 @@ def assemble_agents(ctx: Dict[str, Any]) -> List[AgentView]:
     st = ctx.get("stress_summary", {})
     A.append(AgentView(
         "A10 Risk Officer", "리스크 한도", "ABSTAIN", None, 1.0,
-        veto=not st.get("within_limit", True),
+        # 스트레스를 계산하지 못했으면 **거부**한다. G7 게이트도 같은
+        # 기본값(False)을 쓴다 — 둘이 반대면, 키가 빠지는 순간 게이트는
+        # 막는데 리스크 책임자는 통과시키는 모순이 생긴다.
+        # 스트레스를 못 재는 포지션에 사이즈를 실을 이유는 없다.
+        veto=not st.get("within_limit", False),
         evidence=[f"VaR95 {rk.var_fhs_evt:.2%} (FHS-EVT) / ES "
                   f"{rk.es_fhs_evt:.2%}; 채택 모델 {rk.preferred}"
                   if rk else "VaR 미산출",

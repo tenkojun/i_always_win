@@ -313,3 +313,72 @@ def test_horizon_disagreement_is_surfaced(horizon_panel):
     상승 구간과 하락 구간을 붙여 넣었으니 불일치가 잡혀야 한다.
     """
     assert horizon_panel.disagreements, "명백한 불일치를 못 잡았다"
+
+
+# ── 트리플 배리어 라벨링 ─────────────────────────────────────
+def _tb(close, sig=0.012, **kw):
+    from engine.jiqtx.ml import triple_barrier
+    return triple_barrier(close, np.full(len(close), sig), **kw)
+
+
+@pytest.fixture(scope="module")
+def paths():
+    rng = np.random.default_rng(17)
+    up = 100 * np.exp(np.cumsum(rng.normal(0.0025, 0.008, 1200)))
+    dn = 100 * np.exp(np.cumsum(rng.normal(-0.0025, 0.008, 1200)))
+    flat = 100 * np.exp(np.cumsum(rng.normal(0.0, 0.012, 1200)))
+    return up, dn, flat
+
+
+def test_labels_follow_the_trend(paths):
+    """
+    상승 경로엔 +1 이, 하락 경로엔 -1 이 압도적이어야 한다.
+    여기가 뒤집히면 방향 예측이 통째로 반대가 된다.
+    """
+    up, dn, _ = paths
+    lu, ld = _tb(up).label, _tb(dn).label
+    assert (lu == 1).sum() > (lu == -1).sum() * 1.5, "상승장에서 +1 우세 아님"
+    assert (ld == -1).sum() > (ld == 1).sum() * 1.5, "하락장에서 -1 우세 아님"
+
+
+def test_labels_are_symmetric_without_trend(paths):
+    """추세가 없으면 +1 과 -1 이 비슷해야 한다 — 한쪽으로 쏠리면 편향이다."""
+    _, _, flat = paths
+    l = _tb(flat).label
+    ratio = (l == 1).sum() / max((l == -1).sum(), 1)
+    assert 0.6 < ratio < 1.7, f"무추세인데 +1/-1 비가 {ratio:.2f}"
+
+
+def test_cost_pushes_labels_negative(paths):
+    """
+    비용을 배리어와 수익률 양쪽에 넣으므로, 비용이 커지면 +1 이 줄어야 한다.
+    "비용 빼면 손해였을 움직임" 이 -1 로 가는 게 요점이다.
+    """
+    up, _, _ = paths
+    a = (_tb(up, cost=0.0).label == 1).sum()
+    b = (_tb(up, cost=0.02).label == 1).sum()
+    assert b < a, f"비용을 넣어도 +1 이 안 줄었다 ({a} → {b})"
+
+
+def test_labeling_is_effectively_binary(paths):
+    """
+    수직배리어(시간 만료)에 걸려도 0 이 아니라 **부호**로 라벨한다.
+    그래서 0 은 사실상 안 나온다 — 3클래스로 착각하면 안 된다.
+
+    배리어를 32σ(≈38%)까지 넓혀도 마찬가지다. 이 사실이 바뀌면 다운스트림의
+    기저율·정확도 해석이 전부 달라지므로 여기서 못 박는다.
+    """
+    _, _, flat = paths
+    for m in (1.0, 8.0, 32.0):
+        l = _tb(flat, pt_mult=m, sl_mult=m).label
+        n_zero = int((l == 0).sum())
+        assert n_zero <= 2, f"pt=sl={m} 에서 0 라벨이 {n_zero}개 — 이진 가정이 깨졌다"
+
+
+def test_touch_never_exceeds_the_horizon(paths):
+    """도달 시점이 지평을 넘으면 미래를 훔쳐본 것이다."""
+    _, _, flat = paths
+    lab = _tb(flat, horizon=21)
+    t = np.arange(len(lab.touch_idx))
+    valid = lab.touch_idx > 0
+    assert (lab.touch_idx[valid] - t[valid]).max() <= 21, "지평을 넘어 관측했다"
