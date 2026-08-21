@@ -1,0 +1,81 @@
+# Plutus — CI
+# ===========
+# 이게 없던 동안에는 고친 게 다시 깨져도 아무도 몰랐다. 어제 잡은
+# 결함들(테마 · 인증 · 이스케이프 · 추정량)에 회귀 테스트를 붙였으니,
+# 그게 실제로 매번 돌게 한다.
+#
+# 원칙
+#   - 네트워크를 타지 않는다. 시세 API 가 죽어도 CI 는 초록이어야 한다.
+#   - 빠르게 끝난다. 느리면 사람이 결과를 안 본다.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # 같은 브랜치에 연달아 푸시하면 앞의 실행은 취소한다
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # UI 정적 검사가 인라인 JS 를 node --check 로 돌린다
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 의존성 설치
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: requirements 가 실제와 맞는가
+        # 목록에 없는 걸 import 하거나, 안 쓰는 걸 목록에 두면 새로 받은
+        # 사람이 문서대로 해도 실패한다. 실제로 torch 를 받게 돼 있었다.
+        run: python tools/check_requirements.py
+
+      - name: 테스트
+        run: python -m pytest tests/ -q --timeout=900
+
+  worker:
+    # 중앙 인증 Worker 는 배포되면 되돌리기 어렵다 — 문법만이라도 본다
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Worker 문법 검사
+        run: node --check auth-worker/src/index.js
+      - name: 마이그레이션 SQL 검사
+        # 몇 번을 올려도 안전해야 한다 — 두 번 적용해 본다
+        run: |
+          python - <<'EOF'
+          import sqlite3, glob
+          c = sqlite3.connect(":memory:")
+          files = sorted(glob.glob("auth-worker/migrations/*.sql"))
+          assert files, "마이그레이션 파일을 못 찾았다"
+          for f in files:
+              c.executescript(open(f, encoding="utf-8").read())
+          for f in files:                     # 재실행 안전성
+              c.executescript(open(f, encoding="utf-8").read())
+          print(f"마이그레이션 {len(files)}개 · 2회 적용 통과")
+          EOF

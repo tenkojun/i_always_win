@@ -185,6 +185,7 @@ def api_auth_remote_admin_reject():
 
 
 @app.route("/api/auth/remote/pc/register", methods=["POST"])
+@require_auth
 def api_auth_remote_pc_register():
     """본인 메인 PC의 외부 접근 URL을 중앙 서버에 등록 (A6 redirect용)."""
     from engine.auth_remote import register_pc
@@ -194,6 +195,7 @@ def api_auth_remote_pc_register():
         pc_label=(data.get("pc_label") or "").strip()))
 
 @app.route("/api/auth/remote/logout_all", methods=["POST"])
+@require_auth
 def api_auth_remote_logout_all():
     """모든 기기 세션 종료 — 비밀번호 유출이 의심될 때."""
     from engine.auth_remote import logout_all
@@ -201,6 +203,7 @@ def api_auth_remote_logout_all():
 
 
 @app.route("/api/auth/remote/change_password", methods=["POST"])
+@require_auth
 def api_auth_remote_change_password():
     from engine.auth_remote import change_password
     data = request.get_json(force=True, silent=True) or {}
@@ -210,18 +213,21 @@ def api_auth_remote_change_password():
 
 
 @app.route("/api/auth/remote/sessions")
+@require_auth
 def api_auth_remote_sessions():
     from engine.auth_remote import sessions
     return jsonify(sessions())
 
 
 @app.route("/api/auth/remote/pc/status")
+@require_auth
 def api_auth_remote_pc_status():
     from engine.auth_remote import pc_status
     return jsonify(pc_status())
 
 
 @app.route("/api/auth/remote/pc/unregister", methods=["POST"])
+@require_auth
 def api_auth_remote_pc_unregister():
     from engine.auth_remote import pc_unregister
     return jsonify(pc_unregister())
@@ -2072,6 +2078,7 @@ def api_awareness_history():
 
 
 @app.route("/api/awareness/refresh", methods=["POST"])
+@require_auth
 def api_awareness_refresh():
     """수동 갱신 트리거 (백그라운드 폴링과 별도)."""
     try:
@@ -2640,6 +2647,7 @@ def api_analyst():
 
 
 @app.route("/api/datasources")
+@require_auth
 def api_datasources():
     """가용 소스 + 키 마스킹 상태(키 값은 절대 노출 안 함)."""
     try:
@@ -2654,6 +2662,7 @@ def api_datasources():
 
 
 @app.route("/api/datasources/test", methods=["POST"])
+@require_auth
 def api_test_key():
     """provider별 실 호출 검증 — 키 유효성 즉시 확인."""
     import time, requests
@@ -2725,6 +2734,7 @@ def api_test_key():
 
 
 @app.route("/api/datasources/key", methods=["POST"])
+@require_auth
 def api_set_key():
     """프로그램 설정창 전용 키 저장(로컬 파일에만 기록)."""
     try:
@@ -2751,6 +2761,7 @@ _LLM_NEWS_CACHE_MAX = 200
 
 
 @app.route("/api/news/llm_followup", methods=["POST"])
+@require_auth
 def api_news_llm_followup():
     """
     뉴스 분석 결과에 대한 후속 질문 (로컬 LLM, 무료).
@@ -2858,6 +2869,7 @@ def api_news_llm_followup():
 
 
 @app.route("/api/news/llm_analyze", methods=["POST"])
+@require_auth
 def api_news_llm_analyze():
     """뉴스 한 건을 로컬 LLM으로 심층 분석.
 
@@ -2916,6 +2928,7 @@ def api_news_llm_analyze():
 
 
 @app.route("/api/llm/status")
+@require_auth
 def api_llm_status():
     """로컬 LLM 통합 상태 — 하드웨어 + Ollama + 모델 + 진행 중인 작업."""
     try:
@@ -2934,6 +2947,7 @@ def api_llm_status():
 
 
 @app.route("/api/llm/install_ollama", methods=["POST"])
+@require_auth
 def api_llm_install_ollama():
     """OllamaSetup.exe 다운로드+설치를 백그라운드로 시작."""
     try:
@@ -2944,6 +2958,7 @@ def api_llm_install_ollama():
 
 
 @app.route("/api/llm/pull_model", methods=["POST"])
+@require_auth
 def api_llm_pull_model():
     """모델 다운로드(ollama pull)를 백그라운드로 시작."""
     try:
@@ -2959,6 +2974,7 @@ def api_llm_pull_model():
 
 
 @app.route("/api/llm/auto_setup", methods=["POST"])
+@require_auth
 def api_llm_auto_setup():
     """원클릭: Ollama 설치 → 권장 모델 다운로드까지 자동.
 

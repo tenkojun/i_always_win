@@ -91,6 +91,18 @@ EXE 빌드:
 python tools/release.py --build    # → dist/Plutus/ (194MB) + 릴리스 발행
 ```
 
+개발·테스트:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/ -q          # 추정량 검증 · 접근제어 · UI · 회귀
+python tools/check_ui.py            # 인라인 JS 구문 (11,000줄 단일 HTML)
+python tools/check_requirements.py  # 의존성 목록이 코드와 맞는가
+```
+
+`main` 푸시와 PR 마다 CI 가 같은 것을 돌린다. **네트워크를 타지 않으므로**
+시세 API 가 죽어도 초록이다.
+
 ---
 
 ## 회원 등급
